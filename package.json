@@ -1,1 +1,18 @@
-{"name":"my-electron-app","version":"1.0.0","description":"An Electron application with resizable panes","main":"main.js","scripts":{"start":"electron ."},"dependencies":{"electron":"^38.1.0"}}
+{
+    "name": "gpx-tagger",
+    "version": "1.0.0",
+    "description": "An Electron application to add GPX metadata to image files",
+    "main": "main.js",
+    "author": "Dr. Martin von Berg",
+    "license": "GPL-2.0-only",
+    
+    "scripts": {
+        "start": "electron .",
+        "debug": "electron --inspect=9229 .",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "devDependencies": {
+        "electron": "^38.1.0",
+        "electron-packager": "^17.1.2"
+    }
+}

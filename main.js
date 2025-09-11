@@ -11,9 +11,12 @@ function createWindow() {
     width: settings.width || 800,  
     height: settings.height || 600,  
     webPreferences: {  
-      preload: path.join(__dirname, 'renderer.js'),  
+      preload: path.join(__dirname, 'preload.js'),  
       nodeIntegration: true,  
-      contextIsolation: false  
+      contextIsolation: true,
+      webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
+      // CORS, Content-Security-Policy, Same-Origin-Policy
+      // verhindert aber nicht den Zugriff auf lokale Ressourcen, wie z.B. lokale Dateien
     }  
   });  
   
