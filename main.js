@@ -19,6 +19,11 @@ function createWindow() {
   
   win.loadFile('index.html');  
   
+  win.webContents.on('did-finish-load', () => {  
+    // Send the saved settings to the renderer process  
+    win.webContents.send('load-settings', settings);  
+  });  
+  
   win.on('resize', () => {  
     let [width, height] = win.getSize();  
     settings.width = width;  

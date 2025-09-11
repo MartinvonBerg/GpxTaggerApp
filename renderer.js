@@ -7,6 +7,27 @@ document.addEventListener('DOMContentLoaded', () => {
   setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'bottom');  
 });  
   
+ipcRenderer.on('load-settings', (event, settings) => {  
+  // Restore the sizes of the bars using the settings  
+  const topBar = document.getElementById('top-bar');  
+  const bottomBar = document.getElementById('bottom-bar');  
+  const leftSidebar = document.getElementById('left-sidebar');  
+  const rightSidebar = document.getElementById('right-sidebar');  
+  
+  if (settings.topBarHeight) {  
+    topBar.style.height = `${settings.topBarHeight}px`;  
+  }  
+  if (settings.bottomBarHeight) {  
+    bottomBar.style.height = `${settings.bottomBarHeight}px`;  
+  }  
+  if (settings.leftSidebarWidth) {  
+    leftSidebar.style.width = `${settings.leftSidebarWidth}px`;  
+  }  
+  if (settings.rightSidebarWidth) {  
+    rightSidebar.style.width = `${settings.rightSidebarWidth}px`;  
+  }  
+});  
+  
 function setupResizablePane(resizer, direction) {  
   let isResizing = false;  
   
