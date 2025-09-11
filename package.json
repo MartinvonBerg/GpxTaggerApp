@@ -1,0 +1,1 @@
+{"name":"my-electron-app","version":"1.0.0","description":"An Electron application with resizable panes","main":"main.js","scripts":{"start":"electron ."},"dependencies":{"electron":"^38.1.0"}}

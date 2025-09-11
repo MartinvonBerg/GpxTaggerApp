@@ -1,0 +1,44 @@
+body, html {  
+  margin: 0;  
+  padding: 0;  
+  height: 100%;  
+  width: 100%;  
+  overflow: hidden;  
+}  
+  
+.container {  
+  display: flex;  
+  flex-direction: row;  
+  height: calc(100% - 100px); /* Reserve space for bottom bar */  
+  width: 100%;  
+}  
+  
+.sidebar {  
+  background-color: #f1f1f1;  
+  width: 200px;  
+  min-width: 100px;  
+}  
+  
+.resizer {  
+  width: 5px;  
+  background-color: #bbb;  
+  cursor: ew-resize;  
+  position: relative;  
+}  
+  
+.main-content {  
+  background-color: #fff;  
+  flex-grow: 1;  
+}  
+  
+.bottom-bar {  
+  background-color: #ccc;  
+  height: 50px;  
+  width: 100%;  
+}  
+
+.top-bar {  
+  background-color: #ccc;  
+  height: 50px;  
+  width: 100%;  
+}  
