@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('myAPI', {
     }  
   },  
   receive: (channel, func) => {  
-    let validChannels = ['load-settings'];  
+    let validChannels = ['load-settings', 'gpx-data', 'clear-gpx'];  
     if (validChannels.includes(channel)) {  
       // Strip event as it includes `sender`
       // hier wird eine Nachricht von main.js gesendet, in renderer.js empfangen und die 

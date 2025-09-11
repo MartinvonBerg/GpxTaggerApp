@@ -22,8 +22,24 @@ window.myAPI.receive('load-settings', (settings) => {
   }  
   if (settings.rightSidebarWidth) {  
     rightSidebar.style.width = `${settings.rightSidebarWidth}px`;  
-  }  
-});  
+  }
+  if (settings.gpxPath) {
+    showgpx(settings.gpxPath);
+  }
+});
+
+window.myAPI.receive('gpx-data', (gpxPath) => {  
+  showgpx(gpxPath);
+});
+
+window.myAPI.receive('clear-gpx', () => {  
+  console.log('GPX-Track löschen Befehl empfangen');
+  // Hier kannst du den GPX-Track aus der Anzeige entfernen
+  const gpxPathElement = document.getElementById('gpx-path');
+  if (gpxPathElement) {
+    gpxPathElement.textContent = 'No File loaded';
+  }
+});
   
 function setupResizablePane(resizer, direction) {  
   let isResizing = false;  
@@ -105,4 +121,22 @@ function setupHorizontalResizablePane(resizer, position) {
     document.addEventListener('mousemove', mouseMoveHandler);  
     document.addEventListener('mouseup', mouseUpHandler);  
   });  
-}  
+}
+
+function showgpx(gpxPath) {
+  
+  console.log('Empfangener GPX-Pfad im Renderer:', gpxPath);
+  
+  const gpxPathElement = document.getElementById('gpx-path');
+  // load and parse the gpx file, do this with L.GPX from leaflet-gpx
+  // showgpx(gpxPath);
+  // let statistics = getStatistics(gpxPath);
+  // get the number of trackpoints from the gpx file, the start and end time of the track
+  let NPoints = 0;
+  let startTime = '1970-01-01 00:00:00';
+  let endTime = '1970-01-01 00:00:00';
+
+  if (gpxPathElement) {
+    gpxPathElement.textContent = `GPX-File: ${gpxPath}, N-Trackpoints: ${NPoints}, Start-Time: ${startTime}, End-Time: ${endTime}`;
+  }
+}
