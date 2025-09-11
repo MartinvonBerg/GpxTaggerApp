@@ -6,10 +6,17 @@ body, html {
   overflow: hidden;  
 }  
   
+.vertical-container {  
+  display: flex;  
+  flex-direction: column;  
+  height: 100%;  
+  width: 100%;  
+}  
+  
 .container {  
   display: flex;  
   flex-direction: row;  
-  height: calc(100% - 100px); /* Reserve space for bottom bar */  
+  flex-grow: 1;  
   width: 100%;  
 }  
   
@@ -23,7 +30,12 @@ body, html {
   width: 5px;  
   background-color: #bbb;  
   cursor: ew-resize;  
-  position: relative;  
+}  
+  
+.horizontal-resizer {  
+  height: 5px;  
+  background-color: #bbb;  
+  cursor: ns-resize;  
 }  
   
 .main-content {  
@@ -32,13 +44,13 @@ body, html {
 }  
   
 .bottom-bar {  
-  background-color: #ccc;  
+  background-color: #efcf59;  
   height: 50px;  
-  width: 100%;  
-}  
+  min-height: 30px;  
+} 
 
 .top-bar {  
-  background-color: #ccc;  
+  background-color: #3188b1;  
   height: 50px;  
-  width: 100%;  
-}  
+  min-height: 30px;  
+}
