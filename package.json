@@ -5,7 +5,6 @@
     "main": "main.js",
     "author": "Dr. Martin von Berg",
     "license": "GPL-2.0-only",
-    
     "scripts": {
         "start": "electron .",
         "debug": "electron --inspect=9229 .",

@@ -26,6 +26,13 @@ window.myAPI.receive('load-settings', (settings) => {
   if (settings.gpxPath) {
     showgpx(settings.gpxPath);
   }
+  if (settings.imagePath) {
+    const gpxPathElement = document.getElementById('img-path');
+    if (gpxPathElement) {
+      gpxPathElement.textContent = `Image Folder: ${settings.imagePath}`;
+    }
+    // process and show images from the folder, mind teh filter
+  }
 });
 
 window.myAPI.receive('gpx-data', (gpxPath) => {  
