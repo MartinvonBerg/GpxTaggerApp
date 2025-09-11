@@ -28,11 +28,11 @@ const menuTemplate = [
     label: 'GPX-Track',
     submenu: [
       {
-        label: 'GPX-Datei öffnen',
+        label: 'Open GPX File',
         click: async () => {
           const { canceled, filePaths } = await dialog.showOpenDialog({
-            title: 'GPX-Datei auswählen',
-            filters: [{ name: 'GPX-Dateien', extensions: ['gpx'] }],
+            title: 'Select a GPX file',
+            filters: [{ name: 'GPX Files', extensions: ['gpx'] }],
             properties: ['openFile']
           });
 
@@ -55,10 +55,44 @@ const menuTemplate = [
         }
       },
       {
-        label: 'GPX-Track löschen',
+        label: 'Clear GPX File',
         click: () => {
           settings.gpxPath = '';
           win.webContents.send('clear-gpx');
+          saveSettings(settings);
+        }
+      }
+    ]
+  },
+  {
+    label: 'Image Folder',
+    submenu: [
+      {
+        label: 'Select Folder',
+        click: async () => {
+          const { canceled, filePaths } = await dialog.showOpenDialog({
+            title: 'Select Image Folder',
+            //filters: [{ name: 'Image Folder', extensions: ['gpx'] }],
+            properties: ['openDirectory']
+          });
+
+          if (!canceled && filePaths.length > 0) {
+            imagePath = filePaths[0];
+            
+            //
+            console.log('Bilder-Pfad:', imagePath);
+            settings.imagePath = imagePath;
+            // an Renderer-Prozess senden
+            win.webContents.send('set-image-path', imagePath); // oder den Inhalt der Datei
+            saveSettings(settings);
+            };
+        }
+      },
+      {
+        label: 'Clear Image Folder',
+        click: () => {
+          settings.imagePath = '';
+          win.webContents.send('clear-image-path');
           saveSettings(settings);
         }
       }

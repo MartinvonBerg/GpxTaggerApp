@@ -3,9 +3,10 @@
   "height": 906,
   "x": 330,
   "y": 315,
-  "topBarHeight": 34,
+  "topBarHeight": 79,
   "bottomBarHeight": 33,
   "leftSidebarWidth": 166,
   "rightSidebarWidth": 206,
-  "gpxPath": "C:\\Users\\safet\\Downloads\\MTB-Hundstein.gpx"
+  "gpxPath": "",
+  "imagePath": ""
 }

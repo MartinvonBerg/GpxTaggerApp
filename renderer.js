@@ -40,6 +40,26 @@ window.myAPI.receive('clear-gpx', () => {
     gpxPathElement.textContent = 'No File loaded';
   }
 });
+
+window.myAPI.receive('set-image-path', (imagePath) => {  
+  console.log('Empfangener Bilder-Pfad im Renderer:', imagePath);
+  
+  const gpxPathElement = document.getElementById('img-path');
+  if (gpxPathElement) {
+    gpxPathElement.textContent = `Image Folder: ${imagePath}`;
+  }
+  // process and show images from the folder, mind teh filter
+});
+
+window.myAPI.receive('clear-image-path', () => {  
+  console.log('Clear Image Path command received');
+  // Hier kannst du den GPX-Track aus der Anzeige entfernen
+  const gpxPathElement = document.getElementById('img-path');
+  if (gpxPathElement) {
+    gpxPathElement.textContent = 'No Image Folder selected';
+  }
+  // clear all variables, images, data, etc.
+});
   
 function setupResizablePane(resizer, direction) {  
   let isResizing = false;  
