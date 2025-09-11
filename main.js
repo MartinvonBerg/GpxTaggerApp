@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');  
+const { app, BrowserWindow, ipcMain } = require('electron');  
 const path = require('path');  
 const fs = require('fs');  
   
@@ -30,6 +30,18 @@ function createWindow() {
     let [x, y] = win.getPosition();  
     settings.x = x;  
     settings.y = y;  
+    saveSettings(settings);  
+  });  
+  
+  ipcMain.on('update-bars-size', (event, { topBarHeight, bottomBarHeight }) => {  
+    settings.topBarHeight = topBarHeight;  
+    settings.bottomBarHeight = bottomBarHeight;  
+    saveSettings(settings);  
+  });  
+  
+  ipcMain.on('update-sidebar-width', (event, { leftSidebarWidth, rightSidebarWidth }) => {  
+    settings.leftSidebarWidth = leftSidebarWidth;  
+    settings.rightSidebarWidth = rightSidebarWidth;  
     saveSettings(settings);  
   });  
 }  

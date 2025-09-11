@@ -1,3 +1,5 @@
+const { ipcRenderer } = require('electron');  
+  
 document.addEventListener('DOMContentLoaded', () => {  
   setupResizablePane(document.getElementById('left-resizer'), 'left');  
   setupResizablePane(document.getElementById('right-resizer'), 'right');  
@@ -20,6 +22,11 @@ function setupResizablePane(resizer, direction) {
   
       if (newWidth > 100 && newWidth < window.innerWidth - 200) {  
         sidebar.style.width = `${newWidth}px`;  
+  
+        ipcRenderer.send('update-sidebar-width', {  
+          leftSidebarWidth: document.getElementById('left-sidebar').offsetWidth,  
+          rightSidebarWidth: document.getElementById('right-sidebar').offsetWidth  
+        });  
       }  
     };  
   
@@ -51,6 +58,10 @@ function setupHorizontalResizablePane(resizer, position) {
           
         if (newHeight > 30 && newHeight < window.innerHeight - 100) {  
           topBar.style.height = `${newHeight}px`;  
+          ipcRenderer.send('update-bars-size', {  
+            topBarHeight: newHeight,  
+            bottomBarHeight: document.getElementById('bottom-bar').offsetHeight  
+          });  
         }  
       } else if (position === 'bottom') {  
         const bottomBar = document.getElementById('bottom-bar');  
@@ -58,6 +69,10 @@ function setupHorizontalResizablePane(resizer, position) {
   
         if (newHeight > 30 && newHeight < window.innerHeight - 100) {  
           bottomBar.style.height = `${newHeight}px`;  
+          ipcRenderer.send('update-bars-size', {  
+            topBarHeight: document.getElementById('top-bar').offsetHeight,  
+            bottomBarHeight: newHeight  
+          });  
         }  
       }  
     };  
