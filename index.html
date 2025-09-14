@@ -3,7 +3,7 @@
 <head>  
   <meta charset="UTF-8">  
   <title>Resizable Panes</title>  
-  <link rel="stylesheet" href="style.css">  
+  <link rel="stylesheet" href="./style/style.css">  
 </head>  
 <body>  
   <div class="vertical-container">  
@@ -15,13 +15,19 @@
     <div class="container">  
       <div class="sidebar" id="left-sidebar"></div>  
       <div class="resizer" id="left-resizer"></div>  
-      <div class="main-content" id="main-content"></div>  
+      <div class="main-content" id="main-content">
+        <div id="multifotobox0" class="mfoto_grid" style="max-width:800px;">
+          <div id="boxmap0" class="boxmap">
+              <div id="map0" class="leafmap" style="max-height:1600px;aspect-ratio:1.5"></div>
+          </div>
+        </div><!--div id=multifotobox0-->
+      </div>  
       <div class="resizer" id="right-resizer"></div>  
       <div class="sidebar" id="right-sidebar"></div>  
     </div>  
     <div class="horizontal-resizer" id="bottom-resizer"></div>  
     <div class="bottom-bar" id="bottom-bar"></div>  
   </div>  
-  <script src="renderer.js"></script>  
+  <script src="./src/renderer.js"></script>  
 </body>  
 </html>  

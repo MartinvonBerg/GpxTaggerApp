@@ -1,3 +1,5 @@
+let pageVarsForJs = {}; // Global object to store variables for JS 
+
 document.addEventListener('DOMContentLoaded', () => {  
   setupResizablePane(document.getElementById('left-resizer'), 'left');  
   setupResizablePane(document.getElementById('right-resizer'), 'right');  
@@ -23,7 +25,14 @@ window.myAPI.receive('load-settings', (settings) => {
   if (settings.rightSidebarWidth) {  
     rightSidebar.style.width = `${settings.rightSidebarWidth}px`;  
   }
+  if (settings.map) {
+    pageVarsForJs = settings.map; // Store map-related settings globally
+    pageVarsForJs.tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+    console.log('Map settings loaded:', pageVarsForJs);
+    // Initialize map here if needed
+  }
   if (settings.gpxPath) {
+    pageVarsForJs.tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
     showgpx(settings.gpxPath);
   }
   if (settings.imagePath) {
@@ -33,6 +42,7 @@ window.myAPI.receive('load-settings', (settings) => {
     }
     // process and show images from the folder, mind teh filter
   }
+  
 });
 
 window.myAPI.receive('gpx-data', (gpxPath) => {  

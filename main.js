@@ -117,7 +117,7 @@ function createWindow() {
     width: settings.width || 800,  
     height: settings.height || 600,  
     webPreferences: {  
-      preload: path.join(__dirname, 'preload.js'),  
+      preload: path.join(__dirname, './src/preload.js'),  
       nodeIntegration: true,  
       contextIsolation: true,
       webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
