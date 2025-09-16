@@ -7,11 +7,26 @@
     "license": "GPL-2.0-only",
     "scripts": {
         "start": "electron .",
+        "build": "webpack --mode development",
+        "webprod": "webpack --mode production",
+        "all": "npm run build && npm start",
         "debug": "electron --inspect=9229 .",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "package": "npm run webprod && npx electron-packager . PanesApp --platform=win32 --arch=x64 --out=dist --overwrite --ignore=/src$ --ignore=/.vscode$ --ignore=.gitignore --ignore=/transfer$ --ignore=webpack.config.js"
     },
     "devDependencies": {
+        "@babel/core": "*",
+        "@babel/preset-env": "*",
+        "babel-loader": "*",
         "electron": "^38.1.0",
-        "electron-packager": "^17.1.2"
+        "electron-packager": "^17.1.2",
+        "webpack": "*",
+        "webpack-cli": "*"
+    },
+    "dependencies": {
+        "i18next": "^25.5.2",
+        "i18next-fs-backend": "^2.6.0",
+        "leaflet": "^1.9.4",
+        "leaflet-gpx": "^2.2.0"
     }
 }

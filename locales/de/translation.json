@@ -1,0 +1,19 @@
+{  
+  "file": "Datei",  
+  "reload": "App neu laden",  
+  "quit": "Beenden",  
+  "gpxTrack": "GPX-Track",  
+  "openGpxFile": "GPX-Datei öffnen",  
+  "selectGpxFileTitle": "GPX-Datei auswählen",  
+  "gpxFiles": "GPX-Dateien",  
+  "errorReadingGpxFile": "Fehler beim Lesen der GPX-Datei",  
+  "gpxPath": "GPX-Pfad",  
+  "clearGpxFile": "GPX-Datei löschen",  
+  "imageFolder": "Bilder",  
+  "selectFolder": "Ordner auswählen",  
+  "selectImageFolderTitle": "Ordner auswählen",  
+  "imagePath": "Pfad zu Bildern",  
+  "clearImageFolder": "Ordner löschen",  
+  "development": "Entwicklung",  
+  "openDevTools": "DevTools öffnen"  
+}  

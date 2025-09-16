@@ -1,0 +1,19 @@
+{  
+  "file": "File",  
+  "reload": "Reload App",  
+  "quit": "Quit",  
+  "gpxTrack": "GPX Track",  
+  "openGpxFile": "Open GPX File",  
+  "selectGpxFileTitle": "Select a GPX file",  
+  "gpxFiles": "GPX Files",  
+  "errorReadingGpxFile": "Error reading GPX file",  
+  "gpxPath": "GPX Path",  
+  "clearGpxFile": "Clear GPX File",  
+  "imageFolder": "Image Folder",  
+  "selectFolder": "Select Folder",  
+  "selectImageFolderTitle": "Select Image Folder",  
+  "imagePath": "Image Path",  
+  "clearImageFolder": "Clear Image Folder",  
+  "development": "Development",  
+  "openDevTools": "Open DevTools"  
+}  
