@@ -63,17 +63,9 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   });
 
   window.myAPI.receive('gpx-data', (gpxPath) => {
-    /*
-    Promise.all([  
-      import('leaflet'),  
-      import('leaflet-gpx')  
-    ]).then(([leaflet, leafletGpx]) => {  
-      // Nun können Sie die Module verwenden  
-      showgpx(gpxPath);  
-    }).catch(error => {  
-      console.error('Error importing modules:', error);  
-    });
-    */ 
+    settings.gpxPath = gpxPath;
+    pageVarsForJs.tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+    showgpx(gpxPath);
   });
 
   window.myAPI.receive('clear-gpx', () => {  
@@ -190,19 +182,19 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   function showgpx(gpxPath) {
     
     console.log('Empfangener GPX-Pfad im Renderer:', gpxPath);
-    
     const gpxPathElement = document.getElementById('gpx-path');
+
     // load and parse the gpx file, do this with L.GPX from leaflet-gpx
     // showgpx(gpxPath);
-    // let statistics = getStatistics(gpxPath);
+    
     // get the number of trackpoints from the gpx file, the start and end time of the track
+    // let statistics = getStatistics(gpxPath);
     let NPoints = 0;
     let startTime = '1970-01-01 00:00:00';
     let endTime = '1970-01-01 00:00:00';
 
     if (gpxPathElement) {
       gpxPathElement.textContent = i18next.t('gpxFile') +': '+ gpxPath;
-      //gpxPathElement.textContent = `GPX-File: ${gpxPath}, N-Trackpoints: ${NPoints}, Start-Time: ${startTime}, End-Time: ${endTime}`;
   }
   }
 }
