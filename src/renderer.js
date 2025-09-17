@@ -1,3 +1,5 @@
+import i18next from 'i18next';
+
 function mainRenderer (window, document, customDocument=null, win=null, vars=null) {
   let pageVarsForJs = {}; // Global object to store variables for JS 
 
@@ -12,7 +14,22 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     const topBar = document.getElementById('top-bar');  
     const bottomBar = document.getElementById('bottom-bar');  
     const leftSidebar = document.getElementById('left-sidebar');  
-    const rightSidebar = document.getElementById('right-sidebar');  
+    const rightSidebar = document.getElementById('right-sidebar');
+
+    if (settings.translation) {
+       i18next.init({
+         lng: settings.lng || 'en',
+         resources: {  
+          en: {  
+            translation: {  
+              welcome_message: 'Welcome'  
+            }  
+          }  
+        } 
+        })
+       setDataForLanguage(settings.lng || 'en', settings.translation);
+       console.log('i18next :', i18next.t('file')); 
+    }
     
     if (settings.topBarHeight) {  
       topBar.style.height = `${settings.topBarHeight}px`;  
@@ -39,14 +56,14 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.imagePath) {
       const gpxPathElement = document.getElementById('img-path');
       if (gpxPathElement) {
-        gpxPathElement.textContent = `Image Folder: ${settings.imagePath}`;
+        gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
       }
       // process and show images from the folder, mind teh filter
     }
-    
   });
 
   window.myAPI.receive('gpx-data', (gpxPath) => {
+    /*
     Promise.all([  
       import('leaflet'),  
       import('leaflet-gpx')  
@@ -55,7 +72,8 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       showgpx(gpxPath);  
     }).catch(error => {  
       console.error('Error importing modules:', error);  
-    }); 
+    });
+    */ 
   });
 
   window.myAPI.receive('clear-gpx', () => {  
@@ -63,7 +81,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // Hier kannst du den GPX-Track aus der Anzeige entfernen
     const gpxPathElement = document.getElementById('gpx-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = 'No File loaded';
+      gpxPathElement.textContent = i18next.t('noFileLoaded');
     }
   });
 
@@ -72,7 +90,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = `Image Folder: ${imagePath}`;
+      gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
     }
     // process and show images from the folder, mind teh filter
   });
@@ -82,7 +100,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // Hier kannst du den GPX-Track aus der Anzeige entfernen
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = 'No Image Folder selected';
+      gpxPathElement.textContent = i18next.t('noImageFolderSelected');
     }
     // clear all variables, images, data, etc.
   });
@@ -183,11 +201,29 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     let endTime = '1970-01-01 00:00:00';
 
     if (gpxPathElement) {
-      gpxPathElement.textContent = `GPX-File: ${gpxPath}, N-Trackpoints: ${NPoints}, Start-Time: ${startTime}, End-Time: ${endTime}`;
-    }
+      gpxPathElement.textContent = i18next.t('gpxFile') +': '+ gpxPath;
+      //gpxPathElement.textContent = `GPX-File: ${gpxPath}, N-Trackpoints: ${NPoints}, Start-Time: ${startTime}, End-Time: ${endTime}`;
   }
+  }
+}
 
-};
+// Funktion zum manuellen Setzen von Daten für eine Sprache  
+function setDataForLanguage(language, data) {  
+    if (!i18next.services || !i18next.services.resourceStore || !i18next.services.resourceStore.data) {  
+      throw new Error('i18next is not properly initialized.');  
+    }  
+    
+    i18next.services.resourceStore.data[language] = {  
+      translation: data  
+    };  
+}
 
+// a wrapper around i18next.t to provide a fallback for undefined keys
+/*
+function tr(key) {  
+  let translation = i18next.t(key);  
+  return translation = translation ? translation : key;  
+}
+*/
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

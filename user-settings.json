@@ -1,12 +1,12 @@
 {
-  "width": 1333,
+  "width": 1751,
   "height": 1051,
-  "x": 1220,
-  "y": 315,
+  "x": 689,
+  "y": 216,
   "topBarHeight": 81,
-  "bottomBarHeight": 56,
-  "leftSidebarWidth": 115,
-  "rightSidebarWidth": 810,
+  "bottomBarHeight": 32,
+  "leftSidebarWidth": 103,
+  "rightSidebarWidth": 104,
   "gpxPath": "C:\\Users\\safet\\Downloads\\MTB-Hundstein.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software",
   "map": {
@@ -88,5 +88,32 @@
       "gpx_elesmooth": "2"
     },
     "showLocateButton": "false"
-  }
+  },
+  "translation": {
+    "file": "Datei",
+    "reload": "App neu laden",
+    "quit": "Beenden",
+    "gpxTrack": "GPX-Track",
+    "openGpxFile": "GPX-Datei auswählen",
+    "selectGpxFileTitle": "GPX-Datei auswählen",
+    "gpxFiles": "GPX-Dateien",
+    "errorReadingGpxFile": "Fehler beim Lesen der GPX-Datei",
+    "gpxPath": "GPX-Pfad",
+    "clearGpxFile": "GPX-Datei rücksetzen",
+    "imageFolder": "Bilder",
+    "selectFolder": "Ordner auswählen",
+    "selectImageFolderTitle": "Ordner auswählen",
+    "imagePath": "Pfad zu Bildern",
+    "clearImageFolder": "Ordner rücksetzen",
+    "development": "Entwicklung",
+    "openDevTools": "DevTools öffnen",
+    "noFileLoaded": "Keine Datei geladen",
+    "noImageFolderSelected": "Kein Bilderordner ausgewählt",
+    "gpxFile": "GPX-Datei",
+    "N-Trackpoints": "N-Trackpunkte",
+    "N-Waypoints": "N-Wegpunkte",
+    "Start-Time": "Start-Zeit",
+    "End-Time": "End-Zeit"
+  },
+  "lng": "de"
 }
