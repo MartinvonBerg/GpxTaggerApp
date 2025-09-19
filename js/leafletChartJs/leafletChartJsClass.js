@@ -8,7 +8,7 @@ import {LeafletMap} from '../leafletMapClass';
 // import class for track on map for one or multiple tracks
 import {gpxTrackClass} from './gpxTrackClass.js';
 // import class for chart for one or multiple tracks
-import {chartJsClass} from './chartJsClass.js';
+//import {chartJsClass} from './chartJsClass.js';
 import { calculateEquallyDistributedColors } from '../libs/colorLib.js'
 
 // local Styles  
@@ -22,7 +22,7 @@ class LeafletChartJs extends LeafletMap {
     theMarker = {};
     elev_data = [];
     leafletTrackID = 0;
-    chart = {};
+    //chart = {};
     track = [];
     trackStartColour = '#ff0000';
     trackColours = [];
@@ -36,14 +36,15 @@ class LeafletChartJs extends LeafletMap {
         if (preload !== null) {
           this.preload = preload;
         }
-
+        /*
         this.createTrackOnMap().then(() => {
-          this.initChart();
+          //this.initChart();
         }).then(() => {
-          this.handleEvents();
+          //this.handleEvents();
         }).catch((error) => {
           console.log('Error in LeafletChartJs: ' + error);
         });
+        */
     };
 
     async createTrackOnMap() {
@@ -73,6 +74,7 @@ class LeafletChartJs extends LeafletMap {
           super.setBounds(maxBounds); // bounds might not correctly set leaflet-overlay-pane
           this.map.fitBounds(maxBounds);
         }
+        this.currentTrack = this.track;
         this.map.currentTrack = this.currentTrack; 
     };
 
@@ -86,7 +88,7 @@ class LeafletChartJs extends LeafletMap {
 
       return new gpxTrackClass(number, this, this.pageVariables.tracks, trackNumber, this.trackColours[trackNumber]);
     };
-
+    /*
     initChart() {
       // ----------- start chartjs parameters
       let number = this.number;
@@ -129,7 +131,7 @@ class LeafletChartJs extends LeafletMap {
           return;
       }
     }
-
+    */
     handleEvents() {
       // update the slider if the marker on the map was clicked
       let number = this.number;
@@ -281,7 +283,7 @@ class LeafletChartJs extends LeafletMap {
             classThis.removeSingleMarker();
         });
     }
-
+    
     /**
      * Checks if an object is empty.
      *
@@ -290,5 +292,12 @@ class LeafletChartJs extends LeafletMap {
      */
     isObjEmpty (obj) {
       return Object.values(obj).length === 0 && obj.constructor === Object;
+    }
+
+    // remove the gpx layer from the map and control completely but keep the current map-view unchanged
+    removeGPXTrack() {
+      // The track is stored in : this.track[0] : extract the leaflet-layer from this variable and remove it from the map
+      this.map.removeLayer(this.track[this.number].gpxTracks);
+      
     }
 }

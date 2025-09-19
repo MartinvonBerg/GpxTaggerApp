@@ -21,6 +21,16 @@
   "gpxFile": "GPX-Datei",
   "N-Trackpoints" : "N-Trackpunkte",
   "N-Waypoints" : "N-Wegpunkte",
-  "Start-Time" : "Start-Zeit",
-  "End-Time" : "End-Zeit"
+  "Start-Time" : "Startzeit",
+  "End-Time" : "Endzeit",
+  "npoints": "Anzahl der Trackpunkte",
+  "trackInfo": "Track-Informationen",
+  "date": "Datum",
+  "duration": "Dauer",
+  "timezone": "Zeitzone",
+  "timezoneOffset": "Zeitzonen-Offset",
+  "minutes": "Minuten",
+  "hour": "h",
+  "minute": "m",
+  "second": "s"
 }  

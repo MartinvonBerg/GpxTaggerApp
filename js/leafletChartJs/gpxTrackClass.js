@@ -351,7 +351,7 @@ class gpxTrackClass {
         this.trackName = this.gpxTracks._info.name;
         this.setTrackInfo();
       
-        this.mapobject.controlLayer.addOverlay(this.gpxTracks, this.gpxTracks._info.name);
+        //this.mapobject.controlLayer.addOverlay(this.gpxTracks, this.gpxTracks._info.name);
         this.mapobject.bounds = this.gpxTracks.getBounds();
         this.bounds = this.mapobject.bounds;
 

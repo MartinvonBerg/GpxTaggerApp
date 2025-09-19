@@ -11,7 +11,7 @@ let win; // Variable für das Hauptfenster
 let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
   
-const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: anpassen, falls nötig
+const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: path anpassen, falls nötig. Hier werden die settings überschrieben!
 
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
@@ -63,8 +63,9 @@ app.whenReady().then(() => {
                   }  
   
                   console.log(t('gpxPath'), gpxPath);    
-                  settings.gpxPath = gpxPath;    
-                  win.webContents.send('gpx-data', gpxPath);    
+                  settings.gpxPath = gpxPath; 
+                  settings.iconPath = __dirname; // set the path to the icons for the map
+                  win.webContents.send('gpx-data', gpxPath);
                   saveSettings(settings);    
                 });    
               }    
@@ -73,7 +74,8 @@ app.whenReady().then(() => {
           {  
             label: t('clearGpxFile'),  
             click: () => {  
-              settings.gpxPath = '';  
+              settings.gpxPath = '';
+              settings.iconPath = __dirname; // set the path to the icons for the map
               win.webContents.send('clear-gpx');  
               saveSettings(settings);  
             }  
@@ -95,6 +97,7 @@ app.whenReady().then(() => {
                 imagePath = filePaths[0];  
                 console.log(t('imagePath'), imagePath);  
                 settings.imagePath = imagePath;  
+                settings.iconPath = __dirname;
                 win.webContents.send('set-image-path', imagePath);  
                 saveSettings(settings);  
               }  
@@ -104,6 +107,7 @@ app.whenReady().then(() => {
             label: t('clearImageFolder'),  
             click: () => {  
               settings.imagePath = '';  
+              settings.iconPath = __dirname;
               win.webContents.send('clear-image-path');  
               saveSettings(settings);  
             }  
@@ -135,7 +139,8 @@ app.whenReady().then(() => {
 });
   
 function createWindow() {  
-  settings = loadSettings();  
+  settings = loadSettings();
+  settings.iconPath = __dirname;
   
   win = new BrowserWindow({  
     width: settings.width || 800,  

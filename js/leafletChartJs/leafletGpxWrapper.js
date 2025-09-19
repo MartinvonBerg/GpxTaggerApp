@@ -5,7 +5,7 @@
     Wrapper for Leaflet-gpx to add / innclude some additional functions
 */
 
-import './leaflet-gpx/gpx.js';
+import 'leaflet-gpx'
 
 
 /**

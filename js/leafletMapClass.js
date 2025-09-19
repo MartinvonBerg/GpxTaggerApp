@@ -8,15 +8,14 @@
 // only work with markers and controls in the first step.
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-import "leaflet"; // switch-map: active: L in local var, ele not working completely. Deaktiviere, um L in der lokalen Variable OHNE leaflet-elevation zu laden.
-// import * as L from "leaflet";  This grabs all the exports available inside leaflet.js, and makes them available as members of an object "L", effectively giving it its own namespace.
-//const MyLL = L.noConflict();
-
+import "leaflet";
 import './leaflet-ui/leaflet-ui-short.js'; // translation works without this, too.
-import '../node_modules/leaflet/dist/leaflet.css'; // always use the original file
+import 'leaflet/dist/leaflet.css'; // always use the original file
 import './leafletMapClass.css';
 import './fullscreen/Control.FullScreen.css';
-import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css';
+import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'; // always use the original file
+import 'leaflet-control-geocoder'
+import 'leaflet-control-geocoder/Control.Geocoder.css'
 
 export {LeafletMap};
 
@@ -423,6 +422,12 @@ class LeafletMap {
                 L.control.locate().addTo(this.map);
             })
         }
+
+        // Add the geocoder control  
+        L.Control.geocoder({  
+            defaultMarkGeocode: true,
+            position: 'topleft'
+        }).addTo(this.map); 
     }
 
     setFullscreenButton() {

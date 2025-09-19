@@ -22,5 +22,15 @@
   "N-Trackpoints" : "N-Trackpoints",
   "N-Waypoints" : "N-Waypoints",
   "Start-Time" : "Start Time",
-  "End-Time" : "End Time"
+  "End-Time" : "End Time",
+  "npoints": "Number of Trackpoints",
+  "trackInfo": "Track-Info",
+  "date": "Date",
+  "duration": "Duration",
+  "timezone": "Timezone",
+  "timezoneOffset": "Timezone Offset",
+  "minutes": "Minutes",
+  "hour": "h",
+  "minute": "m",
+  "second": "s"
 }

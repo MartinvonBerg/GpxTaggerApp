@@ -1,12 +1,12 @@
 {
-  "width": 1751,
-  "height": 1051,
-  "x": 689,
-  "y": 216,
-  "topBarHeight": 81,
-  "bottomBarHeight": 32,
-  "leftSidebarWidth": 103,
-  "rightSidebarWidth": 104,
+  "width": 2057,
+  "height": 1057,
+  "x": 283,
+  "y": 155,
+  "topBarHeight": 76,
+  "bottomBarHeight": 75,
+  "leftSidebarWidth": 276,
+  "rightSidebarWidth": 109,
   "gpxPath": "C:\\Users\\safet\\Downloads\\MTB-Hundstein.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software",
   "map": {
@@ -112,8 +112,19 @@
     "gpxFile": "GPX-Datei",
     "N-Trackpoints": "N-Trackpunkte",
     "N-Waypoints": "N-Wegpunkte",
-    "Start-Time": "Start-Zeit",
-    "End-Time": "End-Zeit"
+    "Start-Time": "Startzeit",
+    "End-Time": "Endzeit",
+    "npoints": "Anzahl der Trackpunkte",
+    "trackInfo": "Track-Informationen",
+    "date": "Datum",
+    "duration": "Dauer",
+    "timezone": "Zeitzone",
+    "timezoneOffset": "Zeitzonen-Offset",
+    "minutes": "Minuten",
+    "hour": "h",
+    "minute": "m",
+    "second": "s"
   },
-  "lng": "de"
+  "lng": "de",
+  "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes"
 }

@@ -18,8 +18,10 @@
         "@babel/core": "*",
         "@babel/preset-env": "*",
         "babel-loader": "*",
+        "css-loader": "^7.1.2",
         "electron": "^38.1.0",
         "electron-packager": "^17.1.2",
+        "style-loader": "^4.0.0",
         "webpack": "*",
         "webpack-cli": "*"
     },
@@ -27,6 +29,8 @@
         "i18next": "^25.5.2",
         "i18next-fs-backend": "^2.6.0",
         "leaflet": "^1.9.4",
-        "leaflet-gpx": "^2.2.0"
+        "leaflet-control-geocoder": "^3.3.1",
+        "leaflet-gpx": "^2.2.0",
+        "leaflet.locatecontrol": "^0.85.1"
     }
 }

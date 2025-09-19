@@ -11,3 +11,19 @@
 	font-size: 1.08333em;
 	min-height: 1px;
 }
+
+.mfoto_grid {
+	max-width: 2500px;
+    width: 100%;
+    height: 100%;
+}
+
+.boxmap {
+	width: 100%;
+    height: 100%;
+}
+
+#map0 {
+	width: 100%;
+    height: 100%;
+}
