@@ -26,6 +26,7 @@
         "webpack-cli": "*"
     },
     "dependencies": {
+        "exiftool-vendored": "^30.5.0",
         "i18next": "^25.5.2",
         "i18next-fs-backend": "^2.6.0",
         "leaflet": "^1.9.4",

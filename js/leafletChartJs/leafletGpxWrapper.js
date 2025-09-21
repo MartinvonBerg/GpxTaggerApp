@@ -55,7 +55,7 @@ leafletGpxWrapper.addInitHook(function () {
     // loop for each layer
     Object.entries(layers).forEach(([key, layer]) => {
         if (layer._latlngs != undefined) {
-            this.coords.push(layer._latlngs);
+            this.coords.push(layer._latlngs); // _latlngs contains the time in 'meta' key
             // this is only for a gpx file with several tracks in one file, e.g. for multisport tracks.
             if (this.options.polyline_options[nCoordsLayers]) {
                 stopIndex = startIndex + layer._latlngs.length-1;

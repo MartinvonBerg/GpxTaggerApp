@@ -32,5 +32,16 @@
   "minutes": "Minuten",
   "hour": "h",
   "minute": "m",
-  "second": "s"
+  "second": "s",
+  "imageFilters" : "Bilder-Filter",
+  "filterByGPXDate": "GPX-Track-Datum verwenden. Bilder sind von bis: ",
+  "skipImagesWithGPS": "Bilder mit GPS-Daten überspringen",
+  "imageType": "Bildtypen",
+  "cameraModel": "Kameramodelle",
+  "all": "Alle",
+  "loadingImages": "Bilder werden geladen aus: ",
+  "imagesAfterFilter": "Bilder nach Filter",
+  "of": "von",
+  "abortLoading": "Laden abbrechen"
+
 }  

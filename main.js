@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
+const { ExifTool } = require('exiftool-vendored');
 
 const isDev = !app.isPackaged;
 let systemLanguage = 'en';
@@ -10,8 +11,9 @@ let systemLanguage = 'en';
 let win; // Variable für das Hauptfenster
 let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
+let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions
   
-const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: path anpassen, falls nötig. Hier werden die settings überschrieben!
+const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: path anpassen, falls nötig. Hier werden die settings bei Updates der app überschrieben!
 
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
@@ -50,7 +52,7 @@ app.whenReady().then(() => {
             click: async () => {    
               const { canceled, filePaths } = await dialog.showOpenDialog({    
                 title: t('selectGpxFileTitle'),  
-                filters: [{ name: t('gpxFiles'), extensions: ['gpx'] }],    
+                filters: [{ name: t('gpxFiles'), extensions: ['gpx'] }], // do not puzzle with variable 'extensions' here!
                 properties: ['openFile']    
               });  
   
@@ -98,8 +100,11 @@ app.whenReady().then(() => {
                 console.log(t('imagePath'), imagePath);  
                 settings.imagePath = imagePath;  
                 settings.iconPath = __dirname;
-                win.webContents.send('set-image-path', imagePath);  
-                saveSettings(settings);  
+                saveSettings(settings);
+                // read images from the folder if this is possible in the renderer process
+                win.webContents.send('image-loading-started', imagePath);
+                let allImages = await readImagesFromFolder(imagePath, extensions);
+                win.webContents.send('set-image-path', imagePath, allImages);
               }  
             }  
           },  
@@ -164,6 +169,13 @@ function createWindow() {
     settings.translation = translation;
     settings.lng = systemLanguage;
     win.webContents.send('load-settings', settings);  
+
+    if (settings.imagePath && fs.existsSync(settings.imagePath)) {
+      win.webContents.send('image-loading-started', settings.imagePath);
+      readImagesFromFolder(settings.imagePath, extensions).then(allImages => {
+        win.webContents.send('set-image-path', settings.imagePath, allImages);
+      });
+    }
   });  
   
   win.on('resize', () => {  
@@ -191,6 +203,13 @@ function createWindow() {
     settings.rightSidebarWidth = rightSidebarWidth;  
     saveSettings(settings);  
   });
+  ipcMain.on('update-image-filter', (event, newSettings) => {
+    settings.imageFilter = newSettings.imageFilter;
+    settings.skipImagesWithGPS = newSettings.skipImagesWithGPS;
+    settings.ignoreGPXDate = newSettings.ignoreGPXDate;
+    settings.cameraModels = newSettings.cameraModels;
+    saveSettings(settings);
+  });
 }  
   
 function loadSettings() {  
@@ -216,4 +235,71 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {  
     createWindow();  
   }  
-});  
+});
+
+async function readImagesFromFolder(folderPath, extensions) {  
+    const exifTool = new ExifTool({
+      maxProcs: 12, // More concurrent processes TODO: get the number of CPU cores and set it dynamically
+      minDelayBetweenSpawnMillis: 0, // Faster spawning
+      streamFlushMillis: 10, // Faster streaming
+    });  
+  
+    try {  
+        // Read all files in the directory  
+        const files = fs.readdirSync(folderPath);  
+  
+        // Filter files by the specified extensions  
+        const imageFiles = files.filter(file => {  
+            const ext = path.extname(file).toLowerCase().replace('.', '');  
+            return extensions.includes(ext);  
+        });  
+  
+        // Define a function to extract required EXIF metadata  
+        const getExifData = async (filePath) => {  
+            const metadata = await exifTool.read(filePath);  
+            return {  
+                DateTimeOriginal: metadata.DateTimeOriginal || '',
+                DateCreated: metadata.DateCreated || '',
+                DateTimeCreated: metadata.DateTimeCreated || '',
+                OffsetTimeOriginal: metadata.OffsetTimeOriginal || '',
+                camera: metadata.Model || 'none',
+                lens: metadata.LensModel || '',
+                type: 'image',  // TODO : extend for videos, too
+                //keywords: [],  
+                height: metadata.ImageHeight || '',  
+                width: metadata.ImageWidth || '',  
+                lat: metadata.GPSLatitude || '',
+                GPSLatRef: metadata.GPSLatitudeRef || '',
+                GPSLngRef: metadata.GPSLongitudeRef || '',
+                lng: metadata.GPSLongitude || '',
+                ele: metadata.GPSAltitude || '',
+                pos: metadata.GPSPosition || '',
+                GPXImageDirection: metadata.GPXImageDirection || '',
+                file: path.basename(filePath, path.extname(filePath)),    
+                extension: path.extname(filePath).toLowerCase(),  
+                imagePath: filePath  
+            };  
+        };  
+  
+        // Extract EXIF data for each image and sort by capture time  
+        const imagesData = await Promise.all(  
+            imageFiles.map(async file => {  
+                const filePath = path.join(folderPath, file);  
+                return await getExifData(filePath);  
+            })  
+        );  
+  
+        // Sort images by capture time  
+        imagesData.sort((a, b) => {  
+            const dateA = new Date(a.DateTimeOriginal.rawValue.replace(':', '-'));  
+            const dateB = new Date(b.DateTimeOriginal.rawValue.replace(':', '-'));  
+            return dateA - dateB;  
+        });  
+        
+        return imagesData;  
+    } catch (error) {  
+        console.error('Error reading images from folder:', error);  
+    } finally {  
+        await exifTool.end();  
+    }  
+}  

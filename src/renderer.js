@@ -1,12 +1,16 @@
 import i18next from 'i18next';
 
-// TODO: shrink the marker icon size to 1x1 to 'hide' it from the map
+// TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
+let settings = {};
+let filteredImages = [];
+let allImages = [];
+let trackInfo = {};
 
 function mainRenderer (window, document, customDocument=null, win=null, vars=null) {
   window.pageVarsForJs = []; // Global array to store variables for JS 
   let allMaps = [0];
-  let settings = {}; // TODO : refine the usage of the global variable which collides with the function parameter 'settings'.
+  
 
   document.addEventListener('DOMContentLoaded', () => {  
     setupResizablePane(document.getElementById('left-resizer'), 'left');  
@@ -15,8 +19,9 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'bottom');  
   });  
     
-  window.myAPI.receive('load-settings', (settings) => {  
-    const topBar = document.getElementById('top-bar');  
+  window.myAPI.receive('load-settings', (loadedSettings) => {  
+    settings = loadedSettings;
+    const topBar = document.getElementById('top-bar');
     const bottomBar = document.getElementById('bottom-bar');  
     const leftSidebar = document.getElementById('left-sidebar');  
     const rightSidebar = document.getElementById('right-sidebar');
@@ -68,42 +73,109 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     }
   });
 
-  window.myAPI.receive('gpx-data', (gpxPath) => {
+  window.myAPI.receive('gpx-data', async (gpxPath) => {
     settings.gpxPath = gpxPath;
     pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
     pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-    showgpx(gpxPath);
+    showgpx(gpxPath).then( () => {
+      filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
+    });
   });
 
   window.myAPI.receive('clear-gpx', () => {  
     console.log('GPX-Track löschen Befehl empfangen');
     // Hier kannst du den GPX-Track aus der Anzeige entfernen
     allMaps[0].removeGPXTrack();
+    trackInfo = {};
+    filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
 
     const gpxPathElement = document.getElementById('gpx-path');
     if (gpxPathElement) {
       gpxPathElement.textContent = i18next.t('noFileLoaded');
     }
+
+    const trackElement = document.getElementById('track-info-element');
+    if (trackElement) {
+      trackElement.textContent = i18next.t('noFileLoaded');
+    }
   });
 
-  window.myAPI.receive('set-image-path', (imagePath) => {  
-    console.log('Empfangener Bilder-Pfad im Renderer:', imagePath);
+  window.myAPI.receive('image-loading-started', (imagePath) => {
+    console.log('Bild-Ladevorgang gestartet für Pfad:', imagePath);
+    showLoadingPopup(i18next.t('loadingImages') + ' ' + imagePath); // oder einfach 'Bilder werden geladen...'
+  });
+
+  window.myAPI.receive('set-image-path', (imagePath, loadedImages) => {  
     
+    console.log('Empfangener Bilder-Pfad im Renderer:', imagePath);
+    settings.imagePath = imagePath;
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
       gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
     }
-    // process and show images from the folder, mind teh filter
-  });
+
+    // ----------- EXTENSIONS ---------------
+    // read images from the parameter loadedImages. Filter them according to the filter settings in settings.imageFilter
+    const includedExts = [...new Set(loadedImages.flatMap(img => img.extension))];
+    console.log('Erweiterungen in den Bildern:', includedExts); // filter out empty values
+
+    // ----------- CAMERA MODELS ---------------
+    // get all camera models from the images. 
+    const cameraModels = [...new Set(loadedImages.flatMap(img => img.camera))];
+    console.log('Kameramodelle in den Bildern:', cameraModels); // filter out empty values
+
+    // ----------- DATES ---------------
+    // get the date range from the images. Mind that the images were sorted by the exif date
+    const minDate = exifDateToJSLocaleDate(loadedImages[0].DateTimeOriginal);
+    const maxDate = exifDateToJSLocaleDate(loadedImages[loadedImages.length - 1].DateTimeOriginal);
+    console.log('Bild-Datumsbereich:', minDate , ' bis ', maxDate);  
+    
+    // show the filters in the left sidebar
+    allImages = loadedImages;
+    filteredImages = allImages; // initially, all images are shown
+    showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
+    filterImages();
+    
+    // TODO this after here
+    
+    // show the filtered images in the thumbnail pane below the map and activate the first image
+    // mind that with current filter settings the track logged images will disappear from the thumbnail pane!
+    // braucht es für jedes Bild einen kenner, dass die gpx daten ergänzt wurden? Un das überschreibt dann ignoreGPXDate?
+
+    // show the metadata of the active image(s) in the right sidebar including some input fields for 
+    // Gpx-coords, location details from nominatim, image title and description. Similar to LR 6.14 except the useless fields.
+
+    // track log the images with GPS data to the gpx track, if available or set it manually by drag&drop 
+    // give a proposal for the time offset, if needed and let the user set it and recalculate the image times
+    // once logged: show the images on the map as markers, use the settings from pageVarsForJs[0] for the marker icons
+    // and give a message how many images were logged to the track and how many are left to log
+    // mark these untracked images in the thumbnail pane with a red border or so and let the user drag&drop them to the map
+
+    // Finally pass the filtered and updated images back to the main process and save the changed meta in the images with exiftool
+    // on a button click in the right sidebar. the image array has to have a tag 'wasChanged' for each image, if the user changed something in the right sidebar
+
+    hideLoadingPopup(); // hide the loading popup when done
+    });
 
   window.myAPI.receive('clear-image-path', () => {  
     console.log('Clear Image Path command received');
-    // Hier kannst du den GPX-Track aus der Anzeige entfernen
+    // Hier kannst du den Image-Pfad aus der Anzeige entfernen
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
       gpxPathElement.textContent = i18next.t('noImageFolderSelected');
     }
     // clear all variables, images, data, etc.
+    filteredImages = [];
+    allImages = [];
+    settings.imagePath = '';
+    // currently keep the filter settings.
+    /*
+    settings.imageFilter = 'all';
+    settings.cameraModels = 'all';
+    settings.ignoreGPXDate = 'false';
+    settings.skipImagesWithGPS = 'false';
+    */
+    showImageFilters([], [], '', '', settings);
   });
     
   function setupResizablePane(resizer, direction) {  
@@ -188,7 +260,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     });  
   }
 
-  function showgpx(gpxPath) {
+  async function showgpx(gpxPath) {
     
     // show the gpx path in the top pane above the map
     console.log('Empfangener GPX-Pfad im Renderer:', gpxPath);
@@ -212,14 +284,14 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
     // Dynamically import the LeafletChartJs class
     // no slider, only map with gpx-tracks and eventually a chart. chartjs shall be used.
-    import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
+    return import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
         // reset the map if it was used before. This happens on change of the track
         if (allMaps[m] instanceof LeafletChartJs.LeafletChartJs) {
           allMaps[m].map.remove();
         }
         // create the map and show the gpx track
         allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m );
-        allMaps[m].createTrackOnMap().then(() => {
+        return allMaps[m].createTrackOnMap().then(() => {
             // Jetzt ist die Initialisierung abgeschlossen!
             // Hier kannst du auf die geladenen GPX-Daten zugreifen:
             let gpxTrack = allMaps[m].track[0];
@@ -228,14 +300,19 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
             // show the track info in the sidebar
             // get the number of trackpoints from the gpx file, the start and end time of the track
-            const trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
+            trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
             console.log(`Anzahl der Trackpunkte: ${NPoints}`);
             console.log('Datum: ', trackInfo.datumStart === trackInfo.datumEnd ? trackInfo.datumStart : `${trackInfo.datumStart} - ${trackInfo.datumEnd}`);
             console.log(`Startzeit: ${trackInfo.startTime}, Endzeit: ${trackInfo.endTime}`);
             console.log('Dauer: ', trackInfo.durationFormatted);
             console.log('Zeitzone: ', trackInfo.timeZoneName);
-            console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);            
-         })
+            console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);
+
+            allMaps[m].initChart();
+            allMaps[m].handleEvents();
+            return trackInfo; // return the trackInfo object
+        })
+        
     })
   }
 }
@@ -317,7 +394,7 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
   const el = document.getElementById(elementId);
   if (el) {
     el.innerHTML = `
-      <h3>${i18next.t('trackInfo')}</h3>
+      <h3 class="sectionHeader">${i18next.t('trackInfo')}</h3>
       <div><strong>${i18next.t('file')}:</strong> ${trackInfo.path || i18next.t('unknown')}</div>
       <div><strong>${i18next.t('date')}:</strong> ${datumStart === datumEnd ? datumStart : datumStart + ' - ' + datumEnd}</div>
       <div><strong>${i18next.t('Start-Time')}:</strong> ${startTime}</div>
@@ -326,11 +403,199 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
       <div><strong>${i18next.t('timezone')}:</strong> ${timeZoneName}</div>
       <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset} ${i18next.t('minutes')}</div>
       <div><strong>${i18next.t('N-Trackpoints')}:</strong> ${NPoints}</div>
-      <hr>
     `;
   }
 
   return trackData;
+}
+
+function exifDateToJSLocaleDate(dt) {
+  // dt != img.DateTimeOriginal; // oder trackInfo.DateTimeOriginal
+
+  // Achtung: Monat ist in JS 0-basiert!
+  const dateObj = new Date(
+    dt.year,
+    dt.month - 1,
+    dt.day,
+    dt.hour,
+    dt.minute,
+    dt.second
+  );
+
+  // Ausgabe als Datum und Zeit
+  return dateObj.toLocaleDateString();
+}
+
+function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
+  const el = document.getElementById('image-filter-element');
+  if (!el) return;
+
+  // Default-Werte setzen, falls noch nicht vorhanden
+  if (typeof settings.imageFilter === 'undefined') {
+    settings.imageFilter = 'all';
+  }
+  if (typeof settings.cameraModels === 'undefined') {
+    settings.cameraModels = 'all';
+  }
+  if (typeof settings.ignoreGPXDate === 'undefined') {
+    settings.ignoreGPXDate = 'false';
+  }
+  if (typeof settings.skipImagesWithGPS === 'undefined') {
+    settings.skipImagesWithGPS = 'false';
+  }
+
+  // Helper für Auswahlfelder
+  function createSelect(options, selected, id, label, translationMap = {}) {
+    return `
+      <label for="${id}"><strong>${label}:</strong></label>
+      <select id="${id}">
+        ${options.map(opt => 
+          `<option value="${opt}"${selected === opt ? ' selected' : ''}>${translationMap[opt] || opt}</option>`
+        ).join('')}
+      </select>
+    `;
+  }
+
+  // Extensions-Filter
+  const extOptions = ['all', ...includedExts];
+  const extTranslation = { all: i18next.t('all') }; // nur 'all' übersetzen
+  const extSelect = createSelect(extOptions, settings.imageFilter || 'all', 'ext-filter', i18next.t('imageType'), extTranslation);
+
+  // Kamera-Modelle-Filter
+  const camOptions = ['all', ...cameraModels];
+  const camTranslation = { all: i18next.t('all') }; // nur 'all' übersetzen
+  const camSelect = createSelect(camOptions, settings.cameraModels || 'all', 'camera-filter', i18next.t('cameraModel'), camTranslation);
+
+  // Date-Filter (Checkbox)
+  const dateFilterChecked = settings.ignoreGPXDate === 'true' ? 'checked' : '';
+  const dateFilter = `
+    <label>
+      <input type="checkbox" id="date-filter" ${dateFilterChecked}>
+      ${i18next.t('filterByGPXDate')} (${minDate} - ${maxDate})
+    </label>
+  `;
+
+  // GPS-Filter (Checkbox)
+  const gpsFilterChecked = settings.skipImagesWithGPS === 'true' ? 'checked' : '';
+  const gpsFilter = `
+    <label>
+      <input type="checkbox" id="gps-filter" ${gpsFilterChecked}>
+      ${i18next.t('skipImagesWithGPS')}
+    </label>
+  `;
+
+  // Zusammenbauen und anzeigen
+  el.innerHTML = `
+    <h3 class="sectionHeader">${i18next.t('imageFilters')}</h3>
+    <div>${extSelect}</div>
+    <br>
+    <div>${camSelect}</div>
+    <br>
+    <div>${dateFilter}</div>
+    <br>
+    <div>${gpsFilter}</div>
+    <br>
+    <div id="images-after-filter"></div>
+  `;
+
+  // Event-Handler für die Filter
+  document.getElementById('ext-filter').addEventListener('change', e => {
+    settings.imageFilter = e.target.value;
+    filterImages();
+    // save the settings
+    window.myAPI.send('update-image-filter', settings);
+    
+  });
+  document.getElementById('camera-filter').addEventListener('change', e => {
+    settings.cameraModels = e.target.value;
+    filterImages();
+    window.myAPI.send('update-image-filter', settings);
+  });
+  document.getElementById('date-filter').addEventListener('change', e => {
+    settings.ignoreGPXDate = e.target.checked ? 'true' : 'false';
+    filterImages();
+    window.myAPI.send('update-image-filter', settings);
+  });
+  document.getElementById('gps-filter').addEventListener('change', e => {
+    settings.skipImagesWithGPS = e.target.checked ? 'true' : 'false';
+    filterImages();
+    window.myAPI.send('update-image-filter', settings);
+  });
+}
+
+// this function filters the images according to the settings in settings.imageFilter, settings.cameraModels, settings.ignoreGPXDate, settings.skipImagesWithGPS
+// and updates the global variable filteredImages
+function filterImages () {
+  let newfilteredImages = allImages;
+  // apply the filters from the settings to the images in filteredImages and store the result in newfilteredImages
+  // filter by cameraModel
+  if (settings.cameraModels && settings.cameraModels !== 'all') {
+    newfilteredImages = newfilteredImages.filter(img => img.camera === settings.cameraModels);
+  }
+
+  // filter by extension
+  if (settings.imageFilter && settings.imageFilter !== 'all') {
+    newfilteredImages = newfilteredImages.filter(img => img.extension.includes(settings.imageFilter));
+  }
+  // filter by date. get the date range from the gpx file and filter the images accordingly
+  // data is stored in global trackInfo
+  if (settings.ignoreGPXDate && settings.ignoreGPXDate === 'true' && trackInfo.datumStart && trackInfo.datumEnd) {
+    //console.log('Filtering images by GPX date range:', trackInfo.datumStart, ' to ', trackInfo.datumEnd);
+    if (trackInfo.datumStart === trackInfo.datumEnd) {
+      newfilteredImages = newfilteredImages.filter(img => {
+        const imgDate = exifDateToJSLocaleDate(img.DateTimeOriginal);
+        return imgDate === trackInfo.datumStart;
+      });
+    }
+  }
+
+  // ----------- SKIP IMAGES WITH GPS DATA ---------------
+  if (settings.skipImagesWithGPS && settings.skipImagesWithGPS === 'true') { 
+    newfilteredImages = newfilteredImages.filter(img => !(img.lat && img.lng));
+  }
+
+  // finally, update the global variable
+  console.log(`Filtered images: ${newfilteredImages.length} of ${allImages.length}`);
+  console.log(newfilteredImages);
+  filteredImages = newfilteredImages;
+
+  const el = document.getElementById('images-after-filter');
+  if (el) {
+    el.innerHTML = `<strong>${i18next.t('imagesAfterFilter')}:</strong> ${filteredImages.length} ${i18next.t('of')} ${allImages.length}`;
+  }
+}
+
+function showLoadingPopup(message = 'Laden...') {
+  let popup = document.createElement('div');
+  popup.id = 'loading-popup';
+  popup.style.position = 'fixed';
+  popup.style.top = '0';
+  popup.style.left = '0';
+  popup.style.width = '100vw';
+  popup.style.height = '100vh';
+  popup.style.background = 'rgba(0,0,0,0.3)';
+  popup.style.display = 'flex';
+  popup.style.alignItems = 'center';
+  popup.style.justifyContent = 'center';
+  popup.style.zIndex = '9999';
+  popup.innerHTML = `
+    <div style="background:#fff;padding:2em 3em;border-radius:8px;box-shadow:0 2px 12px #333;font-size:1.3em;">
+      ${message}
+      <br><br>
+      <button id="abort-loading" style="padding:0.5em 1.5em;font-size:1em;">${i18next.t('abort') || 'Abort'}</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+
+  document.getElementById('abort-loading').onclick = () => {
+    if (typeof onAbort === 'function') onAbort();
+    hideLoadingPopup();
+  };
+}
+
+function hideLoadingPopup() {
+  const popup = document.getElementById('loading-popup');
+  if (popup) popup.remove();
 }
 
 // Exporte oder Nutzung im Backend

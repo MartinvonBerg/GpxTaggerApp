@@ -1,14 +1,24 @@
 {
-  "width": 2057,
-  "height": 1057,
-  "x": 283,
-  "y": 155,
-  "topBarHeight": 76,
-  "bottomBarHeight": 75,
-  "leftSidebarWidth": 276,
-  "rightSidebarWidth": 109,
+  "width": 1434,
+  "height": 1060,
+  "x": 7,
+  "y": 240,
+  "topBarHeight": 79,
+  "bottomBarHeight": 31,
+  "leftSidebarWidth": 398,
+  "rightSidebarWidth": 184,
   "gpxPath": "C:\\Users\\safet\\Downloads\\MTB-Hundstein.gpx",
-  "imagePath": "C:\\Users\\safet\\Projekte-Software",
+  "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images",
+  "extensions": [
+    "jpg",
+    "webp",
+    "avif",
+    "heic",
+    "tiff",
+    "dng",
+    "nef",
+    "cr3"
+  ],
   "map": {
     "ngpxfiles": 1,
     "imagepath": "",
@@ -123,8 +133,22 @@
     "minutes": "Minuten",
     "hour": "h",
     "minute": "m",
-    "second": "s"
+    "second": "s",
+    "imageFilters": "Bilder-Filter",
+    "filterByGPXDate": "GPX-Track-Datum verwenden. Bilder sind von bis: ",
+    "skipImagesWithGPS": "Bilder mit GPS-Daten überspringen",
+    "imageType": "Bildtypen",
+    "cameraModel": "Kameramodelle",
+    "all": "Alle",
+    "loadingImages": "Bilder werden geladen aus: ",
+    "imagesAfterFilter": "Bilder nach Filter",
+    "of": "von",
+    "abortLoading": "Laden abbrechen"
   },
   "lng": "de",
-  "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes"
+  "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
+  "imageFilter": "all",
+  "skipImagesWithGPS": "false",
+  "ignoreGPXDate": "false",
+  "cameraModels": "all"
 }

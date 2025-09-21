@@ -29,7 +29,7 @@ class LeafletChartJs extends LeafletMap {
     allBounds =[];
     currentTrack = 0;
     preload = true;
-
+    // number is the map-number, elementOnPage is the div-element on the page where the map should be shown
     constructor(number, elementOnPage, preload=null, center=null, zoom=null ) {
         super(number, elementOnPage, center=null, zoom=null);
 
@@ -74,8 +74,8 @@ class LeafletChartJs extends LeafletMap {
           super.setBounds(maxBounds); // bounds might not correctly set leaflet-overlay-pane
           this.map.fitBounds(maxBounds);
         }
-        this.currentTrack = this.track;
-        this.map.currentTrack = this.currentTrack; 
+        // set the current track to 0
+        this.map.currentTrack = this.currentTrack; // this is used in gpxTrackClass for the mousover track event!
     };
 
     async createTrack(number, trackNumber) {
@@ -88,13 +88,13 @@ class LeafletChartJs extends LeafletMap {
 
       return new gpxTrackClass(number, this, this.pageVariables.tracks, trackNumber, this.trackColours[trackNumber]);
     };
-    /*
+    
     initChart() {
       // ----------- start chartjs parameters
       let number = this.number;
       this.coords = this.track[this.currentTrack].coords; // for catchChartEvent
       this.leafletTrackID = this.track[this.currentTrack].gpxTracks._leaflet_id; // for catchChartEvent
-            
+      /*      
       // show line chart with first track. example: https://jsfiddle.net/Geoapify/2pjhyves/
       let div = 'fm-elevation-chartjs'+number; // do not handle the empty element here if not chart should be shown. This causes errors.
 
@@ -130,19 +130,22 @@ class LeafletChartJs extends LeafletMap {
           this.chart = null;
           return;
       }
+      */
     }
-    */
+
     handleEvents() {
       // update the slider if the marker on the map was clicked
       let number = this.number;
-      let div = 'fm-elevation-chartjs'+number;
-      this.catchChartEvent(div);
+      //let div = 'fm-elevation-chartjs'+number;
+      //this.catchChartEvent(div);
 
       let classThis = this;
       document.getElementById('map'+number).addEventListener('mouseoverpath', function charthover(e) {
         try {
-          classThis.chart.triggerTooltip(e.detail.index);
-          classThis.createSingleMarker(e.detail.position, "<p>" + classThis.coords[e.detail.index].meta.ele.toFixed(1) + " m</p>");
+          // show the local time of the point in the marker on the map
+          let dateObj = new Date(classThis.coords[e.detail.index].meta.time);
+          let pointTime = dateObj.toLocaleTimeString();  // z.B. '09:53:41'
+          classThis.createSingleMarker(e.detail.position, "<p>" + pointTime + "</p>");
         } catch (error) {
           //console.log(error);
         }
@@ -239,11 +242,11 @@ class LeafletChartJs extends LeafletMap {
      * @global {object} this.theMarker
      * @global {object} this.map
      * 
-     * @return {void} TODO : shold return the result as boolean
+     * @return {void} This function does not return anything.
      */
     removeSingleMarker() {
         if (this.theMarker != undefined) {
-            this.map.removeLayer(this.theMarker);
+            this.map.removeLayer(this.theMarker); // gibt gemäß der Leaflet-Dokumentation das Map-Objekt selbst zurück.
         };
     }
 
