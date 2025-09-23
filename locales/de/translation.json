@@ -1,5 +1,6 @@
 {  
-  "file": "Datei",  
+  "file": "Datei",
+  "path": "Pfad", 
   "reload": "App neu laden",  
   "quit": "Beenden",  
   "gpxTrack": "GPX-Track",  

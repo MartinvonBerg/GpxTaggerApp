@@ -8,8 +8,8 @@
 <body>  
   <div class="vertical-container">  
     <div class="top-bar" id="top-bar">
-      <p id="gpx-path">No File loaded</p>
-      <p id="img-path">No Image Folder selected</p>
+      <p id="gpx-path"></p>
+      <p id="img-path"></p>
     </div>
     <div class="horizontal-resizer" id="top-resizer"></div>
     <div class="container">  
@@ -19,21 +19,33 @@
         </div>
         <div id="image-filter-element" class="leftbar-Section">
           Image Filters will be displayed here
-        </div>  
+        </div>
+        <div id="tracklog-element" class="leftbar-Section">
+          Tracklog settings and results will be displayed here
+        </div>
       </div>
       <div class="resizer" id="left-resizer"></div>  
       <div class="main-content" id="main-content">
-        <div id="multifotobox0" class="mfoto_grid" style="max-width:2500px;">
+        <div id="multifotobox0" class="mfoto_grid">
           <div id="boxmap0" class="boxmap">
-              <div id="map0" class="leafmap" style="max-height:1600px"></div>
+              <div id="map0" class="leafmap"></div>
           </div>
         </div><!--div id=multifotobox0-->
       </div>  
       <div class="resizer" id="right-resizer"></div>  
-      <div class="sidebar" id="right-sidebar"></div>  
+      <div class="sidebar" id="right-sidebar">
+        <div id="image-metadata-element" class="rightbar-Section">
+          Image Metadata will be displayed here
+        </div>
+        <div id="metadata-button-element" class="rightbar-Section">
+          
+        </div>
+      </div>  
     </div>  
     <div class="horizontal-resizer" id="bottom-resizer"></div>  
-    <div class="bottom-bar" id="bottom-bar"></div>  
+    <div class="bottom-bar" id="bottom-bar">
+      <div id="thumbnail-bar">No Thumbnails loaded yet ...</div>
+    </div>  
   </div>  
   <script src="./build/bundle.js"></script>  
 </body>  

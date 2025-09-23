@@ -4,7 +4,17 @@ body, html {
   height: 100%;  
   width: 100%;  
   overflow: hidden;  
-}  
+}
+
+.mfoto_grid {
+  max-width:2500px;
+}
+
+.leafmap {
+  height: 100%;
+  width: 100%;
+  max-height:1600px
+}
   
 .vertical-container {  
   display: flex;  
@@ -54,7 +64,7 @@ body, html {
 }  
   
 .bottom-bar {  
-  background-color: #efcf59;  
+  background-color: #000000;  
   height: 50px;  
   min-height: 30px;  
 } 
@@ -89,3 +99,23 @@ body, html {
 .leftbar-Section div {
   margin-bottom: 5px;
 }
+
+.meta-section {
+  display: grid;
+  grid-template-columns: 150px 1fr; /* linke Spalte fix, rechte flexibel */
+  gap: 6px 12px; /* Abstand zwischen Label/Input (x) und zwischen Zeilen (y) */
+  margin-bottom: 1rem;
+  align-items: center; /* vertikal mittig */
+}
+
+.meta-section label {
+  font-weight: bold;
+  text-align: right;  /* optional: Label rechtsbündig */
+}
+
+.meta-input {
+  width: 100%;       /* Input füllt Spalte aus */
+  box-sizing: border-box;
+  padding: 4px 6px;
+}
+

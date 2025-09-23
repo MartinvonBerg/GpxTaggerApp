@@ -67,9 +67,9 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.imagePath) {
       const gpxPathElement = document.getElementById('img-path');
       if (gpxPathElement) {
-        gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
+        //gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
       }
-      // process and show images from the folder, mind teh filter
+      // process and show images from the folder, mind the filter
     }
   });
 
@@ -91,7 +91,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
     const gpxPathElement = document.getElementById('gpx-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = i18next.t('noFileLoaded');
+      //gpxPathElement.textContent = i18next.t('noFileLoaded');
     }
 
     const trackElement = document.getElementById('track-info-element');
@@ -111,7 +111,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     settings.imagePath = imagePath;
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
+      //gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
     }
 
     // ----------- EXTENSIONS ---------------
@@ -139,6 +139,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // TODO this after here
     
     // show the filtered images in the thumbnail pane below the map and activate the first image
+    showThumbnail('thumbnail-bar', allImages, filteredImages);
     // mind that with current filter settings the track logged images will disappear from the thumbnail pane!
     // braucht es für jedes Bild einen kenner, dass die gpx daten ergänzt wurden? Un das überschreibt dann ignoreGPXDate?
 
@@ -162,7 +163,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // Hier kannst du den Image-Pfad aus der Anzeige entfernen
     const gpxPathElement = document.getElementById('img-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = i18next.t('noImageFolderSelected');
+      //gpxPathElement.textContent = i18next.t('noImageFolderSelected');
     }
     // clear all variables, images, data, etc.
     filteredImages = [];
@@ -266,7 +267,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     console.log('Empfangener GPX-Pfad im Renderer:', gpxPath);
     const gpxPathElement = document.getElementById('gpx-path');
     if (gpxPathElement) {
-      gpxPathElement.textContent = i18next.t('gpxFile') +': '+ gpxPath;
+      //gpxPathElement.textContent = i18next.t('gpxFile') +': '+ gpxPath;
     }
 
     // load and parse the gpx file, do this with L.GPX from leaflet-gpx
@@ -314,6 +315,26 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         })
         
     })
+  }
+
+  async function showThumbnail(HTMLElementID, allImages, filteredImages) {
+    const thumbnailElement = document.getElementById(HTMLElementID);
+    if (!thumbnailElement) return;
+
+    thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
+     // import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
+       
+    import(/* webpackChunkName: "thumbnailSlider" */'../js/thumbnailClass.js').then( (ThumbnailSlider) => {
+        new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs.sw_options);
+
+        document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
+          //if (event.detail.slider === classThis.number) classThis.setSliderIndex(event.detail.newslide);
+          // call the function to show the image metadata in the right sidebar
+          showMetadataForImageIndex(event.detail.newslide);
+          console.log('thumbnailchange detected: ', event.detail);
+        });
+    });
+    return;
   }
 }
 
@@ -426,6 +447,19 @@ function exifDateToJSLocaleDate(dt) {
   return dateObj.toLocaleDateString();
 }
 
+function exifDateTimeToJSTime(dt) {
+  const dateObj = new Date(
+    dt.year,
+    dt.month - 1,
+    dt.day,
+    dt.hour,
+    dt.minute,
+    dt.second
+  );
+
+  return dateObj.toLocaleTimeString() + ' ' + dt.zoneName;
+}
+
 function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   const el = document.getElementById('image-filter-element');
   if (!el) return;
@@ -487,6 +521,7 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   // Zusammenbauen und anzeigen
   el.innerHTML = `
     <h3 class="sectionHeader">${i18next.t('imageFilters')}</h3>
+    <div><strong>${i18next.t('path')}: </strong>${settings.imagePath}</div>
     <div>${extSelect}</div>
     <br>
     <div>${camSelect}</div>
@@ -597,6 +632,111 @@ function hideLoadingPopup() {
   const popup = document.getElementById('loading-popup');
   if (popup) popup.remove();
 }
+
+function generateThumbnailHTML(allImages) {
+  // generates the HTML for a thumbnail image including EXIF data
+  if (!allImages || allImages.length === 0) return '<div>No images available</div>';
+  // HTML should be like this:
+  /*
+  <div oncontextmenu="return false;" class="thumb_wrapper" style="height:75px;margin-top:5px">
+    <div id="thumb_inner_0" class="thumb_inner">
+        <div class="thumbnail_slide" id="thumb0" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/edinburgh_2018_01_gogh-150x150.avif"
+                alt="Image Thumbnail 1 for Slider 0 operation"></div>
+        <div class="thumbnail_slide" id="thumb1" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/edinburgh-2018-01-Monet1-150x150.avif"
+                alt="Image Thumbnail 2 for Slider 0 operation"></div>
+        <div class="thumbnail_slide" id="thumb2" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240302_072237288-150x150.avif"
+                alt="Image Thumbnail 3 for Slider 0 operation"></div>
+        <div class="thumbnail_slide" id="thumb3" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/MG_2049-150x150.avif"
+                alt="Image Thumbnail 4 for Slider 0 operation"></div>
+        <div class="thumbnail_slide" id="thumb4" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240616_124123117-150x150.avif"
+                alt="Image Thumbnail 5 for Slider 0 operation"></div>
+        <div class="thumbnail_slide" id="thumb5" draggable="false"><img decoding="async" loading="lazy"
+                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
+                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240714_1527431402-150x150.avif"
+                alt="Image Thumbnail 6 for Slider 0 operation"></div>
+    </div>
+  </div>
+  */
+  let html = '<div class="thumb_wrapper"><div id="thumb_inner_0" class="thumb_inner">';
+  allImages.forEach( (img, index) => {
+    if (img.thumbnail == img.imagePath) {
+      img.src = img.imagePath;
+    } else {
+      img.src = img.thumbnail;
+    }
+    html += `<div class="thumbnail_slide" id="thumb${index}" draggable="false">
+        <img decoding="async" loading="lazy" class="th_wrap_0_img" draggable="false" 
+          src="${img.src}" alt="Thumbnail ${index + 1}"></div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function showMetadataForImageIndex(index) {
+  const img = allImages[index];
+  console.log('Show metadata for image:', img.file + img.extension);
+  if (!img) return;
+  
+  const el = document.getElementById('image-metadata-element');
+  if (!el) return;
+
+  // show some metadata of the image in the right sidebar like it is done in LR 6.14
+  /*
+  el.innerHTML = `
+    <h3 class="sectionHeader">${i18next.t('imageMetadata')}</h3>
+    <div><strong>${i18next.t('file')}:</strong> ${img.file + img.extension}</div>
+    <div><strong>${i18next.t('path')}:</strong> ${img.imagePath}</div>
+    <div><strong>${i18next.t('dateTaken')}:</strong> ${exifDateToJSLocaleDate(img.DateTimeOriginal)}</div>
+    <div><strong>${i18next.t('cameraModel')}:</strong> ${img.camera || i18next.t('unknown')}</div>
+    <div><strong>${i18next.t('gpsData')}:</strong> ${img.lat && img.lng ? `${img.lat}, ${img.lng}` : i18next.t('noGPSData')}</div>
+    <br>`;
+  */
+  el.innerHTML = `
+    <div class="lr-metadata-panel">
+      <div class="meta-file-section">
+        <div><strong>File Name:</strong> ${img.file + img.extension}</div>
+        <div><strong>Date Time Original:</strong> ${exifDateToJSLocaleDate(img.DateTimeOriginal)} ${exifDateTimeToJSTime(img.DateTimeOriginal)}</div>
+        <div><strong>Metadata Status:</strong> ${img.status}</div>
+      </div>
+      <hr>
+      <div class="meta-section">
+        <label>Sublocation:</label>
+        <input type="text" class="meta-input" value="">
+        <label>City:</label>
+        <input type="text" class="meta-input" value="">
+        <label>State:</label>
+        <input type="text" class="meta-input" value="">
+        <label>Country / Region:</label>
+        <input type="text" class="meta-input" value="">
+        <label>ISO Country Code:</label>
+        <input type="text" class="meta-input" value="">
+        <label>GPS:</label>
+        <input type="text" class="meta-input" value="${img.lat && img.lng ? `${img.lat}, ${img.lng}` : ''}">
+        <label>Altitude:</label>
+        <input type="text" class="meta-input" value="${img.ele || ''}">
+        <label>Direction:</label>
+        <input type="text" class="meta-input" value="${img.GPXImageDirection || ''}">
+      </div>
+      <hr>
+      <div class="meta-section">
+        <label>Title:</label>
+        <input type="text" class="meta-input" value="">
+        <label>Caption:</label>
+        <textarea class="meta-input" rows="2"></textarea>
+      </div>
+      <hr>
+    </div>`;
+};
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

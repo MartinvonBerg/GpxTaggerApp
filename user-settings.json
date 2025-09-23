@@ -1,13 +1,13 @@
 {
-  "width": 1434,
-  "height": 1060,
-  "x": 7,
-  "y": 240,
-  "topBarHeight": 79,
-  "bottomBarHeight": 31,
-  "leftSidebarWidth": 398,
-  "rightSidebarWidth": 184,
-  "gpxPath": "C:\\Users\\safet\\Downloads\\MTB-Hundstein.gpx",
+  "width": 2576,
+  "height": 1408,
+  "x": 0,
+  "y": 0,
+  "topBarHeight": 30,
+  "bottomBarHeight": 158,
+  "leftSidebarWidth": 375,
+  "rightSidebarWidth": 406,
+  "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images",
   "extensions": [
     "jpg",
@@ -101,6 +101,7 @@
   },
   "translation": {
     "file": "Datei",
+    "path": "Pfad",
     "reload": "App neu laden",
     "quit": "Beenden",
     "gpxTrack": "GPX-Track",
@@ -148,7 +149,7 @@
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
-  "skipImagesWithGPS": "false",
-  "ignoreGPXDate": "false",
+  "skipImagesWithGPS": "true",
+  "ignoreGPXDate": "true",
   "cameraModels": "all"
 }
