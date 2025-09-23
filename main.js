@@ -5,6 +5,10 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
 const sharp = require("sharp");
+//const writeMetadataOneImage = require('./src/exifWriter.js');
+//import writeMetadataOneImage from './src/exifWriter';
+const { exiftool } = require("exiftool-vendored");  
+const sanitizeHtml = require('sanitize-html');
 
 const isDev = !app.isPackaged;
 let systemLanguage = 'en';
@@ -249,6 +253,33 @@ function createWindow() {
     settings.cameraModels = newSettings.cameraModels;
     saveSettings(settingsFilePath, settings);
   });
+
+  ipcMain.on('exit-with-unsaved-changes', (event, allImages) => {
+      // TODO : the i18next 't' translate function is not available here!
+      // let text = t('file'); this will not work and causes an error
+
+      const options = {  
+            type: 'question',  
+            buttons: ['Save', 'Discard'],  
+            defaultId: 0,  
+            title: 'Unsaved Changes',  
+            message: 'You have unsaved changes. Do you want to save them? (NOT implemented yet!)',  
+        };  
+  
+      dialog.showMessageBox(win, options).then((response) => {  
+            if (response.response === 0) {  
+                //event.sender.send('save-changes');
+                // TODO: call the function to save the changes in allImages which is available here
+                writeMetaData(allImages).then(() => {
+                    app.exit();
+                });
+                //app.exit();
+            } else {  
+                //event.sender.send('discard-changes'); do nothing an exit. The changes will be lost!
+                app.exit();
+            }  
+        }); 
+  })
 }  
 
 /**
@@ -366,31 +397,61 @@ async function readImagesFromFolder(folderPath, extensions) {
             } else {
               thumbnailPath = filePath; // fallback to the file path if no thumbnail is available
             }
-            
+            /*
+              Title: 'schwäbische alb',
+              Caption-Abstract: 'schwäbische alb'
+              Description: 'schwäbische alb'
+              ImageDescription: 'schwäbische alb'
+              XPTitle: 'schwäbische alb'
+
+              Keywords: 'rot'
+                LastKeywordIPTC: (1) ['rot']
+                LastKeywordXMP: (1) ['rot']
+                Subject: (1) ['rot']
+              XPKeywords: 'rot'
+
+              XPComment: 'Dies ist ein Martin Kommentra'
+              XPSubject: 'Wanderung in Nördlingen'	
+            */
+
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
                 DateCreated: metadata.DateCreated || '',
                 DateTimeCreated: metadata.DateTimeCreated || '',
                 OffsetTimeOriginal: metadata.OffsetTimeOriginal || '',
+                
                 camera: metadata.Model || 'none',
                 lens: metadata.LensModel || '',
                 orientation: metadata.Orientation || '',
                 //type: 'image',  // TODO : extend for videos, too. or remove it and control it by the extensions array?
-                keywords: metadata.Keywords || [],  
                 height: metadata.ImageHeight || '',  
                 width: metadata.ImageWidth || '',  
+                
                 lat: metadata.GPSLatitude || '',
-                GPSLatRef: metadata.GPSLatitudeRef || '',
-                GPSLngRef: metadata.GPSLongitudeRef || '',
+                GPSLatitudeRef: metadata.GPSLatitudeRef || '',
                 lng: metadata.GPSLongitude || '',
-                ele: metadata.GPSAltitude || '',
+                GPSLongitudeRef: metadata.GPSLongitudeRef || '',
                 pos: metadata.GPSPosition || '',
-                GPXImageDirection: metadata.GPXImageDirection || '',
+                GPSAltitude: metadata.GPSAltitude || '',
+                GPSImgDirection: metadata.GPSImgDirection || '',
+                
                 file: path.basename(filePath, path.extname(filePath)),    
                 extension: path.extname(filePath).toLowerCase(),  
                 imagePath: filePath,
                 thumbnail: thumbnailPath, // base64 encoded thumbnail or file path
-                status: (metadata.GPSLatitude && metadata.GPSLongitude) ? 'loaded-with-GPS' : 'loaded-no-GPS' // simple status field
+                status: (metadata.GPSLatitude && metadata.GPSLongitude) ? 'loaded-with-GPS' : 'loaded-no-GPS', // simple status field
+                
+                Title : metadata.Title || '', // will be used in frontend for entry
+                CaptionAbstract: metadata.CaptionAbstract || '',
+                Description : metadata.Description || '', // will be used in frontend for entry
+                ImageDescription: metadata.ImageDescription || '',
+                XPTitle: metadata.XPTitle || '',
+
+                //XPKeywords : metadata.XPKeywords || '',
+                //keywords: metadata.Keywords || [],
+
+                XPSubject : metadata.XPSubject || '',
+                XPComment : metadata.XPComment || '',
             };
         };
   
@@ -402,7 +463,7 @@ async function readImagesFromFolder(folderPath, extensions) {
             })  
         );  
   
-        // Sort images by capture time  
+        // Sort images by capture time
         // TODO : in funktion verlagern.
         try {
             imagesData.sort((a, b) => {
@@ -489,3 +550,93 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
 
   return thumbnailPathTmp;
 }
+
+async function writeMetaData(allmagesData) {
+  // check if exifWriter was loaded correctly
+  if (!writeMetadataOneImage) {
+    console.error("exifWriter is not initialized!");
+    return;
+  }
+  
+  for (const img of allmagesData) {
+    if (img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS') {
+      console.log('writing meta for image:', img.file + img.extension);
+      try {
+        await writeMetadataOneImage(img.imagePath, img);
+      } catch (error) {
+        console.error('Error writing metadata for image:', img.imagePath, error);
+      }
+      
+    }
+    
+  };
+  //await exifWriter.writeMetadataOneImage(imagesData, folderPath);
+}
+
+  
+const sanitize = (value) => {  
+  if (typeof value !== "string") return undefined;  
+  let v = value.trim();  
+  v = sanitizeInput(v);  
+  return v.length > 0 ? v : undefined;  
+};  
+  
+function sanitizeInput(input) {  
+  return sanitizeHtml(input, {  
+    allowedTags: [],  // does not allow any tags!  
+    allowedAttributes: {}  
+  });  
+}  
+  
+async function writeMetadataOneImage(filePath, metadata) {  
+  const writeData = {};  
+  
+  // --- TITLE ---  
+  const title = sanitize(metadata.Title);  
+  if (title) {  
+    writeData["XMP-dc:Title"] = title;  
+    writeData["IPTC:ObjectName"] = title;  
+    writeData["EXIF:ImageDescription"] = title; // oder nur bei Title oder Description, s. Diskussion  
+    writeData["XPTitle"] = title;  
+  }  
+  
+  // --- CAPTION (Lightroom Description) ---  
+  const caption = sanitize(metadata.Caption);  
+  if (caption) {  
+    writeData["XMP-dc:Description"] = caption;  
+    writeData["IPTC:Caption-Abstract"] = caption;  
+  }  
+  
+  // --- DESCRIPTION ---  
+  const desc = sanitize(metadata.Description);  
+  if (desc) {  
+    writeData["XMP-dc:Description"] = desc;  
+    writeData["IPTC:Caption-Abstract"] = desc;  
+    // Optional: nur Description → EXIF:ImageDescription statt Title  
+    // writeData["EXIF:ImageDescription"] = desc;  
+  }  
+  
+  // --- COMMENT ---  
+  const comment = sanitize(metadata.Comment);  
+  if (comment) {  
+    writeData["EXIF:UserComment"] = comment;  
+    writeData["XPComment"] = comment;  
+  }  
+  
+  // --- KEYWORDS ---  
+  if (Array.isArray(metadata.Keywords) && metadata.Keywords.length > 0) {  
+    const kw = metadata.Keywords.map(k => k.trim()).filter(k => k.length > 0);  
+    if (kw.length > 0) {  
+      writeData["XMP-dc:Subject"] = kw;  
+      writeData["IPTC:Keywords"] = kw;  
+      writeData["XPKeywords"] = kw.join(";"); // Windows-Format  
+    }  
+  }  
+  
+  if (Object.keys(writeData).length > 0) {  
+    await exiftool.write(filePath, writeData);  
+    console.log("Metadaten erfolgreich geschrieben: ", writeData);  
+  } else {  
+    console.log("Keine Metadaten zum Schreiben (alles leer).");  
+  }  
+}  

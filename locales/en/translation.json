@@ -43,5 +43,7 @@
   "loadingImages": "Loading images from: ",
   "imagesAfterFilter": "Images after filter",
   "of": "of",
-  "abortLoading": "Abort loading"
+  "abortLoading": "Abort loading",
+  "title": "Title",
+  "description": "Description"
 }

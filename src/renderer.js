@@ -17,7 +17,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     setupResizablePane(document.getElementById('right-resizer'), 'right');  
     setupHorizontalResizablePane(document.getElementById('top-resizer'), 'top');  
     setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'bottom');  
-  });  
+  });
     
   window.myAPI.receive('load-settings', (loadedSettings) => {  
     settings = loadedSettings;
@@ -332,6 +332,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
           // call the function to show the image metadata in the right sidebar
           showMetadataForImageIndex(event.detail.newslide);
           console.log('thumbnailchange detected: ', event.detail);
+          metaTextEventListener();
         });
     });
     return;
@@ -682,6 +683,12 @@ function generateThumbnailHTML(allImages) {
   return html;
 }
 
+/**
+ * Shows some metadata of the image in the right sidebar like it is done in LR 6.14
+ * 
+ * @global {object} allImages
+ * @param {number} index - the index of the image in the allImages array
+ */
 function showMetadataForImageIndex(index) {
   const img = allImages[index];
   console.log('Show metadata for image:', img.file + img.extension);
@@ -700,6 +707,17 @@ function showMetadataForImageIndex(index) {
     <div><strong>${i18next.t('cameraModel')}:</strong> ${img.camera || i18next.t('unknown')}</div>
     <div><strong>${i18next.t('gpsData')}:</strong> ${img.lat && img.lng ? `${img.lat}, ${img.lng}` : i18next.t('noGPSData')}</div>
     <br>`;
+    ---- removed from el.innerHTML because it is not EXIF-data
+    <label>Sublocation:</label>
+        <input type="text" class="meta-input" value="">
+        <label>City:</label>
+        <input type="text" class="meta-input" value="">
+        <label>State:</label>
+        <input type="text" class="meta-input" value="">
+        <label>Country / Region:</label>
+        <input type="text" class="meta-input" value="">
+        <label>ISO Country Code:</label>
+        <input type="text" class="meta-input" value="">
   */
   el.innerHTML = `
     <div class="lr-metadata-panel">
@@ -710,33 +728,88 @@ function showMetadataForImageIndex(index) {
       </div>
       <hr>
       <div class="meta-section">
-        <label>Sublocation:</label>
-        <input type="text" class="meta-input" value="">
-        <label>City:</label>
-        <input type="text" class="meta-input" value="">
-        <label>State:</label>
-        <input type="text" class="meta-input" value="">
-        <label>Country / Region:</label>
-        <input type="text" class="meta-input" value="">
-        <label>ISO Country Code:</label>
-        <input type="text" class="meta-input" value="">
-        <label>GPS:</label>
-        <input type="text" class="meta-input" value="${img.lat && img.lng ? `${img.lat}, ${img.lng}` : ''}">
+        <label>GPS Lat:</label>
+        <input type="text" class="meta-input" value="${img.lat || ''}">
+        
+        <label>GPS-Lat Ref:</label>
+        <input type="text" class="meta-input" value="${img.GPSLatitudeRef || ''}">
+        
+        <label>GPS Long:</label>
+        <input type="text" class="meta-input" value="${img.lng || ''}">
+
+        <label>GPS-Long Ref:</label>
+        <input type="text" class="meta-input" value="${img.GPSLongitudeRef || ''}">
+        
         <label>Altitude:</label>
-        <input type="text" class="meta-input" value="${img.ele || ''}">
+        <input type="text" class="meta-input" value="${img.GPSAltitude || ''}">
+        
         <label>Direction:</label>
-        <input type="text" class="meta-input" value="${img.GPXImageDirection || ''}">
+        <input type="text" class="meta-input" value="${img.GPSImgDirection || ''}">
       </div>
       <hr>
-      <div class="meta-section">
-        <label>Title:</label>
-        <input type="text" class="meta-input" value="">
-        <label>Caption:</label>
-        <textarea class="meta-input" rows="2"></textarea>
+      <div class="meta-section meta-text" data-index="${img.index}">
+        <label>${i18next.t('title')}:</label>
+        <input type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" value="${img.Title || ''}">
+        <label>${i18next.t('description')}:</label>
+        <textarea class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" rows="3">${img.Description || ''}</textarea>
       </div>
       <hr>
     </div>`;
 };
+
+function metaTextEventListener() {
+  document.querySelectorAll(".meta-input").forEach(input => {
+    input.addEventListener("keydown", e => {
+      // Nur bei Input-Feld, nicht bei Textarea Enter abfangen
+      if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
+        e.preventDefault();
+        const sanitizedValue = sanitizeInput(input.value);
+        let index = input.dataset.index-1;
+        if (index < 0 || index >= allImages.length) { 
+          return;
+        }
+
+        // get the other value in 'meta-text' to save in case user has forgotten to press enter after change
+        if (input.tagName === "INPUT") { // prüfen, ob bei enter in input field auch noch die description aktualisiert werden soll
+          let otherValue = document.querySelector(".meta-description").value
+          if (allImages[index].Description !== otherValue) {
+            allImages[index].Description = otherValue;
+          }
+        } else {       // prüfen, ob bei enter in textarea field auch noch der text aktualisiert werden soll
+          let otherValue = document.querySelector(".meta-title").value
+          if (allImages[index].Title !== otherValue) {
+            allImages[index].Title = otherValue;
+          }
+        }
+        
+        // schreibe die Daten in allImages
+        input.tagName === "INPUT" ? allImages[index].Title = sanitizedValue : void 0;
+        input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
+        allImages[index].status = 'meta-manually-changed';
+        
+        //console.log('saveMetadata:', input.previousElementSibling.textContent.trim(), sanitizedValue);
+      }
+    });
+});
+}
+
+function sanitizeInput(value) {
+  // Entfernt <script>, HTML-Tags etc.
+  const div = document.createElement("div");
+  div.textContent = value; 
+  return div.innerHTML; // Rückgabe ist sicherer Text
+}
+
+window.addEventListener('beforeunload', (event) => {  
+    // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
+    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
+    if (hasUnsavedChanges) {  
+        // Verhindere das automatische Schließen des Fensters  
+        event.preventDefault();
+         
+        window.myAPI.send('exit-with-unsaved-changes', allImages); 
+    }  
+});
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

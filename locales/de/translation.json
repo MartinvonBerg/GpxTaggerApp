@@ -43,6 +43,7 @@
   "loadingImages": "Bilder werden geladen aus: ",
   "imagesAfterFilter": "Bilder nach Filter",
   "of": "von",
-  "abortLoading": "Laden abbrechen"
-
+  "abortLoading": "Laden abbrechen",
+  "title": "Titel",
+  "description": "Beschreibung"
 }  

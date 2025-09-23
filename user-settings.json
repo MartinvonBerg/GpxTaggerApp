@@ -1,8 +1,8 @@
 {
-  "width": 2576,
-  "height": 1408,
-  "x": 0,
-  "y": 0,
+  "width": 1132,
+  "height": 762,
+  "x": 360,
+  "y": 177,
   "topBarHeight": 30,
   "bottomBarHeight": 158,
   "leftSidebarWidth": 375,
@@ -144,7 +144,9 @@
     "loadingImages": "Bilder werden geladen aus: ",
     "imagesAfterFilter": "Bilder nach Filter",
     "of": "von",
-    "abortLoading": "Laden abbrechen"
+    "abortLoading": "Laden abbrechen",
+    "title": "Titel",
+    "description": "Beschreibung"
   },
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
