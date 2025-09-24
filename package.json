@@ -26,6 +26,7 @@
         "webpack-cli": "*"
     },
     "dependencies": {
+        "coordinate-parser": "^1.0.7",
         "exiftool-vendored": "^30.5.0",
         "i18next": "^25.5.2",
         "i18next-fs-backend": "^2.6.0",

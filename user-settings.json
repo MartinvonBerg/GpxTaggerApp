@@ -1,12 +1,12 @@
 {
-  "width": 1132,
-  "height": 762,
-  "x": 360,
-  "y": 177,
+  "width": 2076,
+  "height": 1309,
+  "x": 242,
+  "y": 41,
   "topBarHeight": 30,
-  "bottomBarHeight": 158,
-  "leftSidebarWidth": 375,
-  "rightSidebarWidth": 406,
+  "bottomBarHeight": 160,
+  "leftSidebarWidth": 356,
+  "rightSidebarWidth": 429,
   "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images",
   "extensions": [
@@ -146,12 +146,16 @@
     "of": "von",
     "abortLoading": "Laden abbrechen",
     "title": "Titel",
-    "description": "Beschreibung"
+    "description": "Beschreibung",
+    "altitudeHint": "Meter über dem Meeresspiegel",
+    "gpsHint": "GPS-Koordinaten in WGS84 (Breite, Länge) in &plusm 41.40338, &plusm 2.17403 / 41°24'12.2\"N 2°10'26.5\"E oder 48°51.5304′ N, 2°17.6610′ E  ",
+    "accept": "Prüfe und speichere Metadaten",
+    "metasaved": "Metadaten gespeichert für"
   },
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
   "skipImagesWithGPS": "true",
-  "ignoreGPXDate": "true",
+  "ignoreGPXDate": "false",
   "cameraModels": "all"
 }

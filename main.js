@@ -21,9 +21,7 @@ let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; /
 const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: path anpassen, falls nötig. Hier werden die settings bei Updates der app überschrieben!
 
 // TODO : move functions to separate files except createWindow
-// TODO : read thumbnails from exiftool for faster loading of images
 // TODO : read available metadata from xmp files (sidecar files for raw images) - exiftool can do this, too
-// TODO : create function to write metadata to images (like rating, keywords, etc.) - exiftool can do this, too
 
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
@@ -113,7 +111,7 @@ app.whenReady().then(() => {
                 saveSettings(settingsFilePath, settings);
                 // read images from the folder if this is possible in the renderer process
                 win.webContents.send('image-loading-started', imagePath);
-                // TODO log the timing of reading the images
+                
                 // Vor dem Aufruf von readImagesFromFolder
                 const startTime = Date.now();
                 console.log('Start reading images from folder at:', new Date(startTime).toLocaleString());
@@ -207,7 +205,7 @@ function createWindow() {
 
     if (settings.imagePath && fs.existsSync(settings.imagePath)) {
       win.webContents.send('image-loading-started', settings.imagePath);
-      // TODO log the timing of reading the images
+      
       // Vor dem Aufruf von readImagesFromFolder
       const startTime = Date.now();
       console.log('Start reading images from folder at then:', new Date(startTime).toLocaleString());
@@ -269,7 +267,7 @@ function createWindow() {
       dialog.showMessageBox(win, options).then((response) => {  
             if (response.response === 0) {  
                 //event.sender.send('save-changes');
-                // TODO: call the function to save the changes in allImages which is available here
+                // call the function to save the changes in allImages which is available here
                 writeMetaData(allImages).then(() => {
                     app.exit();
                 });
@@ -280,6 +278,17 @@ function createWindow() {
             }  
         }); 
   })
+
+  ipcMain.handle('save-meta-to-image', async (event, allImages) => {
+    /*
+    await writeMetaData(allImages).then(() => {
+        win.webContents.send('allImages-updated', allImages);
+        return 'done allImages-updated';
+    });
+    */
+    await writeMetaData(allImages);
+    return 'done';
+  });
 }  
 
 /**
@@ -347,14 +356,14 @@ app.on('activate', () => {
  *     lng: number|string,
  *     ele: number|string,
  *     pos: string,
- *     GPXImageDirection: string,
+ *     GPSImageDirection: string,
  *     file: string,
  *     extension: string,
  *     imagePath: string
  *   }
  * @throws Will log errors to the console if reading or parsing fails.
  */
-async function readImagesFromFolder(folderPath, extensions) {  
+async function readImagesFromFolder(folderPath, extensions) {
     const exifTool = new ExifTool({
       maxProcs: 20, // More concurrent processes TODO: get the number of CPU cores and set it dynamically
       minDelayBetweenSpawnMillis: 0, // Faster spawning
@@ -501,7 +510,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         
         // Laufende Nummer ergänzen
         imagesData.forEach((img, idx) => {
-            img.index = idx + 1; // Start bei 1, alternativ idx für Start bei 0
+            img.index = idx; // Start bei 0, alternativ idx+1 für Start bei 1
         });
 
         return imagesData;  
@@ -566,11 +575,8 @@ async function writeMetaData(allmagesData) {
       } catch (error) {
         console.error('Error writing metadata for image:', img.imagePath, error);
       }
-      
     }
-    
   };
-  //await exifWriter.writeMetadataOneImage(imagesData, folderPath);
 }
 
   
@@ -589,11 +595,35 @@ function sanitizeInput(input) {
 }  
   
 async function writeMetadataOneImage(filePath, metadata) {  
-  const writeData = {};  
+  const writeData = {};
+  // PRIO TODO: erlaube leere werte zu schreiben, wenn der anwender zurücksetzen will!
+
+  // --- GPS Altitude ---
+  const altitude = metadata.GPSAltitude;
+  if (altitude!==undefined && altitude!==null) {
+    writeData["EXIF:GPSAltitude"] = altitude;
+  }
+
+  // --- GPS ImageDirection ---
+  const imageDirection = metadata.GPSImgDirection;
+  if (imageDirection!==undefined && imageDirection!==null) {
+    writeData["EXIF:GPSImgDirection"] = imageDirection;
+  }
+
+  // --- GPX position ---
+  const pos = metadata.pos; // this is in different formats yet!
+  if (pos!==undefined && pos!==null) {
+    writeData["EXIF:GPSPosition"] = pos; // does exiftool automatically write the other fields?
+    writeData["EXIF:GPSLatitude"] = metadata.GPSLatitude;
+    writeData["EXIF:GPSLatitudeRef"] = metadata.GPSLatitudeRef;
+    writeData["EXIF:GPSLongitude"] = metadata.GPSLongitude;
+    writeData["EXIF:GPSLongitudeRef"] = metadata.GPSLongitudeRef;
+  }
+  
   
   // --- TITLE ---  
   const title = sanitize(metadata.Title);  
-  if (title) {  
+  if (title !== undefined && title !== null) {  
     writeData["XMP-dc:Title"] = title;  
     writeData["IPTC:ObjectName"] = title;  
     writeData["EXIF:ImageDescription"] = title; // oder nur bei Title oder Description, s. Diskussion  
@@ -602,14 +632,14 @@ async function writeMetadataOneImage(filePath, metadata) {
   
   // --- CAPTION (Lightroom Description) ---  
   const caption = sanitize(metadata.Caption);  
-  if (caption) {  
+  if (caption !== undefined && caption !== null) { 
     writeData["XMP-dc:Description"] = caption;  
     writeData["IPTC:Caption-Abstract"] = caption;  
   }  
   
   // --- DESCRIPTION ---  
   const desc = sanitize(metadata.Description);  
-  if (desc) {  
+  if (desc!== undefined && desc !== null) { 
     writeData["XMP-dc:Description"] = desc;  
     writeData["IPTC:Caption-Abstract"] = desc;  
     // Optional: nur Description → EXIF:ImageDescription statt Title  
@@ -618,7 +648,7 @@ async function writeMetadataOneImage(filePath, metadata) {
   
   // --- COMMENT ---  
   const comment = sanitize(metadata.Comment);  
-  if (comment) {  
+  if (comment!== undefined && comment !== null) { 
     writeData["EXIF:UserComment"] = comment;  
     writeData["XPComment"] = comment;  
   }  

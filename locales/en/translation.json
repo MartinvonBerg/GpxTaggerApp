@@ -45,5 +45,7 @@
   "of": "of",
   "abortLoading": "Abort loading",
   "title": "Title",
-  "description": "Description"
+  "description": "Description",
+  "altitudeHint": "Meters above sea level",
+  "gpsHint" : "GPS-Coordinates in WGS84 (latitude, longitude) in &plusm41.40338, &plusm2.17403 / 41°24'12.2\"N 2°10'26.5\"E or 48°51.5304′ N, 2°17.6610′ E  "
 }

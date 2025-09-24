@@ -1,4 +1,5 @@
 import i18next from 'i18next';
+import Coordinates from "coordinate-parser";
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
@@ -325,14 +326,22 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
      // import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
        
     import(/* webpackChunkName: "thumbnailSlider" */'../js/thumbnailClass.js').then( (ThumbnailSlider) => {
-        new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs.sw_options);
+        let th = new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs.sw_options);
+        // show and activate the first thumbnail metadata and activate listeners for it
+        th.setActiveThumb(0);
+        showMetadataForImageIndex(0);
+        metaTextEventListener();
+        metaGPSEventListener();
+        handleSaveButton();
 
         document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
-          //if (event.detail.slider === classThis.number) classThis.setSliderIndex(event.detail.newslide);
+          
           // call the function to show the image metadata in the right sidebar
           showMetadataForImageIndex(event.detail.newslide);
           console.log('thumbnailchange detected: ', event.detail);
           metaTextEventListener();
+          metaGPSEventListener();
+          handleSaveButton();
         });
     });
     return;
@@ -718,7 +727,22 @@ function showMetadataForImageIndex(index) {
         <input type="text" class="meta-input" value="">
         <label>ISO Country Code:</label>
         <input type="text" class="meta-input" value="">
+        <label>GPS Lat:</label>
+          <input type="number" class="meta-input meta-gps" data-index="${img.index}" min=-90 max=90 value="${img.lat || ''}" title="Latitude from -90 to +90 degrees">
+          
+          <label>GPS-Lat Ref:</label>
+          <input type="text" class="meta-input meta-gps" data-index="${img.index}" maxlength="1" pattern="[A-Z]" value="${img.GPSLatitudeRef || 'N'}" title="N = North, S = South, E = East, W = West">
+          
+          <label>GPS Long:</label>
+          <input type="number" class="meta-input meta-gps" data-index="${img.index}" min=-180 max=180 value="${img.lng || ''}" title="Longitude from -180 to +180 degrees">
+
+          <label>GPS-Long Ref:</label>
+          <input type="text" class="meta-input meta-gps" data-index="${img.index}" maxlength="1" pattern="[A-Z]" value="${img.GPSLongitudeRef || 'E'}" title="N = North, S = South, E = East, W = West">
   */
+ // TODO: go to next field on enter pressed and use arrow keys to navigate
+ // TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
+ 
+ 
   el.innerHTML = `
     <div class="lr-metadata-panel">
       <div class="meta-file-section">
@@ -727,44 +751,44 @@ function showMetadataForImageIndex(index) {
         <div><strong>Metadata Status:</strong> ${img.status}</div>
       </div>
       <hr>
-      <div class="meta-section">
-        <label>GPS Lat:</label>
-        <input type="text" class="meta-input" value="${img.lat || ''}">
-        
-        <label>GPS-Lat Ref:</label>
-        <input type="text" class="meta-input" value="${img.GPSLatitudeRef || ''}">
-        
-        <label>GPS Long:</label>
-        <input type="text" class="meta-input" value="${img.lng || ''}">
+      <div><strong>Press Enter for EACH value!</strong></div>
+      <form id="gps-form">
+        <div class="meta-section ">
+          <label>GPS-Pos (Lat / Lon):</label> <!-- Lat = Breite von -90 .. 90, Lon = Länge von -180 .. 180 -->
+          <input type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
+          
+          <label>Altitude (m ASL)</label>
+          <input type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
 
-        <label>GPS-Long Ref:</label>
-        <input type="text" class="meta-input" value="${img.GPSLongitudeRef || ''}">
-        
-        <label>Altitude:</label>
-        <input type="text" class="meta-input" value="${img.GPSAltitude || ''}">
-        
-        <label>Direction:</label>
-        <input type="text" class="meta-input" value="${img.GPSImgDirection || ''}">
-      </div>
+          <label>Direction:</label>
+          <input type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
+        </div>
+      </form>  
       <hr>
       <div class="meta-section meta-text" data-index="${img.index}">
         <label>${i18next.t('title')}:</label>
-        <input type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" value="${img.Title || ''}">
+        <input type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
+        
         <label>${i18next.t('description')}:</label>
-        <textarea class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" rows="3">${img.Description || ''}</textarea>
+        <textarea class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
       </div>
       <hr>
+      <div class="meta-section">
+        <!-- show a button to accept, validate and save the metadata in the right sidebar -->
+        <button type="button" class="meta-button meta-accept" data-index="${img.index}">${i18next.t('accept')}</button>
+        <div id="write-meta-status"></div>
+      </div>
     </div>`;
 };
 
 function metaTextEventListener() {
-  document.querySelectorAll(".meta-input").forEach(input => {
+  document.querySelectorAll(".meta-title, .meta-description").forEach(input => {
     input.addEventListener("keydown", e => {
       // Nur bei Input-Feld, nicht bei Textarea Enter abfangen
       if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
         e.preventDefault();
         const sanitizedValue = sanitizeInput(input.value);
-        let index = input.dataset.index-1;
+        let index = input.dataset.index;
         if (index < 0 || index >= allImages.length) { 
           return;
         }
@@ -793,6 +817,61 @@ function metaTextEventListener() {
 });
 }
 
+function metaGPSEventListener() {
+  
+  document.querySelectorAll(".meta-gps").forEach(input => {
+    input.addEventListener("keydown", e => {
+      // Nur bei GPS-Input-Feld, nicht bei Textarea Enter abfangen
+      if ( input.tagName === "INPUT" && input.type==="text" && e.key === "Enter") { // this is for type="text" so GPS-coordinates
+        e.preventDefault();
+        
+        let convertedValue = convertGps(input.value);
+
+        let index = input.dataset.index;
+        if (index < 0 || index >= allImages.length || !convertedValue) {
+          // go back to the browser input and show an error message
+          input.value = '';
+          input.focus();
+          input.select();
+          // TODO how to show a hint for the user here?
+          return;
+        } else if (convertedValue) {
+            // go back to the browser input and show an error message
+            input.value = convertedValue.pos;
+        }
+
+        // schreibe die Daten in allImages
+        allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;
+        allImages[index].GPSLatitude = toDMS(convertedValue.lat); //convertedValue.lat;
+        allImages[index].GPSLatitudeRef = convertedValue.refLat;
+        allImages[index].GPSLongitude = toDMS(convertedValue.lon); //convertedValue.lon;
+        allImages[index].GPSLongitudeRef = convertedValue.refLon;
+        allImages[index].status = 'gps-manually-changed';
+        
+      } else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
+        e.preventDefault();
+        //const sanitizedValue = !Number.isNaN(parseFloat(input.value));
+        const sanitizedValue = input.className.includes('meta-altitd') ? validateAltitude(input.value) : validateDirection(input.value);
+
+        let index = input.dataset.index;
+        if (index < 0 || index >= allImages.length || !sanitizedValue) {
+          // go back to the browser input and show an error message
+          input.value = '';
+          input.focus();
+          input.select();
+          // TODO how to show a hint for the user here?
+          return;
+        }
+
+        // schreibe die Daten in allImages
+        input.className.includes('meta-altitd') ? allImages[index].GPSAltitude = input.value : void 0;
+        input.className.includes('meta-imgdir') ? allImages[index].GPSImgDirection = input.value : void 0;
+        allImages[index].status = 'gps-manually-changed';
+      }
+    });
+  });
+}
+
 function sanitizeInput(value) {
   // Entfernt <script>, HTML-Tags etc.
   const div = document.createElement("div");
@@ -811,5 +890,227 @@ window.addEventListener('beforeunload', (event) => {
     }  
 });
 
+/**
+ * Konvertiert einen GPS-String in Dezimalgrad und gibt Normalform zurück
+ * Unterstützt: DD, DMS, DMM
+ * @param {string} input - GPS Koordinaten
+ * @returns {object|null} { lat, lon, refLat, refLon, pos } oder null bei Fehler
+ */
+function convertGps(input) {
+  const isValidPosition = function(position) {
+    let error;
+    let isValid;
+    try {
+      isValid = true;
+      new Coordinates(position);
+      return isValid;
+    } catch (error) {
+      isValid = false;
+      return isValid;
+    }
+  };
+  
+  if (!isValidPosition(input)) {
+    return null; // passt überhaupt nicht ins Muster
+  }
+
+  try {
+    const c = new Coordinates(input);
+
+    const lat = c.getLatitude();
+    const lon = c.getLongitude();
+
+    const refLat = lat >= 0 ? "N" : "S";
+    const refLon = lon >= 0 ? "E" : "W";
+
+    const pos = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+    return {
+      lat: Math.abs(lat),
+      lon: Math.abs(lon),
+      refLat,
+      refLon,
+      pos,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function validateAltitude(inputValue) {  
+  const inputAsNumber = parseFloat(inputValue)
+  
+  if (isNaN(inputAsNumber)) {
+    return false;
+  } else {
+    return inputAsNumber >= -1000 && inputAsNumber <= 8888;
+  }  
+}
+
+function validateDirection(inputValue) {  
+  const inputAsNumber = parseFloat(inputValue)
+  
+  if (isNaN(inputAsNumber)) {
+    return false;
+  } else {
+    return inputAsNumber >= -360 && inputAsNumber <= 360;
+  }  
+}
+
+function toDMS(value) {
+  const abs = Math.abs(value);
+  const deg = Math.floor(abs);
+  const minFloat = (abs - deg) * 60;
+  const min = Math.floor(minFloat);
+  const sec = (minFloat - min) * 60;
+  return [deg, min, sec];
+}
+
+function handleSaveButton() {
+   // Hole den Button mit der Klasse 'meta-button meta-accept'  
+  const button = document.querySelector('.meta-button.meta-accept');  
+    
+  // Füge einen Klick-Event-Listener hinzu  
+  button.addEventListener('click', async function(event) {  
+    // Hier kannst du den Code platzieren, der ausgeführt wird, wenn der Button geklickt wird  
+    console.log('Button wurde geklickt!');  
+      
+    // Beispiel: Hole den data-index Wert für das Bild 
+    const index = event.target.dataset.index;  
+    console.log('Index:', index);  
+    
+    // get and validate all input fields for the metadata of the current image 
+    // ---------------- GPS-POS -----------------------------------
+    let input = document.querySelector('.meta-pos');
+    let convertedValue = convertGps(input.value);
+    let newStatusAfterSave = 'loaded-no-GPS';
+    let readablePos = '';
+
+    if (index < 0 || index >= allImages.length || !convertedValue) {
+      // go back to the browser input and show an error message
+      input.value = '';
+      input.focus();
+      input.select();
+      // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn falsch oder der user den wert abischtlich leer lassen will
+      newStatusAfterSave = 'loaded-no-GPS';
+      // schreibe die Daten in allImages nur wenn der Wert korrekt ist
+      allImages[index].pos = '';
+      allImages[index].GPSLatitude = ''; //convertedValue.lat;
+      allImages[index].GPSLatitudeRef = '';
+      allImages[index].GPSLongitude = ''; //convertedValue.lon;
+      allImages[index].GPSLongitudeRef = '';
+      allImages[index].status = 'gps-manually-changed';
+      
+    } else if (convertedValue) {
+      // go back to the browser input and show an error message
+      input.value = convertedValue.pos;
+      readablePos = convertedValue.pos;
+      newStatusAfterSave = 'loaded-with-GPS';
+      // schreibe die Daten in allImages nur wenn der Wert korrekt ist
+      allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;
+      allImages[index].GPSLatitude = toDMS(convertedValue.lat); //convertedValue.lat;
+      allImages[index].GPSLatitudeRef = convertedValue.refLat;
+      allImages[index].GPSLongitude = toDMS(convertedValue.lon); //convertedValue.lon;
+      allImages[index].GPSLongitudeRef = convertedValue.refLon;
+      allImages[index].status = 'gps-manually-changed';
+    }
+
+    // ----------------- ALTITUDE ----------------------------
+    input = document.querySelector('.meta-altitd');
+    let sanitizedValue = validateAltitude(input.value);
+
+    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+      // go back to the browser input and show an error message
+      input.value = '';
+      input.focus();
+      input.select();
+      // TODO how to show a hint for the user here?
+      //return;
+    } else if (sanitizedValue) {
+        // go back to the browser input and show an error message
+        //input.value = (input.value);
+    }
+
+    // schreibe die Daten in allImages
+    allImages[index].GPSAltitude = input.value;
+
+    // ------------------IMG DIRECTION ---------------------------
+    input = document.querySelector('.meta-imgdir');
+    sanitizedValue = validateDirection(input.value);
+
+    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+      // go back to the browser input and show an error message
+      input.value = '';
+      input.focus();
+      input.select();
+      // TODO how to show a hint for the user here?
+      //return;
+    } else if (sanitizedValue) {
+        // go back to the browser input and show an error message
+        //input.value = input.value;
+    }
+
+    // schreibe die Daten in allImages
+    allImages[index].GPSImgDirection = input.value;
+
+    // --------------- TITLE ------------------------------
+    input = document.querySelector('.meta-title');
+    sanitizedValue = sanitizeInput(input.value);
+
+    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+      // go back to the browser input and show an error message
+      input.value = '';
+      input.focus();
+      input.select();
+      // TODO how to show a hint for the user here?
+      //return;
+    } else if (sanitizedValue) {
+        // go back to the browser input and show an error message
+        input.value = sanitizedValue;
+    }
+
+    // schreibe die Daten in allImages
+    allImages[index].Title = sanitizedValue;
+    
+    // --------------- DESCRIPTION -----------------------------
+    input = document.querySelector('.meta-description');
+    sanitizedValue = sanitizeInput(input.value);
+
+    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+      // go back to the browser input and show an error message
+      input.value = '';
+      input.focus();
+      input.select();
+      // TODO how to show a hint for the user here?
+      //return;
+    } else if (sanitizedValue) {
+        // go back to the browser input and show an error message
+        input.value = sanitizedValue;
+    }
+
+    // schreibe die Daten in allImages
+    allImages[index].Description = sanitizedValue;
+    
+    // ---------------------------------------------------
+    // write the data in the allImages array and save it finally to the file. reset the status. send the array to the backend.
+    // wait for the result as acknowledgement
+    const result = await window.myAPI.invoke('save-meta-to-image', allImages);
+    console.log('result:', result);
+    console.log('allImages:', allImages[index]); 
+    
+    allImages[index].status = newStatusAfterSave;
+    // reset the allimages[...].pos to the readible format for the internal use. TODO: This is not clean!
+    if ( newStatusAfterSave === 'loaded-with-GPS' ) {
+        allImages[index].pos = readablePos;
+    }
+    // show the status in the UI
+    if ( result=== 'done') {
+      document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + allImages[index].imagePath;
+    } else {
+      document.getElementById('write-meta-status').textContent = 'Saving failed' + ': ' + allImages[index].imagePath;
+    }
+  }); 
+}
+  
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

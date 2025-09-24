@@ -106,6 +106,7 @@ body, html {
   gap: 6px 12px; /* Abstand zwischen Label/Input (x) und zwischen Zeilen (y) */
   margin-bottom: 1rem;
   align-items: center; /* vertikal mittig */
+  padding-right: 10px;
 }
 
 .meta-section label {
@@ -117,5 +118,23 @@ body, html {
   width: 100%;       /* Input füllt Spalte aus */
   box-sizing: border-box;
   padding: 4px 6px;
+}
+
+/* Entferne alle benutzerdefinierten Stile für den Button */  
+.meta-button {  
+  all: unset; /* Entfernt alle benutzerdefinierten CSS-Stile */  
+  display: inline-block; /* Stellt sicher, dass der Button wie ein Block-Element angezeigt wird */  
+  cursor: pointer; /* Zeigt den Zeiger als Hand an, wenn über den Button gefahren wird */  
+  padding: 0.5em 1em; /* Füge etwas Polsterung hinzu */  
+  border: 1px solid; /* Standardrahmen */  
+  border-radius: 4px; /* Leicht abgerundete Ecken */  
+}  
+  
+.meta-button:focus {  
+  outline: 2px solid blue; /* Fügt einen Fokusrahmen hinzu */  
+}  
+
+.meta-button:hover {  
+  background-color: #e62020; /* Hintergrundfarbe beim Hover-Effekt */  
 }
 

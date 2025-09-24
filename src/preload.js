@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('myAPI', {  
   send: (channel, data) => {  
     // List of channels allowed  
-    let validChannels = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes'];  
+    let validChannels = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes'];
     if (validChannels.includes(channel)) {  
       ipcRenderer.send(channel, data);  // hier wird eine Nachricht an main.js geschickt
     }  
@@ -17,5 +17,12 @@ contextBridge.exposeInMainWorld('myAPI', {
       // entsprechende Callback-Funktion func in renderer.js aufgerufen
       ipcRenderer.on(channel, (event, ...args) => func(...args));  
     }  
-  }  
+  },
+  invoke: (channel, data) => {  
+    // List of channels allowed  
+    let validChannels = ['save-meta-to-image'];
+    if (validChannels.includes(channel)) {  
+      return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht an main.js geschickt
+    }  
+  }, 
 });  
