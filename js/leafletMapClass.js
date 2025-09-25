@@ -143,6 +143,25 @@ class LeafletMap {
         // create scale control top left // for mobile: zoom deactivated. use fingers!
         this.setMapControls();
         this.setFullscreenButton()
+
+        // TODO: add a simple image marker, existing will remain. Improve this!
+        // - allow only one marker on the map at a time to set GPS Data for activated images
+        let markers = []; // - create function 'removePositionMarker' for this marker
+        let classThis = this.map;
+        this.map.on('click', 
+			function(e){
+				var coord = e.latlng.toString().split(',');
+				var lat = coord[0].split('(');
+				var lng = coord[1].split(')');
+				console.log("You clicked the map at LAT: " + lat[1] + " and LONG: " + lng[0]);
+				
+                const marker = L.marker(e.latlng)
+                    .addTo(classThis)
+                    .bindPopup(`<div class="marker-popup"><h4>Custom Marker</h4><p>Latitude: ${e.latlng.lat.toFixed(4)}</p><p>Longitude: ${e.latlng.lng.toFixed(4)}</p></div>`);
+                
+                markers.push(marker);
+			});
+            
     }
 
     setBounds(bds) {
