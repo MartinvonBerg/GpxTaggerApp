@@ -100,6 +100,16 @@ body, html {
   margin-bottom: 5px;
 }
 
+.meta-value {
+  display: block;
+  padding: 4px 6px;
+  background-color: #f9f9f9;  /* dezenter Hintergrund */
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  /* font-family: monospace;     optional, sieht wie Metadaten aus */
+  white-space: nowrap;        /* verhindert Zeilenumbruch */
+}
+
 .meta-section {
   display: grid;
   grid-template-columns: 150px 1fr; /* linke Spalte fix, rechte flexibel */
@@ -128,6 +138,7 @@ body, html {
   padding: 0.5em 1em; /* Füge etwas Polsterung hinzu */  
   border: 1px solid; /* Standardrahmen */  
   border-radius: 4px; /* Leicht abgerundete Ecken */  
+  margin-left: 10px;
 }  
   
 .meta-button:focus {  

@@ -312,6 +312,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
             allMaps[m].initChart();
             allMaps[m].handleEvents();
+            // TODO: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
         })
         
@@ -337,7 +338,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
           
           // call the function to show the image metadata in the right sidebar
-          showMetadataForImageIndex(event.detail.newslide);
+          showMetadataForImageIndex(event.detail.newslide, event.detail.selectedIndexes || []);
           console.log('thumbnailchange detected: ', event.detail);
           metaTextEventListener();
           metaGPSEventListener();
@@ -698,59 +699,47 @@ function generateThumbnailHTML(allImages) {
  * @global {object} allImages
  * @param {number} index - the index of the image in the allImages array
  */
-function showMetadataForImageIndex(index) {
-  const img = allImages[index];
-  console.log('Show metadata for image:', img.file + img.extension);
+function showMetadataForImageIndex(index, selectedIndexes=[]) {
+  let img = allImages[index];
   if (!img) return;
+  let DateTimeOriginalString = '';
+
+  // get the identical values for the keys in img if multiple images are selected. img.file, img.extension, img.index
+  if (selectedIndexes.length > 1) {
+    // get the identical values for the keys in img or if not identical set them to i18next.t('multiple')
+    img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description'], i18next.t('multiple'));
+    img.index = selectedIndexes.join(', ');
+    img.file = i18next.t('multiple');
+    img.extension = '';
+    DateTimeOriginalString = i18next.t('multiple');
+  } else {
+    DateTimeOriginalString = exifDateToJSLocaleDate(img.DateTimeOriginal) + ' ' + exifDateTimeToJSTime(img.DateTimeOriginal);
+  }
   
   const el = document.getElementById('image-metadata-element');
   if (!el) return;
 
+  let testPos = convertGps(img.pos);
+  if (testPos) img.pos = testPos.pos;
+  
   // show some metadata of the image in the right sidebar like it is done in LR 6.14
-  /*
-  el.innerHTML = `
-    <h3 class="sectionHeader">${i18next.t('imageMetadata')}</h3>
-    <div><strong>${i18next.t('file')}:</strong> ${img.file + img.extension}</div>
-    <div><strong>${i18next.t('path')}:</strong> ${img.imagePath}</div>
-    <div><strong>${i18next.t('dateTaken')}:</strong> ${exifDateToJSLocaleDate(img.DateTimeOriginal)}</div>
-    <div><strong>${i18next.t('cameraModel')}:</strong> ${img.camera || i18next.t('unknown')}</div>
-    <div><strong>${i18next.t('gpsData')}:</strong> ${img.lat && img.lng ? `${img.lat}, ${img.lng}` : i18next.t('noGPSData')}</div>
-    <br>`;
-    ---- removed from el.innerHTML because it is not EXIF-data
-    <label>Sublocation:</label>
-        <input type="text" class="meta-input" value="">
-        <label>City:</label>
-        <input type="text" class="meta-input" value="">
-        <label>State:</label>
-        <input type="text" class="meta-input" value="">
-        <label>Country / Region:</label>
-        <input type="text" class="meta-input" value="">
-        <label>ISO Country Code:</label>
-        <input type="text" class="meta-input" value="">
-        <label>GPS Lat:</label>
-          <input type="number" class="meta-input meta-gps" data-index="${img.index}" min=-90 max=90 value="${img.lat || ''}" title="Latitude from -90 to +90 degrees">
-          
-          <label>GPS-Lat Ref:</label>
-          <input type="text" class="meta-input meta-gps" data-index="${img.index}" maxlength="1" pattern="[A-Z]" value="${img.GPSLatitudeRef || 'N'}" title="N = North, S = South, E = East, W = West">
-          
-          <label>GPS Long:</label>
-          <input type="number" class="meta-input meta-gps" data-index="${img.index}" min=-180 max=180 value="${img.lng || ''}" title="Longitude from -180 to +180 degrees">
-
-          <label>GPS-Long Ref:</label>
-          <input type="text" class="meta-input meta-gps" data-index="${img.index}" maxlength="1" pattern="[A-Z]" value="${img.GPSLongitudeRef || 'E'}" title="N = North, S = South, E = East, W = West">
-  */
- // TODO: go to next field on enter pressed and use arrow keys to navigate
- // TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
- 
+  // TODO: go to next field on enter pressed and use arrow keys to navigate
+  // TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
  
   el.innerHTML = `
     <div class="lr-metadata-panel">
-      <div class="meta-file-section">
-        <div><strong>File Name:</strong> ${img.file + img.extension}</div>
-        <div><strong>Date Time Original:</strong> ${exifDateToJSLocaleDate(img.DateTimeOriginal)} ${exifDateTimeToJSTime(img.DateTimeOriginal)}</div>
-        <div><strong>Metadata Status:</strong> ${img.status}</div>
+      <div class="meta-file-section meta-section">
+        <label>File Name:</label>
+        <span class="meta-value"> ${img.file + img.extension}</span>
+
+        <label>Date Time Original:</label>
+        <span class="meta-value">${DateTimeOriginalString}</span>
+
+        <label>Metadata Status:</label>
+        <span class="meta-value">${img.status}</span>
       </div>
       <hr>
+
       <div><strong>Press Enter for EACH value!</strong></div>
       <form id="gps-form">
         <div class="meta-section ">
@@ -758,10 +747,10 @@ function showMetadataForImageIndex(index) {
           <input type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
           
           <label>Altitude (m ASL)</label>
-          <input type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
+          <input type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
 
           <label>Direction:</label>
-          <input type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
+          <input type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
         </div>
       </form>  
       <hr>
@@ -787,31 +776,38 @@ function metaTextEventListener() {
       // Nur bei Input-Feld, nicht bei Textarea Enter abfangen
       if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
         e.preventDefault();
+
         const sanitizedValue = sanitizeInput(input.value);
         let index = input.dataset.index;
-        if (index < 0 || index >= allImages.length) { 
+        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+
+        if ( !isValidIndex || !sanitizedValue ) { 
           return;
         }
 
         // get the other value in 'meta-text' to save in case user has forgotten to press enter after change
-        if (input.tagName === "INPUT") { // prüfen, ob bei enter in input field auch noch die description aktualisiert werden soll
-          let otherValue = document.querySelector(".meta-description").value
-          if (allImages[index].Description !== otherValue) {
-            allImages[index].Description = otherValue;
+        let indices = index;
+        const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+
+        indexArray.forEach(index => {
+          if (input.tagName === "INPUT") { // prüfen, ob bei enter in input field auch noch die description aktualisiert werden soll
+            let otherValue = document.querySelector(".meta-description").value
+            if (allImages[index].Description !== otherValue) {
+              allImages[index].Description = otherValue;
+            }
+          } else { // prüfen, ob bei enter in textarea field auch noch der text aktualisiert werden soll
+            let otherValue = document.querySelector(".meta-title").value
+            if (allImages[index].Title !== otherValue) {
+              allImages[index].Title = otherValue;
+            }
           }
-        } else {       // prüfen, ob bei enter in textarea field auch noch der text aktualisiert werden soll
-          let otherValue = document.querySelector(".meta-title").value
-          if (allImages[index].Title !== otherValue) {
-            allImages[index].Title = otherValue;
-          }
-        }
-        
-        // schreibe die Daten in allImages
-        input.tagName === "INPUT" ? allImages[index].Title = sanitizedValue : void 0;
-        input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
-        allImages[index].status = 'meta-manually-changed';
-        
-        //console.log('saveMetadata:', input.previousElementSibling.textContent.trim(), sanitizedValue);
+          
+          // schreibe die Daten in allImages
+          input.tagName === "INPUT" ? allImages[index].Title = sanitizedValue : void 0;
+          input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
+          allImages[index].status = 'meta-manually-changed';
+        });
+
       }
     });
 });
@@ -821,14 +817,16 @@ function metaGPSEventListener() {
   
   document.querySelectorAll(".meta-gps").forEach(input => {
     input.addEventListener("keydown", e => {
-      // Nur bei GPS-Input-Feld, nicht bei Textarea Enter abfangen
+      // Nur bei GPS-Input-Feld, nicht bei Textarea Enter abfangen ------------------------
       if ( input.tagName === "INPUT" && input.type==="text" && e.key === "Enter") { // this is for type="text" so GPS-coordinates
         e.preventDefault();
         
-        let convertedValue = convertGps(input.value);
+        const convertedValue = convertGps(input.value);
+        let index = input.dataset.index; // possible values: "1" or "1, 2, 3, 4" or "4, 5, 6, 9" all in [0 ... allImages.length-1]
+        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
 
-        let index = input.dataset.index;
-        if (index < 0 || index >= allImages.length || !convertedValue) {
+        //if (index < 0 || index >= allImages.length || !convertedValue) {
+        if (!isValidIndex || !convertedValue) {
           // go back to the browser input and show an error message
           input.value = '';
           input.focus();
@@ -836,25 +834,22 @@ function metaGPSEventListener() {
           // TODO how to show a hint for the user here?
           return;
         } else if (convertedValue) {
-            // go back to the browser input and show an error message
+            // setze das input field auf den konvertierten wert, um die Übernahme anzuzeigen
             input.value = convertedValue.pos;
         }
 
         // schreibe die Daten in allImages
-        allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;
-        allImages[index].GPSLatitude = toDMS(convertedValue.lat); //convertedValue.lat;
-        allImages[index].GPSLatitudeRef = convertedValue.refLat;
-        allImages[index].GPSLongitude = toDMS(convertedValue.lon); //convertedValue.lon;
-        allImages[index].GPSLongitudeRef = convertedValue.refLon;
-        allImages[index].status = 'gps-manually-changed';
-        
-      } else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
+        updateAllImagesGPS(index, convertedValue);
+      } 
+      // für type="number" also Altitude und Bildrichtung -----------------------
+      else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
         e.preventDefault();
-        //const sanitizedValue = !Number.isNaN(parseFloat(input.value));
-        const sanitizedValue = input.className.includes('meta-altitd') ? validateAltitude(input.value) : validateDirection(input.value);
-
+        
+        const convertedValue = input.className.includes('meta-altitd') ? validateAltitude(input.value) : validateDirection(input.value);
         let index = input.dataset.index;
-        if (index < 0 || index >= allImages.length || !sanitizedValue) {
+        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+
+        if (!isValidIndex || !convertedValue) {
           // go back to the browser input and show an error message
           input.value = '';
           input.focus();
@@ -863,10 +858,15 @@ function metaGPSEventListener() {
           return;
         }
 
-        // schreibe die Daten in allImages
-        input.className.includes('meta-altitd') ? allImages[index].GPSAltitude = input.value : void 0;
-        input.className.includes('meta-imgdir') ? allImages[index].GPSImgDirection = input.value : void 0;
-        allImages[index].status = 'gps-manually-changed';
+        // schreibe die Daten in allImages für alle indexes
+        let indices = index;
+        const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
+  
+        indexArray.forEach(index => {
+          input.className.includes('meta-altitd') ? allImages[index].GPSAltitude = input.value : void 0;
+          input.className.includes('meta-imgdir') ? allImages[index].GPSImgDirection = input.value : void 0;
+          allImages[index].status = 'gps-manually-changed';
+        });
       }
     });
   });
@@ -972,124 +972,106 @@ function handleSaveButton() {
     
   // Füge einen Klick-Event-Listener hinzu  
   button.addEventListener('click', async function(event) {  
-    // Hier kannst du den Code platzieren, der ausgeführt wird, wenn der Button geklickt wird  
-    console.log('Button wurde geklickt!');  
-      
-    // Beispiel: Hole den data-index Wert für das Bild 
+          
+    // Beispiel: Hole den data-index Wert für das Bild / die Bilder 
     const index = event.target.dataset.index;  
-    console.log('Index:', index);  
-    
+    let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+    if (!isValidIndex) { return; } 
+
+    let indices = index;
+    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+       
     // get and validate all input fields for the metadata of the current image 
     // ---------------- GPS-POS -----------------------------------
     let input = document.querySelector('.meta-pos');
     let convertedValue = convertGps(input.value);
     let newStatusAfterSave = 'loaded-no-GPS';
-    let readablePos = '';
+    //let readablePos = '';
 
-    if (index < 0 || index >= allImages.length || !convertedValue) {
-      // go back to the browser input and show an error message
+    if ( !convertedValue) {
+      // go back to the browser input 
       input.value = '';
       input.focus();
       input.select();
       // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn falsch oder der user den wert abischtlich leer lassen will
       newStatusAfterSave = 'loaded-no-GPS';
-      // schreibe die Daten in allImages nur wenn der Wert korrekt ist
-      allImages[index].pos = '';
-      allImages[index].GPSLatitude = ''; //convertedValue.lat;
-      allImages[index].GPSLatitudeRef = '';
-      allImages[index].GPSLongitude = ''; //convertedValue.lon;
-      allImages[index].GPSLongitudeRef = '';
-      allImages[index].status = 'gps-manually-changed';
-      
+      // setze die Daten in allImages zurück 
+      updateAllImagesGPS(index, '');
+
     } else if (convertedValue) {
       // go back to the browser input and show an error message
       input.value = convertedValue.pos;
-      readablePos = convertedValue.pos;
+      //readablePos = convertedValue.pos;
       newStatusAfterSave = 'loaded-with-GPS';
       // schreibe die Daten in allImages nur wenn der Wert korrekt ist
-      allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;
-      allImages[index].GPSLatitude = toDMS(convertedValue.lat); //convertedValue.lat;
-      allImages[index].GPSLatitudeRef = convertedValue.refLat;
-      allImages[index].GPSLongitude = toDMS(convertedValue.lon); //convertedValue.lon;
-      allImages[index].GPSLongitudeRef = convertedValue.refLon;
-      allImages[index].status = 'gps-manually-changed';
+      updateAllImagesGPS(index, convertedValue);
     }
 
     // ----------------- ALTITUDE ----------------------------
     input = document.querySelector('.meta-altitd');
     let sanitizedValue = validateAltitude(input.value);
 
-    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+    if ( !sanitizedValue) {
       // go back to the browser input and show an error message
       input.value = '';
       input.focus();
       input.select();
       // TODO how to show a hint for the user here?
-      //return;
-    } else if (sanitizedValue) {
-        // go back to the browser input and show an error message
-        //input.value = (input.value);
     }
 
     // schreibe die Daten in allImages
-    allImages[index].GPSAltitude = input.value;
+    indexArray.forEach(index => { allImages[index].GPSAltitude = input.value; });
 
     // ------------------IMG DIRECTION ---------------------------
     input = document.querySelector('.meta-imgdir');
     sanitizedValue = validateDirection(input.value);
 
-    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+    if ( !sanitizedValue) {
       // go back to the browser input and show an error message
       input.value = '';
       input.focus();
       input.select();
       // TODO how to show a hint for the user here?
-      //return;
-    } else if (sanitizedValue) {
-        // go back to the browser input and show an error message
-        //input.value = input.value;
     }
 
     // schreibe die Daten in allImages
-    allImages[index].GPSImgDirection = input.value;
+    indexArray.forEach(index => { allImages[index].GPSImgDirection = input.value; });
 
     // --------------- TITLE ------------------------------
     input = document.querySelector('.meta-title');
     sanitizedValue = sanitizeInput(input.value);
 
-    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+    if ( !sanitizedValue) {
       // go back to the browser input and show an error message
       input.value = '';
       input.focus();
       input.select();
       // TODO how to show a hint for the user here?
-      //return;
     } else if (sanitizedValue) {
         // go back to the browser input and show an error message
         input.value = sanitizedValue;
     }
 
     // schreibe die Daten in allImages
-    allImages[index].Title = sanitizedValue;
+    indexArray.forEach(index => { allImages[index].Title = sanitizedValue; });
     
     // --------------- DESCRIPTION -----------------------------
     input = document.querySelector('.meta-description');
     sanitizedValue = sanitizeInput(input.value);
 
-    if (index < 0 || index >= allImages.length || !sanitizedValue) {
+    if ( !sanitizedValue) {
       // go back to the browser input and show an error message
       input.value = '';
       input.focus();
       input.select();
       // TODO how to show a hint for the user here?
-      //return;
     } else if (sanitizedValue) {
         // go back to the browser input and show an error message
         input.value = sanitizedValue;
     }
 
     // schreibe die Daten in allImages
-    allImages[index].Description = sanitizedValue;
+    indexArray.forEach(index => { allImages[index].Description = sanitizedValue; });
     
     // ---------------------------------------------------
     // write the data in the allImages array and save it finally to the file. reset the status. send the array to the backend.
@@ -1098,19 +1080,74 @@ function handleSaveButton() {
     console.log('result:', result);
     console.log('allImages:', allImages[index]); 
     
-    allImages[index].status = newStatusAfterSave;
+    indexArray.forEach(index => { allImages[index].status = newStatusAfterSave; });
     // reset the allimages[...].pos to the readible format for the internal use. TODO: This is not clean!
-    if ( newStatusAfterSave === 'loaded-with-GPS' ) {
-        allImages[index].pos = readablePos;
-    }
+    //if ( newStatusAfterSave === 'loaded-with-GPS' ) {
+    //    allImages[index].pos = readablePos;
+    //}
+
     // show the status in the UI
     if ( result=== 'done') {
-      document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + allImages[index].imagePath;
+      // join the image paths with //
+      let start = '';
+      indexArray.forEach(index => { start += allImages[index].imagePath + ' // '});
+      document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
     } else {
-      document.getElementById('write-meta-status').textContent = 'Saving failed' + ': ' + allImages[index].imagePath;
+      document.getElementById('write-meta-status').textContent = 'Saving failed !!!';
     }
   }); 
 }
+
+/**
+ * Returns an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not.
+ * @param {object[]} images - the array of images
+ * @param {number[]} indexes - the array of indexes of the images in the images array
+ * @param {string[]} keys - the array of property names of the images to check for identical values
+ * @param {string} multipleValue - the value to return if the values for a key are not identical
+ * @returns {object} - an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not
+ */
+function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue) {  
+    const result = {};  
+  
+    keys.forEach(key => {  
+        // Konvertiere alle Werte zu Strings  
+        let values = indexes.map(index => String(images[index][key]));  
+        let allIdentical = values.every(value => value === values[0]);  
+  
+        result[key] = allIdentical ? values[0] : multipleValue;  
+    });  
+  
+    return result;  
+}   
+
+function updateAllImagesGPS(indices, convertedValue = '') {  
+    // Splitte den String und konvertiere in ein Array von Zahlen  
+    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
+  
+    indexArray.forEach(index => {  
+        if (index < 0 || index >= allImages.length) {  
+            console.error(`Index ${index} ist außerhalb des Bereichs.`);  
+            return;  
+        }  
+        if ( convertedValue === '' ) {  
+            allImages[index].pos = '';  
+            allImages[index].GPSLatitude = '';  
+            allImages[index].GPSLatitudeRef = '';  
+            allImages[index].GPSLongitude = '';  
+            allImages[index].GPSLongitudeRef = '';  
+            allImages[index].status = 'gps-manually-changed';  
+            return;  
+        } else {
+          allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;  
+          allImages[index].GPSLatitude = toDMS(convertedValue.lat);  
+          allImages[index].GPSLatitudeRef = convertedValue.refLat;  
+          allImages[index].GPSLongitude = toDMS(convertedValue.lon);  
+          allImages[index].GPSLongitudeRef = convertedValue.refLon;  
+          allImages[index].status = 'gps-manually-changed';  
+        }
+    });  
+}  
+
   
 // Exporte oder Nutzung im Backend
 export { mainRenderer };
