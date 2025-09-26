@@ -157,6 +157,6 @@
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
   "skipImagesWithGPS": "true",
-  "ignoreGPXDate": "false",
+  "ignoreGPXDate": "true",
   "cameraModels": "all"
 }

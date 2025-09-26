@@ -34,6 +34,8 @@ class ThumbnailSlider {
   containerObserver = null;
   isFirefox = false;
   sumAspectRatios = 0;
+  lastSelectedIndex = -1;
+  activeIndexes = [];
   
   // options to pass to the constructor. not all are required. pass only the ones you wish to change.
   options = {
@@ -50,6 +52,7 @@ class ThumbnailSlider {
     active_brightness   : '1.05', // brightness if activate. other values are: 0.6, 0.95, 1.05 currently unused
     active_border_width : '2px',  // width of bottom border in px
     active_border_color : 'red', // Colour of bottom borderin CSS-colors
+    allowMultiSelect    : true, // allow multiple selection of thumbnails
   }; 
 
   /**
@@ -103,6 +106,49 @@ class ThumbnailSlider {
           {this.ele.classList.add('thumb_inner_centered');}
       });
     }
+
+    // Thumbnail Handler für Rechtsklick und Shift
+    for (let i=0; i < this.numberOfThumbnails; i++) {
+      // Links-/Rechtsklick + Shift
+      this.thumbnails[i].addEventListener('click', (e) => this.handleThumbClick(i, e) );
+      this.thumbnails[i].addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.handleThumbClick(i, e, true); // als Rechtsklick markieren
+      });
+    }
+  }
+
+  // Erweiterter Handler
+  handleThumbClick(index, event, isRightClick = false) {
+    if (!this.options.allowMultiSelect) {
+      // Standard Single-Klick
+      this.setActiveThumb(index);
+      this.activeIndexes = [index];
+      this.lastSelectedIndex = index;
+      return;
+    }
+    // Rechtsklick initialisiert Multi-Select-Modus
+    if (isRightClick) {
+      this.activeIndexes = [index];
+      this.setActiveThumb(this.activeIndexes);
+      this.lastSelectedIndex = index;
+      return;
+    }
+    // Shift + Klick: Bereichsauswahl von letzter zu neuer Auswahl
+    if (event.shiftKey && this.lastSelectedIndex > -1) {
+      let start = Math.min(this.lastSelectedIndex, index);
+      let end = Math.max(this.lastSelectedIndex, index);
+      this.activeIndexes = [];
+      for (let i = start; i <= end; i++) {
+        this.activeIndexes.push(i);
+      }
+      this.setActiveThumb(this.activeIndexes);
+      return;
+    }
+    // Einfacher Klick: Einzelbild auswählen und Multi-Select aufheben
+    this.activeIndexes = [index];
+    this.setActiveThumb(this.activeIndexes);
+    this.lastSelectedIndex = index;
   }
 
   /**
@@ -223,7 +269,7 @@ class ThumbnailSlider {
     
     if ( (Math.abs(posXDelta) < 5) ) {
       let thnumb = parseInt(e.composedPath()[1].id.replace('thumb','')) 
-      this.setActiveThumb(thnumb)
+      //this.setActiveThumb(thnumb)
     }
 
     document.removeEventListener('mousemove', this.mouseMoveHandler);
@@ -242,59 +288,69 @@ class ThumbnailSlider {
   }
 
   /**
-   * set the active thumbnail of the bar and trigger an event that this happened.
-   * @param {int} number active thumbnail number
-   */
-  setActiveThumb(number, caller='') {
-    // remove active class from every thumbnail
-    const laC = this.activeClass
-    this.ele.childNodes.forEach(function (node) { node.classList.remove(laC) })
-
-    // set active class and number
-    try{
-      this.thumbnails[number].classList.add(this.activeClass)
-    } catch (event) {
-      console.log(event)
-    }
-
-    // scroll into viewport of parent div.
-    let parentWidth = this.ele.offsetWidth; 
-    let xOffset = this.ele.getBoundingClientRect().left;
-
-    if (this.thumbnails[number].getBoundingClientRect().x - xOffset < 10) { // to left
-      let toLeft = this.thumbnails[number].getBoundingClientRect().x -xOffset;
-      let widthOfImageLeft = 0;
+  * Set the active thumbnail(s) of the bar and trigger an event that this happened.
+  * Unterstützt sowohl Einzel-Auswahl als auch Mehrfach-Auswahl (über activeIndexes).
+  * @param {int|Array} number Index des aktivierten Bildes oder Array mit mehreren Indexes
+  * @param {string} caller Optionaler Caller z.B. "slideChange"
+  */
+  setActiveThumb(number, caller = '') {
+    // Normalisiere number zu Array, falls Multi-Select aktiv ist (Option beachten)
+    // TODO: die Multi-Select-Funktion funktioniert nur, wenn der Index des ersten Bilder größer als der des 2. Bildes ist. Also von rechts nach links
+    // von links nach rechts funktioniert es nicht. Und die De-Selection funktionert bei Klick auf das ERSTE aktive Bild des aktiven Bereichs nicht!
+    let selectedIndexes = Array.isArray(number) ? number : [number];
     
-      if (number !== 0) {
-          widthOfImageLeft = this.getAspectRatio(number-1) * this.thumbnails[number].offsetHeight; 
-      }
-      this.ele.scrollBy({top:0, left: (toLeft - widthOfImageLeft - this.thumbOverflow), behavior:'smooth'}); 
-      
-    } else if(this.thumbnails[number].getBoundingClientRect().x + this.thumbnails[number].getBoundingClientRect().width > parentWidth) { // to right
-      let toLeft = this.thumbnails[number].getBoundingClientRect().x + this.thumbnails[number].getBoundingClientRect().width - parentWidth;
-      toLeft = toLeft - xOffset;
-      let widthOfImageRight = 0;
-      if (number !== this.numberOfThumbnails-1) {
-        widthOfImageRight = this.getAspectRatio(number+1) * this.thumbnails[number].offsetHeight; 
-      }
-      this.ele.scrollBy({top:0, left: (toLeft + widthOfImageRight + this.thumbOverflow), behavior:'smooth'}); 
+    // Entferne activeClass von jedem Thumbnail
+    for (let thumb of this.thumbnails) {
+      thumb.classList.remove(this.activeClass);
     }
-      
-    // trigger event for map and swiper-slider. 
-    const changed = new CustomEvent('thumbnailchange', {
-      detail: {
-          name: 'thumbnailchange',
-          newslide: number,
-          slider: this.number
+  
+    // Setze die activeClass für alle aktiven Indexes
+    selectedIndexes.forEach(idx => {
+      if (this.thumbnails[idx]) {
+        this.thumbnails[idx].classList.add(this.activeClass);
       }
     });
-    
-    if (this.currentActive !== number && caller !== 'slideChange') {
-      this.ele.parentElement.dispatchEvent(changed);
-      //console.log('Thmb-Class thumbnailchange: ', number)
+
+  // Scroll Handling für Multi-Select: z.B. führe das erste aktive Bild ins Viewport
+  if (selectedIndexes.length > 0) {
+    let scrollIdx = selectedIndexes[0];
+    let parentWidth = this.ele.offsetWidth;
+    let xOffset = this.ele.getBoundingClientRect().left;
+    if (this.thumbnails[scrollIdx].getBoundingClientRect().x - xOffset < 10) { // links
+      let toLeft = this.thumbnails[scrollIdx].getBoundingClientRect().x - xOffset;
+      let widthOfImageLeft = 0;
+      if (scrollIdx !== 0) {
+        widthOfImageLeft = this.getAspectRatio(scrollIdx - 1) * this.thumbnails[scrollIdx].offsetHeight;
+      }
+      this.ele.scrollBy({ top: 0, left: (toLeft - widthOfImageLeft - this.thumbOverflow), behavior: 'smooth' });
+    } else if (this.thumbnails[scrollIdx].getBoundingClientRect().x + this.thumbnails[scrollIdx].getBoundingClientRect().width > parentWidth) { // rechts
+      let toLeft = this.thumbnails[scrollIdx].getBoundingClientRect().x + this.thumbnails[scrollIdx].getBoundingClientRect().width - parentWidth;
+      toLeft = toLeft - xOffset;
+      let widthOfImageRight = 0;
+      if (scrollIdx !== this.numberOfThumbnails - 1) {
+        widthOfImageRight = this.getAspectRatio(scrollIdx + 1) * this.thumbnails[scrollIdx].offsetHeight;
+      }
+      this.ele.scrollBy({ top: 0, left: (toLeft + widthOfImageRight + this.thumbOverflow), behavior: 'smooth' });
     }
-    this.currentActive = number
   }
+  
+  // Custom Event auslösen für alle Fälle (optional)
+  // Für Multi-Select: gib transitionEvent für erstes Element aus
+  const changed = new CustomEvent('thumbnailchange', {
+    detail: {
+      name: 'thumbnailchange',
+      newslide: selectedIndexes[0],
+      slider: this.number,
+      selectedIndexes: selectedIndexes
+    }
+  });
+  if (this.currentActive !== selectedIndexes[0] && caller !== 'slideChange') {
+    this.ele.parentElement.dispatchEvent(changed);
+  }
+  // Aktualisiere den aktuellen Index (auch bei Mehrfachauswahl z.B. auf das erste ausgewählte)
+  this.currentActive = selectedIndexes[0];
+}
+
 
   /**
    * resize the thumbnail bar 

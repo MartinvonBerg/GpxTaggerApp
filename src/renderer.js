@@ -1,5 +1,12 @@
 import i18next from 'i18next';
-import Coordinates from "coordinate-parser";
+
+import { setDataForLanguage } from '../js/locales.js';
+import { getTrackInfo, convertGps, validateAltitude, validateDirection } from '../js/TrackAndGpsHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime } from '../js/ExifHandler.js';
+import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
+import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
+import { initAutocomplete } from '../js/autocomplete.js';
+
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
@@ -347,82 +354,35 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     });
     return;
   }
-}
 
-// Funktion zum manuellen Setzen von Daten für eine Sprache  
-function setDataForLanguage(language, data) {  
-    if (!i18next.services || !i18next.services.resourceStore || !i18next.services.resourceStore.data) {  
-      throw new Error('i18next is not properly initialized.');  
+  window.addEventListener('beforeunload', (event) => {  
+    // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
+    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
+    if (hasUnsavedChanges) {  
+        // Verhindere das automatische Schließen des Fensters  
+        event.preventDefault();
+         
+        window.myAPI.send('exit-with-unsaved-changes', allImages); 
     }  
-    
-    i18next.services.resourceStore.data[language] = {  
-      translation: data  
-    };  
+  });
 }
 
+// ----------- LEFT SIDEBAR -----------
+/** show the translated track info in the left sidebar
+ * 
+ * @global {object} pageVariables, document
+ * @param {number} NPoints 
+ * @param {object} trackInfo 
+ * @param {string} elementId
+ */
 function showTrackInfoTranslated(NPoints, trackInfo, elementId) { 
-  // Start- und Endzeit extrahieren und parsen
-  /*
-  const startStr = typeof trackInfo.duration.start === 'string' ? trackInfo.duration.start : (trackInfo.duration.start?.value || '');
-  const endStr = typeof trackInfo.duration.end === 'string' ? trackInfo.duration.end : (trackInfo.duration.end?.value || '');
-
-  const startDate = new Date(startStr);
-  const endDate = new Date(endStr);
-
-  // Datum, Zeit, Zeitzone
-  const datumStart = startDate.toLocaleDateString();
-  const startTime = startDate.toLocaleTimeString();
-  const datumEnd = endDate.toLocaleDateString();
-  const endTime = endDate.toLocaleTimeString();
-  const timeZoneName = startStr.match(/\(([^)]+)\)$/)?.[1] || startDate.toLocaleTimeString('de-DE', { timeZoneName: 'short' }).split(' ').pop();
-  const tZOffset = startDate.getTimezoneOffset();
-
-  // Dauer berechnen
-  const durationMs = endDate.getTime() - startDate.getTime();
-  const totalSeconds = Math.floor(durationMs / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const durationFormatted = `${hours.toString().padStart(2, '0')} ${i18next.t('hour')}:${minutes.toString().padStart(2, '0')} ${i18next.t('minute')}:${seconds.toString().padStart(2, '0')} ${i18next.t('second')}`;
-  */
-  let dateStrStart = trackInfo.duration.start; // liefert Tue Aug 09 2022 09:53:41 GMT+0200 (Mitteleuropäische Sommerzeit)
-  let dateObjStart = new Date(dateStrStart);
-  let datumStart = dateObjStart.toLocaleDateString(); // z.B. '09.08.2022'
-  let startTime = dateObjStart.toLocaleTimeString();  // z.B. '09:53:41'
-  let timeZoneName = dateStrStart.toString().match(/\(([^)]+)\)$/)?.[1] || dateObjStart.toLocaleTimeString('de-DE', { timeZoneName: 'short' }).split(' ').pop();
-  let tZOffset = dateObjStart.getTimezoneOffset(); // in minutes, e.g. -120 for GMT+2
-                
-  let dateStrEnd =  trackInfo.duration.end;
-  let dateObjEnd = new Date(dateStrEnd);
-  let datumEnd = dateObjEnd.toLocaleDateString(); // z.B. '09.08.2022'
-  let endTime = dateObjEnd.toLocaleTimeString();  // z.B. '09:53:41'
-  let durationFormatted = '';
-
-  if (datumEnd === datumStart) {
-    //duration = Math.round((dateObjEnd.getTime() - dateObjStart.getTime()) / 60000).toFixed(2); // in minutes
-    // Dauer in Millisekunden
-    let durationMs = dateObjEnd.getTime() - dateObjStart.getTime();
-    // Dauer in Sekunden
-    let totalSeconds = Math.floor(durationMs / 1000);
-    let hours = Math.floor(totalSeconds / 3600);
-    let minutes = Math.floor((totalSeconds % 3600) / 60);
-    let seconds = totalSeconds % 60;
-    // Format mit führenden Nullen
-    durationFormatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
+  
   // Objekt mit allen Angaben
-  const trackData = {
-    NPoints,
-    datumStart,
-    startTime,
-    datumEnd,
-    endTime,
-    timeZoneName,
-    tZOffset,
-    durationFormatted
-  };
+  const trackData = getTrackInfo(NPoints, trackInfo);
+  const { datumStart, datumEnd, startTime, endTime, durationFormatted, timeZoneName, tZOffset } = trackData;
 
   // Ausgabe im Frontend mit Übersetzung und Header in Fettdruck und horizontaler Linie am Ende
+  // TODO : passt hier eigentlich nicht rein!
   const el = document.getElementById(elementId);
   if (el) {
     el.innerHTML = `
@@ -441,36 +401,14 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
   return trackData;
 }
 
-function exifDateToJSLocaleDate(dt) {
-  // dt != img.DateTimeOriginal; // oder trackInfo.DateTimeOriginal
-
-  // Achtung: Monat ist in JS 0-basiert!
-  const dateObj = new Date(
-    dt.year,
-    dt.month - 1,
-    dt.day,
-    dt.hour,
-    dt.minute,
-    dt.second
-  );
-
-  // Ausgabe als Datum und Zeit
-  return dateObj.toLocaleDateString();
-}
-
-function exifDateTimeToJSTime(dt) {
-  const dateObj = new Date(
-    dt.year,
-    dt.month - 1,
-    dt.day,
-    dt.hour,
-    dt.minute,
-    dt.second
-  );
-
-  return dateObj.toLocaleTimeString() + ' ' + dt.zoneName;
-}
-
+/** show the image filters in the left sidebar
+ * 
+ * @param {Array} includedExts 
+ * @param {Array} cameraModels 
+ * @param {*} minDate 
+ * @param {*} maxDate 
+ * @returns {void}
+ */
 function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   const el = document.getElementById('image-filter-element');
   if (!el) return;
@@ -569,8 +507,16 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   });
 }
 
-// this function filters the images according to the settings in settings.imageFilter, settings.cameraModels, settings.ignoreGPXDate, settings.skipImagesWithGPS
-// and updates the global variable filteredImages
+/** this function filters the images according to the settings and 
+ * - sets the global variable filteredImages
+ * - shows the number of filtered images in the UI
+ *
+ * @global {object} filteredImages is updated by this function
+ * @global {object} allImages 
+ * @global {object} settings used : settings.imageFilter, settings.cameraModels, settings.ignoreGPXDate, settings.skipImagesWithGPS
+ * @global {object} trackInfo
+ * @returns {void}
+ */
 function filterImages () {
   let newfilteredImages = allImages;
   // apply the filters from the settings to the images in filteredImages and store the result in newfilteredImages
@@ -611,39 +557,13 @@ function filterImages () {
   }
 }
 
-function showLoadingPopup(message = 'Laden...') {
-  let popup = document.createElement('div');
-  popup.id = 'loading-popup';
-  popup.style.position = 'fixed';
-  popup.style.top = '0';
-  popup.style.left = '0';
-  popup.style.width = '100vw';
-  popup.style.height = '100vh';
-  popup.style.background = 'rgba(0,0,0,0.3)';
-  popup.style.display = 'flex';
-  popup.style.alignItems = 'center';
-  popup.style.justifyContent = 'center';
-  popup.style.zIndex = '9999';
-  popup.innerHTML = `
-    <div style="background:#fff;padding:2em 3em;border-radius:8px;box-shadow:0 2px 12px #333;font-size:1.3em;">
-      ${message}
-      <br><br>
-      <button id="abort-loading" style="padding:0.5em 1.5em;font-size:1em;">${i18next.t('abort') || 'Abort'}</button>
-    </div>
-  `;
-  document.body.appendChild(popup);
 
-  document.getElementById('abort-loading').onclick = () => {
-    if (typeof onAbort === 'function') onAbort();
-    hideLoadingPopup();
-  };
-}
-
-function hideLoadingPopup() {
-  const popup = document.getElementById('loading-popup');
-  if (popup) popup.remove();
-}
-
+// ----------- THUMBNAIL BAR -----------
+/** generate the HTML for a thumbnail bar under the main map pane 
+ * 
+ * @param {object} allImages 
+ * @returns {string} the HTML code for the thumbnail bar
+ */
 function generateThumbnailHTML(allImages) {
   // generates the HTML for a thumbnail image including EXIF data
   if (!allImages || allImages.length === 0) return '<div>No images available</div>';
@@ -693,8 +613,10 @@ function generateThumbnailHTML(allImages) {
   return html;
 }
 
-/**
- * Shows some metadata of the image in the right sidebar like it is done in LR 6.14
+
+// ----------- RIGHT SIDEBAR -----------
+/** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
+ * 
  * 
  * @global {object} allImages
  * @param {number} index - the index of the image in the allImages array
@@ -744,7 +666,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       <form id="gps-form">
         <div class="meta-section ">
           <label>GPS-Pos (Lat / Lon):</label> <!-- Lat = Breite von -90 .. 90, Lon = Länge von -180 .. 180 -->
-          <input type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
+          <input id="gpsInput" type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
           
           <label>Altitude (m ASL)</label>
           <input type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
@@ -756,10 +678,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       <hr>
       <div class="meta-section meta-text" data-index="${img.index}">
         <label>${i18next.t('title')}:</label>
-        <input type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
+        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
         
         <label>${i18next.t('description')}:</label>
-        <textarea class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
+        <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
       </div>
       <hr>
       <div class="meta-section">
@@ -768,6 +690,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <div id="write-meta-status"></div>
       </div>
     </div>`;
+
+    import (/* webpackChunkName: "awesomplete" */ 'awesomplete').then( () => {
+      initAutocomplete();
+    });
 };
 
 function metaTextEventListener() {
@@ -839,7 +765,7 @@ function metaGPSEventListener() {
         }
 
         // schreibe die Daten in allImages
-        updateAllImagesGPS(index, convertedValue);
+        allImages = updateAllImagesGPS(allImages, index, convertedValue);
       } 
       // für type="number" also Altitude und Bildrichtung -----------------------
       else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
@@ -872,100 +798,6 @@ function metaGPSEventListener() {
   });
 }
 
-function sanitizeInput(value) {
-  // Entfernt <script>, HTML-Tags etc.
-  const div = document.createElement("div");
-  div.textContent = value; 
-  return div.innerHTML; // Rückgabe ist sicherer Text
-}
-
-window.addEventListener('beforeunload', (event) => {  
-    // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
-    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
-    if (hasUnsavedChanges) {  
-        // Verhindere das automatische Schließen des Fensters  
-        event.preventDefault();
-         
-        window.myAPI.send('exit-with-unsaved-changes', allImages); 
-    }  
-});
-
-/**
- * Konvertiert einen GPS-String in Dezimalgrad und gibt Normalform zurück
- * Unterstützt: DD, DMS, DMM
- * @param {string} input - GPS Koordinaten
- * @returns {object|null} { lat, lon, refLat, refLon, pos } oder null bei Fehler
- */
-function convertGps(input) {
-  const isValidPosition = function(position) {
-    let error;
-    let isValid;
-    try {
-      isValid = true;
-      new Coordinates(position);
-      return isValid;
-    } catch (error) {
-      isValid = false;
-      return isValid;
-    }
-  };
-  
-  if (!isValidPosition(input)) {
-    return null; // passt überhaupt nicht ins Muster
-  }
-
-  try {
-    const c = new Coordinates(input);
-
-    const lat = c.getLatitude();
-    const lon = c.getLongitude();
-
-    const refLat = lat >= 0 ? "N" : "S";
-    const refLon = lon >= 0 ? "E" : "W";
-
-    const pos = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-
-    return {
-      lat: Math.abs(lat),
-      lon: Math.abs(lon),
-      refLat,
-      refLon,
-      pos,
-    };
-  } catch (e) {
-    return null;
-  }
-}
-
-function validateAltitude(inputValue) {  
-  const inputAsNumber = parseFloat(inputValue)
-  
-  if (isNaN(inputAsNumber)) {
-    return false;
-  } else {
-    return inputAsNumber >= -1000 && inputAsNumber <= 8888;
-  }  
-}
-
-function validateDirection(inputValue) {  
-  const inputAsNumber = parseFloat(inputValue)
-  
-  if (isNaN(inputAsNumber)) {
-    return false;
-  } else {
-    return inputAsNumber >= -360 && inputAsNumber <= 360;
-  }  
-}
-
-function toDMS(value) {
-  const abs = Math.abs(value);
-  const deg = Math.floor(abs);
-  const minFloat = (abs - deg) * 60;
-  const min = Math.floor(minFloat);
-  const sec = (minFloat - min) * 60;
-  return [deg, min, sec];
-}
-
 function handleSaveButton() {
    // Hole den Button mit der Klasse 'meta-button meta-accept'  
   const button = document.querySelector('.meta-button.meta-accept');  
@@ -996,7 +828,7 @@ function handleSaveButton() {
       // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn falsch oder der user den wert abischtlich leer lassen will
       newStatusAfterSave = 'loaded-no-GPS';
       // setze die Daten in allImages zurück 
-      updateAllImagesGPS(index, '');
+      allImages = updateAllImagesGPS(allImages, index, '');
 
     } else if (convertedValue) {
       // go back to the browser input and show an error message
@@ -1004,7 +836,7 @@ function handleSaveButton() {
       //readablePos = convertedValue.pos;
       newStatusAfterSave = 'loaded-with-GPS';
       // schreibe die Daten in allImages nur wenn der Wert korrekt ist
-      updateAllImagesGPS(index, convertedValue);
+      allImages = updateAllImagesGPS(allImages, index, convertedValue);
     }
 
     // ----------------- ALTITUDE ----------------------------
@@ -1098,56 +930,6 @@ function handleSaveButton() {
   }); 
 }
 
-/**
- * Returns an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not.
- * @param {object[]} images - the array of images
- * @param {number[]} indexes - the array of indexes of the images in the images array
- * @param {string[]} keys - the array of property names of the images to check for identical values
- * @param {string} multipleValue - the value to return if the values for a key are not identical
- * @returns {object} - an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not
- */
-function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue) {  
-    const result = {};  
-  
-    keys.forEach(key => {  
-        // Konvertiere alle Werte zu Strings  
-        let values = indexes.map(index => String(images[index][key]));  
-        let allIdentical = values.every(value => value === values[0]);  
-  
-        result[key] = allIdentical ? values[0] : multipleValue;  
-    });  
-  
-    return result;  
-}   
 
-function updateAllImagesGPS(indices, convertedValue = '') {  
-    // Splitte den String und konvertiere in ein Array von Zahlen  
-    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
-  
-    indexArray.forEach(index => {  
-        if (index < 0 || index >= allImages.length) {  
-            console.error(`Index ${index} ist außerhalb des Bereichs.`);  
-            return;  
-        }  
-        if ( convertedValue === '' ) {  
-            allImages[index].pos = '';  
-            allImages[index].GPSLatitude = '';  
-            allImages[index].GPSLatitudeRef = '';  
-            allImages[index].GPSLongitude = '';  
-            allImages[index].GPSLongitudeRef = '';  
-            allImages[index].status = 'gps-manually-changed';  
-            return;  
-        } else {
-          allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;  
-          allImages[index].GPSLatitude = toDMS(convertedValue.lat);  
-          allImages[index].GPSLatitudeRef = convertedValue.refLat;  
-          allImages[index].GPSLongitude = toDMS(convertedValue.lon);  
-          allImages[index].GPSLongitudeRef = convertedValue.refLon;  
-          allImages[index].status = 'gps-manually-changed';  
-        }
-    });  
-}  
-
-  
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

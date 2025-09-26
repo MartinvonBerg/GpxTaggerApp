@@ -145,6 +145,7 @@ class LeafletMap {
         this.setFullscreenButton()
 
         // TODO: add a simple image marker, existing will remain. Improve this!
+        // TODO: move this to a separate method and call it from constructor
         // - allow only one marker on the map at a time to set GPS Data for activated images
         let markers = []; // - create function 'removePositionMarker' for this marker
         let classThis = this.map;
@@ -154,12 +155,13 @@ class LeafletMap {
 				var lat = coord[0].split('(');
 				var lng = coord[1].split(')');
 				console.log("You clicked the map at LAT: " + lat[1] + " and LONG: " + lng[0]);
-				
+				// use myIcon3 with a red foto
                 const marker = L.marker(e.latlng)
                     .addTo(classThis)
-                    .bindPopup(`<div class="marker-popup"><h4>Custom Marker</h4><p>Latitude: ${e.latlng.lat.toFixed(4)}</p><p>Longitude: ${e.latlng.lng.toFixed(4)}</p></div>`);
+                    .bindPopup(`<div class="marker-popup"><h4>GPS Data:</h4><p>Latitude: ${e.latlng.lat.toFixed(4)}</p><p>Longitude: ${e.latlng.lng.toFixed(4)}</p></div>`);
                 
                 markers.push(marker);
+                // TODO dispatch an event to show that this marker was added
 			});
             
     }
@@ -619,7 +621,6 @@ class LeafletMap {
         return newbounds;
     }
 
-    // update marker on click
     mapFlyTo(coordinates=[0,0]) {
         this.map.flyTo( coordinates );
     }
