@@ -629,11 +629,9 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
   // get the identical values for the keys in img if multiple images are selected. img.file, img.extension, img.index
   if (selectedIndexes.length > 1) {
     // get the identical values for the keys in img or if not identical set them to i18next.t('multiple')
-    img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description'], i18next.t('multiple'));
+    img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description'], 'multiple');
     img.index = selectedIndexes.join(', ');
-    img.file = i18next.t('multiple');
-    img.extension = '';
-    DateTimeOriginalString = i18next.t('multiple');
+    DateTimeOriginalString = 'multiple';
   } else {
     DateTimeOriginalString = exifDateToJSLocaleDate(img.DateTimeOriginal) + ' ' + exifDateTimeToJSTime(img.DateTimeOriginal);
   }
@@ -798,6 +796,12 @@ function metaGPSEventListener() {
   });
 }
 
+/** Handles the metadata save button in the right sidebar
+ * do this only for active images so images that are activated in the thumbnail bar.
+ * get and validate all input fields for the metadata of the current image(s)
+ * 
+ * @global allImages
+ */
 function handleSaveButton() {
    // Hole den Button mit der Klasse 'meta-button meta-accept'  
   const button = document.querySelector('.meta-button.meta-accept');  
@@ -810,119 +814,169 @@ function handleSaveButton() {
     let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
     if (!isValidIndex) { return; } 
 
-    let indices = index;
+    let indices = index; // just to avoid confusion in the next line
     const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+    //let imagesToSave = indexArray.map(index => allImages[index]);
+    let imagesToSave = structuredClone(allImages); // deep clone of allImages. Filter the indexArray at the end of this function
        
-    // get and validate all input fields for the metadata of the current image 
     // ---------------- GPS-POS -----------------------------------
     let input = document.querySelector('.meta-pos');
     let convertedValue = convertGps(input.value);
     let newStatusAfterSave = 'loaded-no-GPS';
-    //let readablePos = '';
-
-    if ( !convertedValue) {
-      // go back to the browser input 
-      input.value = '';
-      input.focus();
-      input.select();
-      // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn falsch oder der user den wert abischtlich leer lassen will
-      newStatusAfterSave = 'loaded-no-GPS';
-      // setze die Daten in allImages zurück 
-      allImages = updateAllImagesGPS(allImages, index, '');
-
-    } else if (convertedValue) {
-      // go back to the browser input and show an error message
+    
+    if (convertedValue) { // input.value ist ein echter wert wie "47.123456, 11.123456"
+      // go back to the browser input and show the converted value and set the status
       input.value = convertedValue.pos;
-      //readablePos = convertedValue.pos;
       newStatusAfterSave = 'loaded-with-GPS';
-      // schreibe die Daten in allImages nur wenn der Wert korrekt ist
-      allImages = updateAllImagesGPS(allImages, index, convertedValue);
+      // schreibe die Daten in imagesToSave nur wenn der Wert korrekt ist
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, convertedValue);
     }
-
+    if (input.value === '') { // convertedValue ist null
+      // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn der user den wert abischtlich leer lassen will.
+      newStatusAfterSave = 'loaded-no-GPS';
+      // setze die Daten in imagesToSave zurück 
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, '');
+    }
+    if (input.value === 'multiple') { // convertedValue ist null
+      // lasse den Status der einzelnen Bilder unverändert.
+      newStatusAfterSave = null;
+      // setze die Daten in imagesToSave auf null damit nichts geschrieben wird. 
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
+    }
+    if ( !convertedValue && !(input.value === 'multiple' || input.value === '')) { // convertedValue ist null und der eingegeben wert sind keine gültigen koordinaten
+      input.value = 'invalid';
+      // lasse den Status der einzelnen Bilder unverändert.
+      newStatusAfterSave = null;
+      // setze die Daten in imagesToSave auf null damit nichts geschrieben wird. 
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
+    }
+    
     // ----------------- ALTITUDE ----------------------------
     input = document.querySelector('.meta-altitd');
     let sanitizedValue = validateAltitude(input.value);
+    let key = 'GPSAltitude';
 
-    if ( !sanitizedValue) {
-      // go back to the browser input and show an error message
-      input.value = '';
-      input.focus();
-      input.select();
-      // TODO how to show a hint for the user here?
+    if ( sanitizedValue) {
+      indexArray.forEach(index => { imagesToSave[index][key] = input.value; });
     }
-
-    // schreibe die Daten in allImages
-    indexArray.forEach(index => { allImages[index].GPSAltitude = input.value; });
-
+    if ( !sanitizedValue && input.value === '') {
+      indexArray.forEach(index => { imagesToSave[index][key] = ''; });
+    }
+    if ( !sanitizedValue && input.value !== '') {
+      // set the browser input field to invalid
+      input.value = -8888;
+      // TODO how to show a hint for the user here?
+      indexArray.forEach(index => { imagesToSave[index][key] = null; });
+    }
+    
+    
     // ------------------IMG DIRECTION ---------------------------
     input = document.querySelector('.meta-imgdir');
     sanitizedValue = validateDirection(input.value);
+    key = 'GPSImgDirection';
 
-    if ( !sanitizedValue) {
-      // go back to the browser input and show an error message
-      input.value = '';
-      input.focus();
-      input.select();
-      // TODO how to show a hint for the user here?
+    if ( sanitizedValue) {
+      indexArray.forEach(index => { imagesToSave[index][key] = input.value; });
     }
-
-    // schreibe die Daten in allImages
-    indexArray.forEach(index => { allImages[index].GPSImgDirection = input.value; });
+    if ( !sanitizedValue && input.value === '') {
+      indexArray.forEach(index => { imagesToSave[index][key] = ''; });
+    }
+    if ( !sanitizedValue && input.value !== '') {
+      // set the browser input field to invalid
+      input.value = -8888;
+      // TODO how to show a hint for the user here?
+      indexArray.forEach(index => { imagesToSave[index][key] = null; });
+    }
 
     // --------------- TITLE ------------------------------
     input = document.querySelector('.meta-title');
     sanitizedValue = sanitizeInput(input.value);
+    key = 'Title';
 
-    if ( !sanitizedValue) {
-      // go back to the browser input and show an error message
-      input.value = '';
-      input.focus();
-      input.select();
-      // TODO how to show a hint for the user here?
-    } else if (sanitizedValue) {
-        // go back to the browser input and show an error message
-        input.value = sanitizedValue;
+    if (sanitizedValue && input.value !== 'multiple') {
+      input.value = sanitizedValue;
+      indexArray.forEach(index => { imagesToSave[index][key] = sanitizedValue; });
     }
-
-    // schreibe die Daten in allImages
-    indexArray.forEach(index => { allImages[index].Title = sanitizedValue; });
+    if ( input.value === '') {
+      indexArray.forEach(index => { imagesToSave[index][key] = ''; });
+    }
+    if ( input.value === 'multiple') {
+      indexArray.forEach(index => { imagesToSave[index][key] = null; });
+    }
+    
     
     // --------------- DESCRIPTION -----------------------------
     input = document.querySelector('.meta-description');
     sanitizedValue = sanitizeInput(input.value);
+    key = 'Description';
 
-    if ( !sanitizedValue) {
-      // go back to the browser input and show an error message
-      input.value = '';
-      input.focus();
-      input.select();
-      // TODO how to show a hint for the user here?
-    } else if (sanitizedValue) {
-        // go back to the browser input and show an error message
-        input.value = sanitizedValue;
+    if (sanitizedValue && input.value !== 'multiple') {
+      input.value = sanitizedValue;
+      indexArray.forEach(index => { imagesToSave[index][key] = sanitizedValue; });
+    }
+    if ( input.value === '') {
+      indexArray.forEach(index => { imagesToSave[index][key] = ''; });
+    }
+    if ( input.value === 'multiple') {
+      indexArray.forEach(index => { imagesToSave[index][key] = null; });
     }
 
-    // schreibe die Daten in allImages
-    indexArray.forEach(index => { allImages[index].Description = sanitizedValue; });
     
     // ---------------------------------------------------
-    // write the data in the allImages array and save it finally to the file. reset the status. send the array to the backend.
+    // write the data and save it finally to the file. reset the status. send the array to the backend.
     // wait for the result as acknowledgement
-    const result = await window.myAPI.invoke('save-meta-to-image', allImages);
-    console.log('result:', result);
-    console.log('allImages:', allImages[index]); 
+    const selectedImages = indexArray.map(index => imagesToSave[index]);
+    const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
+    console.log('saving metadata with result:', result);
     
-    indexArray.forEach(index => { allImages[index].status = newStatusAfterSave; });
-    // reset the allimages[...].pos to the readible format for the internal use. TODO: This is not clean!
-    //if ( newStatusAfterSave === 'loaded-with-GPS' ) {
-    //    allImages[index].pos = readablePos;
-    //}
+    // set the status for the changed images to the new status
+    if (newStatusAfterSave !== null) {
+      // Iteriere über imagesToSave und setze den Status, wenn imageIndex übereinstimmt
+      imagesToSave.forEach(image => {
+        if (indexArray.includes(image.index)) {
+          image.status = newStatusAfterSave;
+        }
+      });
+    }
 
+    // TODO : write the result back to allImages global!
+    imagesToSave.forEach(updatedImage => {
+      const originalImage = allImages.find(img => img.index === updatedImage.index);
+      if (!originalImage) return;
+
+      const changedFields = [];
+
+      // GPS-Felder nur übernehmen, wenn pos !== null
+      if (updatedImage.pos !== null) {
+        const gpsFields = ["lat", "GPSLatitudeRef", "lng", "GPSLongitudeRef", "pos"];
+        gpsFields.forEach(field => {
+          if (updatedImage[field] !== null) {
+            originalImage[field] = updatedImage[field];
+            changedFields.push(field);
+          }
+        });
+      }
+
+      // Weitere Felder unabhängig von pos
+      const otherFields = ["GPSAltitude", "GPSImgDirection", "Title", "Description"];
+      otherFields.forEach(field => {
+        if (updatedImage[field] !== null) {
+          originalImage[field] = updatedImage[field];
+          changedFields.push(field);
+        }
+      });
+
+      // Log-Ausgabe, wenn etwas übernommen wurde
+      if (changedFields.length > 0) {
+        console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
+      }
+    });
+    
     // show the status in the UI
     if ( result=== 'done') {
       // join the image paths with //
       let start = '';
-      indexArray.forEach(index => { start += allImages[index].imagePath + ' // '});
+      indexArray.forEach(index => { start += imagesToSave[index].imagePath + ' // '});
       document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
     } else {
       document.getElementById('write-meta-status').textContent = 'Saving failed !!!';

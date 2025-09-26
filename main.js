@@ -261,7 +261,7 @@ function createWindow() {
             buttons: ['Save', 'Discard'],  
             defaultId: 0,  
             title: 'Unsaved Changes',  
-            message: 'You have unsaved changes. Do you want to save them? (NOT implemented yet!)',  
+            message: 'You have unsaved changes. Do you want to save them?',  
         };  
   
       dialog.showMessageBox(win, options).then((response) => {  
@@ -584,7 +584,8 @@ const sanitize = (value) => {
   if (typeof value !== "string") return undefined;  
   let v = value.trim();  
   v = sanitizeInput(v);  
-  return v.length > 0 ? v : undefined;  
+  return v;
+  //return v.length > 0 ? v : undefined;  
 };  
   
 function sanitizeInput(input) {  
@@ -610,7 +611,7 @@ async function writeMetadataOneImage(filePath, metadata) {
     writeData["EXIF:GPSImgDirection"] = imageDirection;
   }
 
-  // --- GPX position ---
+  // --- GPS position ---
   const pos = metadata.pos; // this is in different formats yet!
   if (pos!==undefined && pos!==null) {
     writeData["EXIF:GPSPosition"] = pos; // does exiftool automatically write the other fields?
@@ -629,14 +630,14 @@ async function writeMetadataOneImage(filePath, metadata) {
     writeData["EXIF:ImageDescription"] = title; // oder nur bei Title oder Description, s. Diskussion  
     writeData["XPTitle"] = title;  
   }  
-  
+  /*
   // --- CAPTION (Lightroom Description) ---  
   const caption = sanitize(metadata.Caption);  
   if (caption !== undefined && caption !== null) { 
     writeData["XMP-dc:Description"] = caption;  
     writeData["IPTC:Caption-Abstract"] = caption;  
   }  
-  
+  */
   // --- DESCRIPTION ---  
   const desc = sanitize(metadata.Description);  
   if (desc!== undefined && desc !== null) { 
@@ -645,7 +646,7 @@ async function writeMetadataOneImage(filePath, metadata) {
     // Optional: nur Description → EXIF:ImageDescription statt Title  
     // writeData["EXIF:ImageDescription"] = desc;  
   }  
-  
+  /*
   // --- COMMENT ---  
   const comment = sanitize(metadata.Comment);  
   if (comment!== undefined && comment !== null) { 
@@ -662,7 +663,7 @@ async function writeMetadataOneImage(filePath, metadata) {
       writeData["XPKeywords"] = kw.join(";"); // Windows-Format  
     }  
   }  
-  
+  */
   if (Object.keys(writeData).length > 0) {  
     await exiftool.write(filePath, writeData);  
     console.log("Metadaten erfolgreich geschrieben: ", writeData);  

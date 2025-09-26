@@ -24,6 +24,13 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
   
         result[key] = allIdentical ? values[0] : multipleValue;  
     });  
+
+    result.file = multipleValue;
+    result.extension = '';
+    
+    // set a fake wrong value for number inputs to indicate that the values are not identical
+    if (keys.includes('GPSAltitude') && result.GPSAltitude === multipleValue) result.GPSAltitude = -8888;
+    if (keys.includes('GPSImgDirection') && result.GPSImgDirection === multipleValue) result.GPSImgDirection = -8888;       
   
     return result;  
 }  
@@ -51,13 +58,20 @@ function updateAllImagesGPS(allImages, indices, convertedValue = '') {
             allImages[index].GPSLongitudeRef = '';  
             allImages[index].status = 'gps-manually-changed';  
             return;  
-        } else {
+        } else if ( convertedValue ) {
           allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;  
           allImages[index].GPSLatitude = toDMS(convertedValue.lat);  
           allImages[index].GPSLatitudeRef = convertedValue.refLat;  
           allImages[index].GPSLongitude = toDMS(convertedValue.lon);  
           allImages[index].GPSLongitudeRef = convertedValue.refLon;  
           allImages[index].status = 'gps-manually-changed';  
+        } else {
+          allImages[index].pos = null;  
+          allImages[index].GPSLatitude = null;  
+          allImages[index].GPSLatitudeRef = null;  
+          allImages[index].GPSLongitude = null;  
+          allImages[index].GPSLongitudeRef = null;  
+          allImages[index].status = 'leave-gps-unchanged';  
         }
     });
     return allImages;
