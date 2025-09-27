@@ -597,7 +597,6 @@ function sanitizeInput(input) {
   
 async function writeMetadataOneImage(filePath, metadata) {  
   const writeData = {};
-  // PRIO TODO: erlaube leere werte zu schreiben, wenn der anwender zurücksetzen will!
 
   // --- GPS Altitude ---
   const altitude = metadata.GPSAltitude;

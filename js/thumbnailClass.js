@@ -295,7 +295,7 @@ class ThumbnailSlider {
   */
   setActiveThumb(number, caller = '') {
     // Normalisiere number zu Array, falls Multi-Select aktiv ist (Option beachten)
-    // TODO: die Multi-Select-Funktion funktioniert nur, wenn der Index des ersten Bilder größer als der des 2. Bildes ist. Also von rechts nach links
+    // PRIO TODO: die Multi-Select-Funktion funktioniert nur, wenn der Index des ersten Bilder größer als der des 2. Bildes ist. Also von rechts nach links
     // von links nach rechts funktioniert es nicht. Und die De-Selection funktionert bei Klick auf das ERSTE aktive Bild des aktiven Bereichs nicht!
     let selectedIndexes = Array.isArray(number) ? number : [number];
     

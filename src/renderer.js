@@ -382,7 +382,6 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
   const { datumStart, datumEnd, startTime, endTime, durationFormatted, timeZoneName, tZOffset } = trackData;
 
   // Ausgabe im Frontend mit Übersetzung und Header in Fettdruck und horizontaler Linie am Ende
-  // TODO : passt hier eigentlich nicht rein!
   const el = document.getElementById(elementId);
   if (el) {
     el.innerHTML = `
@@ -939,7 +938,7 @@ function handleSaveButton() {
       });
     }
 
-    // TODO : write the result back to allImages global!
+    // write the result back to allImages global!
     imagesToSave.forEach(updatedImage => {
       const originalImage = allImages.find(img => img.index === updatedImage.index);
       if (!originalImage) return;
@@ -971,7 +970,7 @@ function handleSaveButton() {
         console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
       }
     });
-    
+
     // show the status in the UI
     if ( result=== 'done') {
       // join the image paths with //
