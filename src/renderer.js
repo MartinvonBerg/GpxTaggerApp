@@ -6,10 +6,12 @@ import { exifDateToJSLocaleDate, exifDateTimeToJSTime } from '../js/ExifHandler.
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
+import { generateThumbnailHTML } from '../js/thumbnnailClassWrapper.js';
 
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
+// HINT: Die Auslagerung von Left sidebar und right sidebar erfordert eine komplette Umarbeitung der Vewrwendung der folganden globalen Variablen.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -186,7 +188,24 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     */
     showImageFilters([], [], '', '', settings);
   });
-    
+  
+  /** Sets up a resizable sidebar pane using a mouse drag event on a resizer element.
+   *
+   * This function attaches `mousedown`, `mousemove`, and `mouseup` event listeners
+   * to the provided resizer element. It calculates the new width of the sidebar
+   * based on mouse movement and updates the corresponding sidebar's width.
+   * It also sends the updated sidebar widths to the main process via `window.myAPI.send`.
+   *
+   * @function setupResizablePane
+   * @param {HTMLElement} resizer - The DOM element acting as the drag handle for resizing.
+   * @param {'left'|'right'} direction - The direction of the sidebar to resize ('left' or 'right').
+   *
+   * @global {Document} document - Used to access and manipulate DOM elements and attach event listeners.
+   * @global window.myAPI - Electron's exposed API for IPC communication with the main process.
+   *
+   * @example
+   * setupResizablePane(document.getElementById('left-resizer'), 'left');
+   */
   function setupResizablePane(resizer, direction) {  
     let isResizing = false;  
     
@@ -221,7 +240,24 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       document.addEventListener('mouseup', mouseUpHandler);  
     });  
   }  
-    
+
+  /** Sets up a horizontal sidebar pane using a mouse drag event on a resizer element.
+   *
+   * This function attaches `mousedown`, `mousemove`, and `mouseup` event listeners
+   * to the provided resizer element. It calculates the new height of the sidebar
+   * based on mouse movement and updates the corresponding sidebar's height.
+   * It also sends the updated sidebar heights to the main process via `window.myAPI.send`.
+   *
+   * @function setupHorizontalResizablePane
+   * @param {HTMLElement} resizer - The DOM element acting as the drag handle for resizing.
+   * @param {'top'|'bottom'} position - The position of the sidebar to resize ('top' or 'bottom').
+   *
+   * @global {Document} document - Used to access and manipulate DOM elements and attach event listeners.
+   * @global window.myAPI - Electron's exposed API for IPC communication with the main process.
+   *
+   * @example
+   * setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'top');
+   */
   function setupHorizontalResizablePane(resizer, position) {  
     let isResizing = false;  
     
@@ -355,6 +391,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     return;
   }
 
+  // TODO: hat sich das Verhalten beim Beenen geändert, weil diese Funktion nach Innen gezogen wurde?
   window.addEventListener('beforeunload', (event) => {  
     // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
     const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
@@ -556,67 +593,10 @@ function filterImages () {
   }
 }
 
-
-// ----------- THUMBNAIL BAR -----------
-/** generate the HTML for a thumbnail bar under the main map pane 
- * 
- * @param {object} allImages 
- * @returns {string} the HTML code for the thumbnail bar
- */
-function generateThumbnailHTML(allImages) {
-  // generates the HTML for a thumbnail image including EXIF data
-  if (!allImages || allImages.length === 0) return '<div>No images available</div>';
-  // HTML should be like this:
-  /*
-  <div oncontextmenu="return false;" class="thumb_wrapper" style="height:75px;margin-top:5px">
-    <div id="thumb_inner_0" class="thumb_inner">
-        <div class="thumbnail_slide" id="thumb0" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/edinburgh_2018_01_gogh-150x150.avif"
-                alt="Image Thumbnail 1 for Slider 0 operation"></div>
-        <div class="thumbnail_slide" id="thumb1" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/edinburgh-2018-01-Monet1-150x150.avif"
-                alt="Image Thumbnail 2 for Slider 0 operation"></div>
-        <div class="thumbnail_slide" id="thumb2" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240302_072237288-150x150.avif"
-                alt="Image Thumbnail 3 for Slider 0 operation"></div>
-        <div class="thumbnail_slide" id="thumb3" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/MG_2049-150x150.avif"
-                alt="Image Thumbnail 4 for Slider 0 operation"></div>
-        <div class="thumbnail_slide" id="thumb4" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240616_124123117-150x150.avif"
-                alt="Image Thumbnail 5 for Slider 0 operation"></div>
-        <div class="thumbnail_slide" id="thumb5" draggable="false"><img decoding="async" loading="lazy"
-                class="th_wrap_0_img" draggable="false" style="margin-left:2px;margin-right:2px" height="75" width="75"
-                src="http://localhost/wordpress/wp-content/uploads/test3/PXL_20240714_1527431402-150x150.avif"
-                alt="Image Thumbnail 6 for Slider 0 operation"></div>
-    </div>
-  </div>
-  */
-  let html = '<div class="thumb_wrapper"><div id="thumb_inner_0" class="thumb_inner">';
-  allImages.forEach( (img, index) => {
-    if (img.thumbnail == img.imagePath) {
-      img.src = img.imagePath;
-    } else {
-      img.src = img.thumbnail;
-    }
-    html += `<div class="thumbnail_slide" id="thumb${index}" draggable="false">
-        <img decoding="async" loading="lazy" class="th_wrap_0_img" draggable="false" 
-          src="${img.src}" alt="Thumbnail ${index + 1}"></div>`;
-  });
-  html += '</div></div>';
-  return html;
-}
-
-
 // ----------- RIGHT SIDEBAR -----------
 /** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
  * 
- * 
+ * TODO: some translations are missing
  * @global {object} allImages
  * @param {number} index - the index of the image in the allImages array
  */
@@ -693,6 +673,15 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
     });
 };
 
+/** Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
+ * 
+ * On Enter key press, the input value is sanitized and validated.
+ * If the index is valid and the sanitized value is not empty, the value is saved in allImages.
+ * Additionally, the corresponding other value in 'meta-text' is saved in case the user has forgotten to press enter after change.
+ * Finally, the status of the image is set to 'meta-manually-changed'.
+ * @global {object} allImages
+ * @returns {void} void in case of index out of range of allImages.
+ */
 function metaTextEventListener() {
   document.querySelectorAll(".meta-title, .meta-description").forEach(input => {
     input.addEventListener("keydown", e => {
@@ -730,12 +719,19 @@ function metaTextEventListener() {
           input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
           allImages[index].status = 'meta-manually-changed';
         });
-
       }
     });
-});
+  });
 }
 
+/** Listens for Enter key press in text input fields for GPS coordinates and altitude in right sidebar.
+ * 
+ * On Enter key press, the input value is sanitized and validated.
+ * If the index is valid and the sanitized value is not empty, the value is saved in allImages.
+ * Additionally, the status of the image is set to 'gps-manually-changed'.
+ * @global {object} allImages
+ * @returns {void} void in case of index out of range of allImages.
+ */
 function metaGPSEventListener() {
   
   document.querySelectorAll(".meta-gps").forEach(input => {
@@ -799,7 +795,8 @@ function metaGPSEventListener() {
  * do this only for active images so images that are activated in the thumbnail bar.
  * get and validate all input fields for the metadata of the current image(s)
  * 
- * @global allImages
+ * @global {object} allImages
+ * @returns {void} void in case of index out of range of allImages.
  */
 function handleSaveButton() {
    // Hole den Button mit der Klasse 'meta-button meta-accept'  
@@ -982,7 +979,6 @@ function handleSaveButton() {
     }
   }); 
 }
-
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

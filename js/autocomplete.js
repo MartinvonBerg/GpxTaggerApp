@@ -16,20 +16,20 @@ function initAutocomplete() {
 
   // Helper zum Hinzufügen von Werten in die History
   function addToHistory(list, value) {
-  value = value.trim();
-  if (!value) return list;
+    value = value.trim();
+    if (!value) return list;
 
-  // doppelte vermeiden
-  if (list.includes(value)) {
-      // bestehenden Wert nach vorne ziehen
-      list = list.filter(v => v !== value);
-  }
+    // doppelte vermeiden
+    if (list.includes(value)) {
+        // bestehenden Wert nach vorne ziehen
+        list = list.filter(v => v !== value);
+    }
 
-  // vorne einfügen
-  list.unshift(value);
+    // vorne einfügen
+    list.unshift(value);
 
-  // max 10 Werte behalten
-  return list.slice(0, 10);
+    // max 10 Werte behalten
+    return list.slice(0, 10);
   }
 
   // Title Autocomplete

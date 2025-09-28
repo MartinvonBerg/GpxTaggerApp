@@ -37,7 +37,6 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
 
 /** update the allImages array to convertedValue which might 
  * 
- * @global {object} allImages
  * @param {string} indices an string of image indices like "1, 2, 3, 4" or "1" 
  * @param {string} convertedValue '' or object with { lat, lon, refLat, refLon } as GPS coordinates
  */
