@@ -39,6 +39,7 @@ class LeafletMap {
     phpmapheight = 0;
     maxZoomValue = 19; // static ?
     zpadding = [30, 30]; // static ?
+    posMarkers = [];
 
     // from defMapAndChartVar
     //showalltracks = false; // for elevation
@@ -142,28 +143,10 @@ class LeafletMap {
         //------- Magnifying glass, fullscreen, Image-Marker und Base-Layer-Change handling --------------------------------
         // create scale control top left // for mobile: zoom deactivated. use fingers!
         this.setMapControls();
-        this.setFullscreenButton()
+        this.setFullscreenButton();
 
-        // TODO: add a simple image marker, existing will remain. Improve this!
-        // TODO: move this to a separate method and call it from constructor
-        // - allow only one marker on the map at a time to set GPS Data for activated images
-        let markers = []; // - create function 'removePositionMarker' for this marker
-        let classThis = this.map;
-        this.map.on('click', 
-			function(e){
-				var coord = e.latlng.toString().split(',');
-				var lat = coord[0].split('(');
-				var lng = coord[1].split(')');
-				console.log("You clicked the map at LAT: " + lat[1] + " and LONG: " + lng[0]);
-				// use myIcon3 with a red foto
-                const marker = L.marker(e.latlng)
-                    .addTo(classThis)
-                    .bindPopup(`<div class="marker-popup"><h4>GPS Data:</h4><p>Latitude: ${e.latlng.lat.toFixed(4)}</p><p>Longitude: ${e.latlng.lng.toFixed(4)}</p></div>`);
-                
-                markers.push(marker);
-                // TODO dispatch an event to show that this marker was added
-			});
-            
+        // create Single Position Markeres
+        this.createSinglePositionMarker();
     }
 
     setBounds(bds) {
@@ -623,6 +606,72 @@ class LeafletMap {
 
     mapFlyTo(coordinates=[0,0]) {
         this.map.flyTo( coordinates );
+    }
+    /*
+    createSinglePositionMarker() {
+        
+        // - allow only one marker on the map at a time to set GPS Data for activated images : remove old marker and add new marker
+        // ??????? this.map.removeLayer(this.posMarkers[0]);
+        
+        let classThis = this.map;
+        this.map.on('click', 
+			function(e){
+				var coord = e.latlng.toString().split(',');
+				var lat = coord[0].split('(');
+				var lng = coord[1].split(')');
+				console.log("You clicked the map at LAT: " + lat[1] + " and LONG: " + lng[0]);
+				// use myIcon3 with a red foto
+                const marker = L.marker(e.latlng)
+                    .addTo(classThis)
+                    .bindPopup(`<div class="marker-popup"><h4>GPS Data:</h4><p>Latitude: ${e.latlng.lat.toFixed(4)}</p><p>Longitude: ${e.latlng.lng.toFixed(4)}</p></div>`);
+                
+                // add marker to array to remove on generation of a new marker. Finally to achieve that only one of these markers is shown on the map
+                classThis.posMarkers[0] = marker; // is it correct?
+                // TODO dispatch an event to show that this marker was added
+			});
+    }
+    */
+   createSinglePositionMarker() {
+    
+    // Entferne vorherige Event-Listener, um Mehrfachregistrierung zu vermeiden
+    this.map.off('click');
+
+    // Füge neuen Click-Listener hinzu
+    let classThis = this;
+    let classMap = this.map;
+
+    this.map.on('click', function(e) {
+        // Entferne vorhandenen Marker, falls vorhanden
+        if (classThis.posMarkers.length > 0) {
+            classMap.removeLayer(classThis.posMarkers[0]);
+            classThis.posMarkers = []; // Leere das Array
+        }
+
+        // Erstelle neuen Marker
+        const marker = L.marker(e.latlng, {
+            icon: classThis.myIcon3 // Falls du ein benutzerdefiniertes Icon verwenden willst
+        })
+        .addTo(classMap)
+        .bindPopup(`
+            <div class="marker-popup">
+                <h4>GPS Data:</h4>
+                <p>Latitude: ${e.latlng.lat.toFixed(4)}</p>
+                <p>Longitude: ${e.latlng.lng.toFixed(4)}</p>
+            </div>
+        `);
+
+        // Speichere den neuen Marker
+        classThis.posMarkers.push(marker);
+
+        // TODO: Dispatch eines Events, z. B. mit CustomEvent
+        const markerAddedEvent = new CustomEvent('singlePosMarkerAdded', {
+            detail: {
+                lat: e.latlng.lat,
+                lng: e.latlng.lng
+            }
+        });
+        classMap._container.dispatchEvent(markerAddedEvent); // oder ein anderes Ziel
+        });
     }
 
 }

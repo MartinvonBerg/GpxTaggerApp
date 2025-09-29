@@ -349,7 +349,17 @@ class ThumbnailSlider {
   }
   // Aktualisiere den aktuellen Index (auch bei Mehrfachauswahl z.B. auf das erste ausgewählte)
   this.currentActive = selectedIndexes[0];
-}
+  }
+
+  getActiveThumbs() {
+    let activeThumbs = [];
+    for (let thumb of this.thumbnails) {
+      if (thumb.classList.contains(this.activeClass)) {
+        activeThumbs.push(thumb.id); // gives ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
+      }
+    }
+    return activeThumbs;
+  }
 
 
   /**

@@ -1,7 +1,7 @@
 import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
-import { convertGps, validateAltitude, validateDirection } from '../js/TrackAndGpsHandler.js';
+import { convertGps, validateAltitude, validateDirection, getElevation } from '../js/TrackAndGpsHandler.js';
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
@@ -235,6 +235,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         metaTextEventListener();
         metaGPSEventListener();
         handleSaveButton();
+        mapPosMarkerEventListener('map0',th);
 
         document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
           
@@ -471,7 +472,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
           <input id="gpsInput" type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
           
           <label>Altitude (m ASL)</label>
-          <input type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
+          <input id="altitudeInput" type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
 
           <label>Direction:</label>
           <input type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
@@ -615,6 +616,58 @@ function metaGPSEventListener() {
     });
   });
 }
+
+
+/**
+ * Event listener for the 'singlePosMarkerAdded' event on a map.
+ * This event is triggered when a single position marker is added to the map.
+ * @param {string} mapId - The id of the map container element.
+ * @param {object} thumbsClass - The ThumbnailSlider class.
+ * @returns {void}
+ */
+function mapPosMarkerEventListener(mapId, thumbsClass) {
+    const mapContainerElement = document.getElementById(mapId);
+
+    mapContainerElement.addEventListener('singlePosMarkerAdded', function(event) {
+        const { lat, lng } = event.detail;
+        const convertedValue = convertGps(`${lat}, ${lng}`);
+        let setHeight = 'true'; // TODO move this to a setting
+
+        
+        
+        // get active thumbs, check if these have the same CreateDate?
+        let activeThumbs = thumbsClass.getActiveThumbs();
+        
+        // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
+        let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
+        let index = indexArray.join(',');
+        
+        // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
+        // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
+        let input =  document.getElementById('gpsInput');
+        let inputIds = input.dataset.index.replace(/\s+/g, "");
+        
+        if (index === inputIds) {
+          input.value = convertedValue.pos;
+        }
+
+        if (index === inputIds && setHeight === 'true') {
+          getElevation(lat, lng).then(height => {
+            input = document.getElementById('altitudeInput');
+            input.value = validateAltitude(height) ? height : '';
+            let key = 'GPSAltitude';
+            if ( validateAltitude(height)) {
+              indexArray.forEach(index => { allImages[index][key] = input.value; });
+            }
+          })
+        }
+
+        
+        // set the allImages array for these images
+        allImages = updateAllImagesGPS(allImages, index, convertedValue);
+    });
+}
+
 
 /** Handles the metadata save button in the right sidebar
  * do this only for active images so images that are activated in the thumbnail bar.

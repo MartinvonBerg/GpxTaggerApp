@@ -1,12 +1,12 @@
 {
-  "width": 2081,
+  "width": 2211,
   "height": 1126,
-  "x": 426,
-  "y": 79,
+  "x": 298,
+  "y": 76,
   "topBarHeight": 50,
   "bottomBarHeight": 200,
   "leftSidebarWidth": 356,
-  "rightSidebarWidth": 487,
+  "rightSidebarWidth": 342,
   "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images\\test-Bilder2",
   "extensions": [

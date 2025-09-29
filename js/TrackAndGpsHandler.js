@@ -155,4 +155,18 @@ function toDMS(value) {
   return [deg, min, sec];
 }
 
-export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection };
+async function getElevation(lat, lon) {
+    const url = `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Elevation API request failed");
+        const data = await response.json();
+        return data.results[0].elevation; // Höhe in Metern
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Höhe:", error);
+        return null;
+    }
+}
+
+
+export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation };
