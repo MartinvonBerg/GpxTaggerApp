@@ -3,6 +3,7 @@
  * Autocomplete for title and description
  * @link https://projects.verou.me/awesomplete/
  */
+// TODO: Ersatz mit https://tarekraafat.github.io/autoComplete.js/#/ oder wieder entfernen
 
 import 'awesomplete/awesomplete.css';
 

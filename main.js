@@ -48,7 +48,15 @@ app.whenReady().then(() => {
       {    
         label: t('file'),  
         submenu: [    
-          { label: t('reload'), role: 'reload' },  
+          { label: t('reload'), role: 'reload' }, // TODO: check if this is required, it is just for testing
+          { label: t('reloadData'),
+              click: () => {
+                // IPC an Renderer senden, um Daten neu zu laden
+                if (win) {
+                  win.webContents.send('reload-data');
+                }
+              }
+          }, 
           { label: t('quit'), role: 'quit' }  
         ]    
       },  

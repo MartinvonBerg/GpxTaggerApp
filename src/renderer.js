@@ -1,25 +1,33 @@
 import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
-import { getTrackInfo, convertGps, validateAltitude, validateDirection } from '../js/TrackAndGpsHandler.js';
+import { convertGps, validateAltitude, validateDirection } from '../js/TrackAndGpsHandler.js';
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
 import { generateThumbnailHTML } from '../js/thumbnnailClassWrapper.js';
+import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
+import { showgpx } from '../js/mapAndTrackHandler.js';
 
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
-// HINT: Die Auslagerung von Left sidebar und right sidebar erfordert eine komplette Umarbeitung der Vewrwendung der folganden globalen Variablen.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
 let trackInfo = {};
 
 function mainRenderer (window, document, customDocument=null, win=null, vars=null) {
-  window.pageVarsForJs = []; // Global array to store variables for JS 
-  let allMaps = [0];
+  window.pageVarsForJs = []; // Global array to store variables for JS.
+  let allMaps = [];
+  // HINT: Die Auslagerung von Left sidebar und right sidebar erfordert eine komplette Umarbeitung der Vewrwendung der folganden globalen Variablen.
+  // zur Vorbereitung werden die globalen Variablen in die Window Variable geschrieben. Damit sind sie global verfügbar.
+  window.allMaps = allMaps; // Global array to store allMaps for JS.
+  window.settings = settings;
+  window.filteredImages = filteredImages;
+  window.allImages = allImages;
+  window.trackInfo = trackInfo;
   
 
   document.addEventListener('DOMContentLoaded', () => {  
@@ -29,8 +37,18 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'bottom');  
   });
     
-  window.myAPI.receive('load-settings', (loadedSettings) => {  
-    settings = loadedSettings;
+  window.myAPI.receive('load-settings', (loadedSettings) => {
+    // settings loader
+    /** Loads user settings from a JSON file and applies them to the application.
+     * 
+     * @global {object} document
+     * @global {object} pageVarsForJs (global to 'fake' the old PHP output variables in the HTMl page code)
+     * @global {object} settings is set by this function to the loaded settings to have them available globally.
+     * @global {object} allMaps[0] is set by this function to an LeafletChartJs instance.
+     * @requires i18next, setDataForLanguage, showgpx
+     * function loadSettings (settings, loadedSettings, allMaps) {..}
+     */
+    settings = loadedSettings; // set the global settings variable with the loaded settings!
     const topBar = document.getElementById('top-bar');
     const bottomBar = document.getElementById('bottom-bar');  
     const leftSidebar = document.getElementById('left-sidebar');  
@@ -72,14 +90,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.gpxPath) {
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-      showgpx(settings.gpxPath);
-    }
-    if (settings.imagePath) {
-      const gpxPathElement = document.getElementById('img-path');
-      if (gpxPathElement) {
-        //gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
-      }
-      // process and show images from the folder, mind the filter
+      showgpx(allMaps, settings.gpxPath);
     }
   });
 
@@ -87,7 +98,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     settings.gpxPath = gpxPath;
     pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
     pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-    showgpx(gpxPath).then( () => {
+    showgpx(allMaps, gpxPath).then( () => {
       filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
     });
   });
@@ -188,181 +199,28 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     */
     showImageFilters([], [], '', '', settings);
   });
-  
-  /** Sets up a resizable sidebar pane using a mouse drag event on a resizer element.
-   *
-   * This function attaches `mousedown`, `mousemove`, and `mouseup` event listeners
-   * to the provided resizer element. It calculates the new width of the sidebar
-   * based on mouse movement and updates the corresponding sidebar's width.
-   * It also sends the updated sidebar widths to the main process via `window.myAPI.send`.
-   *
-   * @function setupResizablePane
-   * @param {HTMLElement} resizer - The DOM element acting as the drag handle for resizing.
-   * @param {'left'|'right'} direction - The direction of the sidebar to resize ('left' or 'right').
-   *
-   * @global {Document} document - Used to access and manipulate DOM elements and attach event listeners.
-   * @global window.myAPI - Electron's exposed API for IPC communication with the main process.
-   *
-   * @example
-   * setupResizablePane(document.getElementById('left-resizer'), 'left');
+
+  window.myAPI.receive('reload-data', async () => {  
+    console.log('Reload Data command received');
+    // reload the data here
+    // TODO: use it correctly or remove it. would require: re-read images from folder on reload (rebuild allImages) and re-apply settings, reset allMaps.
+    // Currently solved with a reload of the whole app
+    //import(/* webpackChunkName: "applySettings" */'../js/applySettingsHandler.js').then( (applySettings) => {
+    //  applySettings.applySettings(settings);
+    //})
+  });
+
+  /**
+   * Generates and shows the thumbnails for the images in the thumbnail pane below the map.
+   * Activates the first thumbnail and shows its metadata in the right sidebar.
+   * Activates listeners for the thumbnail change event, which shows the metadata of the newly selected image in the right sidebar.
+   * 
+   * HINT: This function was not moved to an ES6 module because of its interaction with the right sidebar and its events.
+   * 
+   * @param {string} HTMLElementID - ID of the HTML element where the thumbnails should be generated
+   * @param {array} allImages - Array of all images, which should be shown as thumbnails
    */
-  function setupResizablePane(resizer, direction) {  
-    let isResizing = false;  
-    
-    resizer.addEventListener('mousedown', (e) => {  
-      isResizing = true;  
-      document.body.style.cursor = 'ew-resize';  
-    
-      const mouseMoveHandler = (event) => {  
-        if (!isResizing) return;  
-    
-        const sidebar = direction === 'left' ? document.getElementById('left-sidebar') : document.getElementById('right-sidebar');  
-        const newWidth = direction === 'left' ? event.clientX : window.innerWidth - event.clientX;  
-    
-        if (newWidth > 100 && newWidth < window.innerWidth - 200) {  
-          sidebar.style.width = `${newWidth}px`;  
-    
-          window.myAPI.send('update-sidebar-width', {  
-            leftSidebarWidth: document.getElementById('left-sidebar').offsetWidth,  
-            rightSidebarWidth: document.getElementById('right-sidebar').offsetWidth  
-          });  
-        }  
-      };  
-    
-      const mouseUpHandler = () => {  
-        isResizing = false;  
-        document.body.style.cursor = 'default';  
-        document.removeEventListener('mousemove', mouseMoveHandler);  
-        document.removeEventListener('mouseup', mouseUpHandler);  
-      };  
-    
-      document.addEventListener('mousemove', mouseMoveHandler);  
-      document.addEventListener('mouseup', mouseUpHandler);  
-    });  
-  }  
-
-  /** Sets up a horizontal sidebar pane using a mouse drag event on a resizer element.
-   *
-   * This function attaches `mousedown`, `mousemove`, and `mouseup` event listeners
-   * to the provided resizer element. It calculates the new height of the sidebar
-   * based on mouse movement and updates the corresponding sidebar's height.
-   * It also sends the updated sidebar heights to the main process via `window.myAPI.send`.
-   *
-   * @function setupHorizontalResizablePane
-   * @param {HTMLElement} resizer - The DOM element acting as the drag handle for resizing.
-   * @param {'top'|'bottom'} position - The position of the sidebar to resize ('top' or 'bottom').
-   *
-   * @global {Document} document - Used to access and manipulate DOM elements and attach event listeners.
-   * @global window.myAPI - Electron's exposed API for IPC communication with the main process.
-   *
-   * @example
-   * setupHorizontalResizablePane(document.getElementById('bottom-resizer'), 'top');
-   */
-  function setupHorizontalResizablePane(resizer, position) {  
-    let isResizing = false;  
-    
-    resizer.addEventListener('mousedown', (e) => {  
-      isResizing = true;  
-      document.body.style.cursor = 'ns-resize';  
-    
-      const mouseMoveHandler = (event) => {  
-        if (!isResizing) return;  
-    
-        if (position === 'top') {  
-          const topBar = document.getElementById('top-bar');  
-          const newHeight = event.clientY;  
-            
-          if (newHeight > 30 && newHeight < window.innerHeight - 100) {  
-            topBar.style.height = `${newHeight}px`;  
-            window.myAPI.send('update-bars-size', {  
-              topBarHeight: newHeight,  
-              bottomBarHeight: document.getElementById('bottom-bar').offsetHeight  
-            });  
-          }  
-        } else if (position === 'bottom') {  
-          const bottomBar = document.getElementById('bottom-bar');  
-          const newHeight = window.innerHeight - event.clientY;  
-    
-          if (newHeight > 30 && newHeight < window.innerHeight - 100) {  
-            bottomBar.style.height = `${newHeight}px`;  
-            window.myAPI.send('update-bars-size', {  
-              topBarHeight: document.getElementById('top-bar').offsetHeight,  
-              bottomBarHeight: newHeight  
-            });  
-          }  
-        }  
-      };  
-    
-      const mouseUpHandler = () => {  
-        isResizing = false;  
-        document.body.style.cursor = 'default';  
-        document.removeEventListener('mousemove', mouseMoveHandler);  
-        document.removeEventListener('mouseup', mouseUpHandler);  
-      };  
-    
-      document.addEventListener('mousemove', mouseMoveHandler);  
-      document.addEventListener('mouseup', mouseUpHandler);  
-    });  
-  }
-
-  async function showgpx(gpxPath) {
-    
-    // show the gpx path in the top pane above the map
-    console.log('Empfangener GPX-Pfad im Renderer:', gpxPath);
-    const gpxPathElement = document.getElementById('gpx-path');
-    if (gpxPathElement) {
-      //gpxPathElement.textContent = i18next.t('gpxFile') +': '+ gpxPath;
-    }
-
-    // load and parse the gpx file, do this with L.GPX from leaflet-gpx
-    let m = 0;
-    let NPoints = 0;
-    /*
-    let startTime = '1970-01-01 00:00:00';
-    let datumStart = '1970-01-01';
-    let datumEnd = '1970-01-01';
-    let timeZoneName = 'UTC';
-    let endTime = '1970-01-01 00:00:00';
-    let tZOffset = 0; // in minutes, e.g. -120 for GMT+2
-    let duration = 0; // in seconds
-    */
-
-    // Dynamically import the LeafletChartJs class
-    // no slider, only map with gpx-tracks and eventually a chart. chartjs shall be used.
-    return import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
-        // reset the map if it was used before. This happens on change of the track
-        if (allMaps[m] instanceof LeafletChartJs.LeafletChartJs) {
-          allMaps[m].map.remove();
-        }
-        // create the map and show the gpx track
-        allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m );
-        return allMaps[m].createTrackOnMap().then(() => {
-            // Jetzt ist die Initialisierung abgeschlossen!
-            // Hier kannst du auf die geladenen GPX-Daten zugreifen:
-            let gpxTrack = allMaps[m].track[0];
-            NPoints = gpxTrack.coords.length;
-            gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
-
-            // show the track info in the sidebar
-            // get the number of trackpoints from the gpx file, the start and end time of the track
-            trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
-            console.log(`Anzahl der Trackpunkte: ${NPoints}`);
-            console.log('Datum: ', trackInfo.datumStart === trackInfo.datumEnd ? trackInfo.datumStart : `${trackInfo.datumStart} - ${trackInfo.datumEnd}`);
-            console.log(`Startzeit: ${trackInfo.startTime}, Endzeit: ${trackInfo.endTime}`);
-            console.log('Dauer: ', trackInfo.durationFormatted);
-            console.log('Zeitzone: ', trackInfo.timeZoneName);
-            console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);
-
-            allMaps[m].initChart();
-            allMaps[m].handleEvents();
-            // TODO: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
-            return trackInfo; // return the trackInfo object
-        })
-        
-    })
-  }
-
-  async function showThumbnail(HTMLElementID, allImages, filteredImages) {
+  async function showThumbnail(HTMLElementID, allImages) {
     const thumbnailElement = document.getElementById(HTMLElementID);
     if (!thumbnailElement) return;
 
@@ -391,7 +249,6 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     return;
   }
 
-  // TODO: hat sich das Verhalten beim Beenen geändert, weil diese Funktion nach Innen gezogen wurde?
   window.addEventListener('beforeunload', (event) => {  
     // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
     const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
@@ -405,38 +262,6 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 }
 
 // ----------- LEFT SIDEBAR -----------
-/** show the translated track info in the left sidebar
- * 
- * @global {object} pageVariables, document
- * @param {number} NPoints 
- * @param {object} trackInfo 
- * @param {string} elementId
- */
-function showTrackInfoTranslated(NPoints, trackInfo, elementId) { 
-  
-  // Objekt mit allen Angaben
-  const trackData = getTrackInfo(NPoints, trackInfo);
-  const { datumStart, datumEnd, startTime, endTime, durationFormatted, timeZoneName, tZOffset } = trackData;
-
-  // Ausgabe im Frontend mit Übersetzung und Header in Fettdruck und horizontaler Linie am Ende
-  const el = document.getElementById(elementId);
-  if (el) {
-    el.innerHTML = `
-      <h3 class="sectionHeader">${i18next.t('trackInfo')}</h3>
-      <div><strong>${i18next.t('file')}:</strong> ${trackInfo.path || i18next.t('unknown')}</div>
-      <div><strong>${i18next.t('date')}:</strong> ${datumStart === datumEnd ? datumStart : datumStart + ' - ' + datumEnd}</div>
-      <div><strong>${i18next.t('Start-Time')}:</strong> ${startTime}</div>
-      <div><strong>${i18next.t('End-Time')}:</strong> ${endTime}</div>
-      <div><strong>${i18next.t('duration')}:</strong> ${durationFormatted}</div>
-      <div><strong>${i18next.t('timezone')}:</strong> ${timeZoneName}</div>
-      <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset} ${i18next.t('minutes')}</div>
-      <div><strong>${i18next.t('N-Trackpoints')}:</strong> ${NPoints}</div>
-    `;
-  }
-
-  return trackData;
-}
-
 /** show the image filters in the left sidebar
  * 
  * @param {Array} includedExts 

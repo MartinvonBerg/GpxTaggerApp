@@ -4,6 +4,8 @@
  * @requires void
  */
 
+// TODO: multiselect of images in thumbnail bar with https://github.com/simonwep/viselect
+
 // ----------- THUMBNAIL BAR -----------
 /** generate the HTML for a thumbnail bar under the main map pane 
  * 
