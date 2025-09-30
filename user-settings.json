@@ -1,8 +1,8 @@
 {
   "width": 2211,
   "height": 1126,
-  "x": 298,
-  "y": 76,
+  "x": 174,
+  "y": 133,
   "topBarHeight": 50,
   "bottomBarHeight": 200,
   "leftSidebarWidth": 356,
@@ -157,7 +157,7 @@
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
-  "skipImagesWithGPS": "false",
-  "ignoreGPXDate": "false",
+  "skipImagesWithGPS": "true",
+  "ignoreGPXDate": "true",
   "cameraModels": "all"
 }

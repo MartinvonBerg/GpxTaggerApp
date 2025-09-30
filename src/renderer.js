@@ -2,7 +2,7 @@ import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
 import { convertGps, validateAltitude, validateDirection, getElevation } from '../js/TrackAndGpsHandler.js';
-import { exifDateToJSLocaleDate, exifDateTimeToJSTime } from '../js/ExifHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
@@ -621,7 +621,11 @@ function metaGPSEventListener() {
 /**
  * Event listener for the 'singlePosMarkerAdded' event on a map.
  * This event is triggered when a single position marker is added to the map.
- * @param {string} mapId - The id of the map container element.
+ * 
+ * @global {object} allImages which is a global for the whole project.
+ * @global {object} document (common global variable)
+ * @global {function} convertGps, updateAllImagesGPS, getElevation (imported at the top of the file)
+ * @param {string} mapId - The id of the map container element, which is 'map0'for this app.
  * @param {object} thumbsClass - The ThumbnailSlider class.
  * @returns {void}
  */
@@ -633,9 +637,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         const convertedValue = convertGps(`${lat}, ${lng}`);
         let setHeight = 'true'; // TODO move this to a setting
 
-        
-        
-        // get active thumbs, check if these have the same CreateDate?
+        // get active thumbs, TODO: check if these have the same CreateDate?
         let activeThumbs = thumbsClass.getActiveThumbs();
         
         // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
@@ -662,9 +664,27 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           })
         }
 
-        
         // set the allImages array for these images
         allImages = updateAllImagesGPS(allImages, index, convertedValue);
+
+        // get the closest track points fot the active images
+        // TODO: add handling if no track is available
+        const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
+        console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
+        console.log('point2: ', {index: index2, distance: dist2, time: time2});
+        // get the time difference for the active images and the closest track points and show it in the UI
+        // get the mean value of the active Images
+        const subset = indexArray.map(index => allImages[index]);
+        const { mean, maxDev } = calcTimeMeanAndStdDev(subset);
+        console.log('mean: ', mean, 'stdDev: ', maxDev);
+        if (parseFloat(maxDev) > 30) { // TODO move this to a setting and show it in the UI as an input element
+          // TODO show an error message and stop the tracklogging. i18next
+          console.log('maxDev', maxDev, ' > 30 s: is too big for tracklogging'); // TODO show this in the UI
+          document.getElementById('tracklog-element').innerHTML = '<strong>Error:</strong><br>maxDev ' + maxDev + ' > 30 s: is too big for tracklogging';
+          return; 
+        }
+        
+
     });
 }
 

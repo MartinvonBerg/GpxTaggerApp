@@ -365,24 +365,111 @@ class gpxTrackClass {
      * Calculate the index in the array of coordinates for a given point based on the closest distance.
      * @global {object} this.coords[...].lat / .lng, this.coords.length
      * 
-     * @param {object} point - The point for which to find the index.
-     * @return {number} The index of the closest coordinate.
+     * @param {object} point - The point with latitude 'lat' and longitude 'lng' for which to find the index.
+     * @return {number | {index: number, distance: number}} The index of the closest coordinate or an object with the index and distance.
      */
-    getIndexForCoords(point) {
+    getIndexForCoords(point, withDistance = false) {
         let n = this.coords.length
         let dist = Infinity;
         let index = -1;
 
-        //let startTime = performance.now();
-        for (let i = 0; i < n; i++) { // performance
-            let newdist = calcDist(point.lat, point.lng, this.coords[i].lat, this.coords[i].lng);
+        if ( !withDistance ) {
+            for (let i = 0; i < n; i++) { 
+                let newdist = calcDist(point.lat, point.lng, this.coords[i].lat, this.coords[i].lng);
 
-            if (newdist < dist) {
-                index = i;
-                dist = newdist;
+                if (newdist < dist) {
+                    index = i;
+                    dist = newdist;
+                }
             }
+            // TODO: this is too simple because the same point can be found multiple times if it is a 'Streckentour'
+            return index;
+        } else {
+            // get the index of the point with the maximum distance = returnPoint.
+            let maxDist = 0;
+            let returnPointIndex = -1;
+
+            for (let i = 0; i < n; i++) {
+                let d = calcDist(this.coords[0].lat, this.coords[0].lng, this.coords[i].lat, this.coords[i].lng);
+                if (d > maxDist) {
+                    maxDist = d;
+                    returnPointIndex = i;
+                }
+            }
+
+            // check if the track is a closed loop track
+            let distStartEnd = calcDist(this.coords[0].lat, this.coords[0].lng, this.coords[n-1].lat, this.coords[n-1].lng);
+            let threshold = maxDist / 50; // e.g. 2 % of max distance TODO: make this a setting an input
+            let isClosedLoopTrack = distStartEnd < threshold;
+            let isOverLappingTrack = false;
+
+            // check if the track is overlapping meaning the way for back and forth are the almost the same
+            if (isClosedLoopTrack) {
+                
+                let overlapCount = 0;
+                for (let i = 0; i < returnPointIndex; i++) {
+                    for (let j = returnPointIndex; j < n; j++) {
+                        if (calcDist(this.coords[i].lat, this.coords[i].lng, this.coords[j].lat, this.coords[j].lng) < threshold) {
+                            overlapCount++;
+                            break;
+                        }
+                    }
+                }
+                isOverLappingTrack = overlapCount > (returnPointIndex * 0.5); // z. B. 50 % Schwelle
+            }
+
+            // calc the two distances
+            if (isClosedLoopTrack && isOverLappingTrack) {
+                // slice the coords array
+                let forthCoords = this.coords.slice(0, returnPointIndex+1);
+                n = forthCoords.length;
+                // TODO : something is wrong here
+                dist = Infinity;
+                for (let i = 0; i < n; i++) { 
+                let newdist = calcDist(point.lat, point.lng, forthCoords[i].lat, forthCoords[i].lng);
+
+                if (newdist < dist) {
+                    index = i;
+                    dist = newdist;
+                }
+                }
+                let index1 = index;
+                let dist1 = dist;
+                
+                let backCoords = this.coords.slice(returnPointIndex);
+                n = backCoords.length;
+                dist = Infinity;
+                for (let i = 0; i < n; i++) { 
+                let newdist = calcDist(point.lat, point.lng, backCoords[i].lat, backCoords[i].lng);
+
+                if (newdist < dist) {
+                    index = i;
+                    dist = newdist;
+                }
+                }
+                let index2 = index + returnPointIndex;
+                let dist2 = dist;
+
+                let point1 = {index: index1, distance: dist1, time: this.coords[index1].meta.time};
+                let point2 = {index: index2,  distance: dist2, time: this.coords[index2].meta.time};
+                return {point1, point2, returnPointIndex};
+                
+            // calc the one distance 
+            } else {
+                for (let i = 0; i < n; i++) { 
+                let newdist = calcDist(point.lat, point.lng, this.coords[i].lat, this.coords[i].lng);
+
+                if (newdist < dist) {
+                    index = i;
+                    dist = newdist;
+                }
+                }
+                let point1 = {index: index, distance: dist, time: this.coords[index].meta.time};
+                let point2 = {index:0,  distance:0, time: 0};
+                return {point1, point2, returnPointIndex}; // return the index;
+            }
+
         }
-        return index;
     }
 
     /**
