@@ -9,6 +9,7 @@ import { initAutocomplete } from '../js/autocomplete.js';
 import { generateThumbnailHTML } from '../js/thumbnnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
 import { showgpx } from '../js/mapAndTrackHandler.js';
+import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
@@ -90,7 +91,9 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.gpxPath) {
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-      showgpx(allMaps, settings.gpxPath);
+      showgpx(allMaps, settings.gpxPath).then( () => {
+        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
+      });
     }
   });
 
@@ -100,6 +103,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
     showgpx(allMaps, gpxPath).then( () => {
       filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
+      showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
     });
   });
 
@@ -110,15 +114,12 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     trackInfo = {};
     filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
 
-    const gpxPathElement = document.getElementById('gpx-path');
-    if (gpxPathElement) {
-      //gpxPathElement.textContent = i18next.t('noFileLoaded');
-    }
-
     const trackElement = document.getElementById('track-info-element');
     if (trackElement) {
       trackElement.textContent = i18next.t('noFileLoaded');
     }
+
+    showTrackLogStateError('tracklog-element', 'no-trackfile');
   });
 
   window.myAPI.receive('image-loading-started', (imagePath) => {
@@ -288,6 +289,9 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   if (typeof settings.skipImagesWithGPS === 'undefined') {
     settings.skipImagesWithGPS = 'false';
   }
+  if (typeof settings.timeDevSetting === 'undefined') {
+    settings.timeDevSetting = 30;
+  }
 
   // Helper für Auswahlfelder
   function createSelect(options, selected, id, label, translationMap = {}) {
@@ -329,6 +333,12 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
     </label>
   `;
 
+  // Filter for maximum allowed time Deviation in seconds
+  const timeDevSetter = `
+    <label for="time-deviation"><strong>${i18next.t('timeDeviation')}: </strong></label>
+    <input type="number" id="time-deviation" min="0" max="100000" step=1 value="${settings.timeDevSetting}">
+  `;
+
   // Zusammenbauen und anzeigen
   el.innerHTML = `
     <h3 class="sectionHeader">${i18next.t('imageFilters')}</h3>
@@ -340,6 +350,8 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
     <div>${dateFilter}</div>
     <br>
     <div>${gpsFilter}</div>
+    <br>
+    <div>${timeDevSetter}</div>
     <br>
     <div id="images-after-filter"></div>
   `;
@@ -365,6 +377,10 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   document.getElementById('gps-filter').addEventListener('change', e => {
     settings.skipImagesWithGPS = e.target.checked ? 'true' : 'false';
     filterImages();
+    window.myAPI.send('update-image-filter', settings);
+  });
+  document.getElementById('time-deviation').addEventListener('change', e => {
+    settings.timeDevSetting = e.target.value;
     window.myAPI.send('update-image-filter', settings);
   });
 }
@@ -434,6 +450,13 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
     const mapContainerElement = document.getElementById(mapId);
 
     mapContainerElement.addEventListener('singlePosMarkerAdded', function(event) {
+
+        // skip if filteredImages is empty
+        if (filteredImages.length === 0) {
+          showTrackLogStateError('tracklog-element', 'no-matching-images');
+          return;
+        };
+
         const { lat, lng } = event.detail;
         const convertedValue = convertGps(`${lat}, ${lng}`);
         let setHeight = 'true'; // TODO move this to a setting
@@ -478,10 +501,8 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         const subset = indexArray.map(index => allImages[index]);
         const { mean, maxDev } = calcTimeMeanAndStdDev(subset);
         console.log('mean: ', mean, 'stdDev: ', maxDev);
-        if (parseFloat(maxDev) > 30) { // TODO move this to a setting and show it in the UI as an input element
-          // TODO show an error message and stop the tracklogging. i18next
-          console.log('maxDev', maxDev, ' > 30 s: is too big for tracklogging'); // TODO show this in the UI
-          document.getElementById('tracklog-element').innerHTML = '<strong>Error:</strong><br>maxDev ' + maxDev + ' > 30 s: is too big for tracklogging';
+        if (parseFloat(maxDev) > settings.timeDevSetting) {
+          showTrackLogStateError('tracklog-element', 'image-time-range-too-high'+parseInt(maxDev) );
           return; 
         }
         

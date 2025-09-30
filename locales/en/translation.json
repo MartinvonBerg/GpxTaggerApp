@@ -17,7 +17,7 @@
   "clearImageFolder": "Clear Folder",  
   "development": "Development",  
   "openDevTools": "Open DevTools",
-  "noFileLoaded": "No File loaded",
+  "noFileLoaded": "No Track File loaded",
   "noImageFolderSelected": "No Image Folder selected",
   "gpxFile": "GPX File",
   "N-Trackpoints" : "N-Trackpoints",
@@ -51,5 +51,12 @@
   "accept": "Check and save metadata",
   "metasaved": "Metadata saved for",
   "multiple" : "different",
-  "reloadData": "Reload Data"
+  "reloadData": "Reload Data",
+  "error": "Error",
+  "trackLogHeader": "Track-Log",
+  "noMatchingImages": "No matching Images found or Track and images don't match",
+  "noImageOnMapSelected" : "No image selected on map",
+  "imageTimeRangeTooHigh": "Images too different time ranges. Please adjust selection and set new marker",
+  "seconds": "Seconds",
+  "timeDeviation": "Time Deviation"
 }

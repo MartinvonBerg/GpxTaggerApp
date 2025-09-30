@@ -1,10 +1,10 @@
 {
   "width": 2211,
-  "height": 1126,
-  "x": 174,
-  "y": 133,
+  "height": 1301,
+  "x": 210,
+  "y": 121,
   "topBarHeight": 50,
-  "bottomBarHeight": 200,
+  "bottomBarHeight": 163,
   "leftSidebarWidth": 356,
   "rightSidebarWidth": 342,
   "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
@@ -118,7 +118,7 @@
     "clearImageFolder": "Ordner rücksetzen",
     "development": "Entwicklung",
     "openDevTools": "DevTools öffnen",
-    "noFileLoaded": "Keine Datei geladen",
+    "noFileLoaded": "Keine Track-Datei geladen",
     "noImageFolderSelected": "Kein Bilderordner ausgewählt",
     "gpxFile": "GPX-Datei",
     "N-Trackpoints": "N-Trackpunkte",
@@ -152,12 +152,20 @@
     "accept": "Prüfe und speichere Metadaten",
     "metasaved": "Metadaten gespeichert für",
     "multiple": "verschiedene",
-    "reloadData": "Daten neu laden"
+    "reloadData": "Daten neu laden",
+    "error": "Fehler",
+    "trackLogHeader": "Track-Log",
+    "noMatchingImages": "Keine passenden Bilder gefunden oder Track und Bilder passen nicht zusammen",
+    "noImageOnMapSelected": "Kein Bild auf der Karte ausgewählt",
+    "imageTimeRangeTooHigh": "Bilder zu stark unterschiedlichen Zeiten aufgenommen. Bitte Auswahl anpassen und neuen Marker setzen",
+    "seconds": "Sekunden",
+    "timeDeviation": "Zeitabweichung"
   },
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
-  "skipImagesWithGPS": "true",
+  "skipImagesWithGPS": "false",
   "ignoreGPXDate": "true",
-  "cameraModels": "all"
+  "cameraModels": "all",
+  "timeDevSetting": "77"
 }

@@ -1,11 +1,37 @@
-// Currently unused
+
 
 import i18next from 'i18next';
 import { settings, filteredImages, allImages, trackInfo } from './globals.js';
 import { getTrackInfo } from '../js/TrackAndGpsHandler.js';
 import { exifDateToJSLocaleDate } from '../js/ExifHandler.js';
 
+function showTrackLogStateError(HTMLElementID, state) {
+  const el = document.getElementById(HTMLElementID);
+  if (el && state === 'no-trackfile') {
+    el.innerHTML = `
+      <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+      <div><strong>${i18next.t('error')}: </strong>${i18next.t('noFileLoaded')}</div>
+    `;
+  } else if (el && state === 'no-matching-images') {
+    el.innerHTML = `
+      <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+      <div><strong>${i18next.t('error')}: </strong>${i18next.t('noMatchingImages')}</div>
+    `;
+  } else if (el && state === 'no-image-on-map-selected') {
+    el.innerHTML = `
+      <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+      <div><strong>${i18next.t('error')}: </strong>${i18next.t('noImageOnMapSelected')}</div>
+    `;
+  } else if (el && state.includes('image-time-range-too-high') ) {
+      let timeRange = state.replace('image-time-range-too-high', '');
+    el.innerHTML = `
+      <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+      <div><strong>${i18next.t('timeDeviation')}: ${timeRange} ${i18next.t('seconds')}.</strong> ${i18next.t('imageTimeRangeTooHigh')}</div>
+    `;
+  }
+}
 
+// Currently unused :
 // ----------- LEFT SIDEBAR -----------
 /** show the translated track info in the left sidebar
  * 
@@ -195,4 +221,4 @@ function filterImages () {
   }
 }
 
-export { showTrackInfoTranslated, showImageFilters, filterImages };
+export { showTrackLogStateError };

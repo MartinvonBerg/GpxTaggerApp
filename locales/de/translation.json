@@ -17,7 +17,7 @@
   "clearImageFolder": "Ordner rücksetzen",  
   "development": "Entwicklung",  
   "openDevTools": "DevTools öffnen",
-  "noFileLoaded": "Keine Datei geladen",
+  "noFileLoaded": "Keine Track-Datei geladen",
   "noImageFolderSelected": "Kein Bilderordner ausgewählt",
   "gpxFile": "GPX-Datei",
   "N-Trackpoints" : "N-Trackpunkte",
@@ -51,5 +51,12 @@
   "accept": "Prüfe und speichere Metadaten",
   "metasaved": "Metadaten gespeichert für",
   "multiple" : "verschiedene",
-  "reloadData": "Daten neu laden"
+  "reloadData": "Daten neu laden",
+  "error": "Fehler",
+  "trackLogHeader": "Track-Log",
+  "noMatchingImages": "Keine passenden Bilder gefunden oder Track und Bilder passen nicht zusammen",
+  "noImageOnMapSelected" : "Kein Bild auf der Karte ausgewählt",
+  "imageTimeRangeTooHigh": "Bilder zu stark unterschiedlichen Zeiten aufgenommen. Bitte Auswahl anpassen und neuen Marker setzen",
+  "seconds": "Sekunden",
+  "timeDeviation": "Zeitabweichung"
 }  

@@ -257,6 +257,7 @@ function createWindow() {
     settings.skipImagesWithGPS = newSettings.skipImagesWithGPS;
     settings.ignoreGPXDate = newSettings.ignoreGPXDate;
     settings.cameraModels = newSettings.cameraModels;
+    settings.timeDevSetting = newSettings.timeDevSetting;
     saveSettings(settingsFilePath, settings);
   });
 
