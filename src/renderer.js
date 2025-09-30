@@ -2,7 +2,7 @@ import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
 import { convertGps, validateAltitude, validateDirection, getElevation } from '../js/TrackAndGpsHandler.js';
-import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev } from '../js/ExifHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
@@ -91,7 +91,8 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.gpxPath) {
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-      showgpx(allMaps, settings.gpxPath).then( () => {
+      showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
+        trackInfo = newTrackInfo;
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
       });
     }
@@ -101,7 +102,8 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     settings.gpxPath = gpxPath;
     pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
     pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-    showgpx(allMaps, gpxPath).then( () => {
+    showgpx(allMaps, gpxPath).then( (newTrackInfo) => {
+      trackInfo = newTrackInfo;
       filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
       showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
     });
@@ -461,7 +463,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         const convertedValue = convertGps(`${lat}, ${lng}`);
         let setHeight = 'true'; // TODO move this to a setting
 
-        // get active thumbs, TODO: check if these have the same CreateDate?
+        // get active thumbs
         let activeThumbs = thumbsClass.getActiveThumbs();
         
         // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
@@ -499,13 +501,36 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         // get the time difference for the active images and the closest track points and show it in the UI
         // get the mean value of the active Images
         const subset = indexArray.map(index => allImages[index]);
-        const { mean, maxDev } = calcTimeMeanAndStdDev(subset);
-        console.log('mean: ', mean, 'stdDev: ', maxDev);
+        const { mean, maxDev, date }= calcTimeMeanAndStdDev(subset);
+
+        // show the time deviation in the UI if it is too big. This is also the case if images were shot at different days.
         if (parseFloat(maxDev) > settings.timeDevSetting) {
           showTrackLogStateError('tracklog-element', 'image-time-range-too-high'+parseInt(maxDev) );
           return; 
         }
+        // time Deviation is OK but the dates do not match
+        let localeDate = date.toLocaleString();
+        if ( (trackInfo.datumStart === trackInfo.datumEnd) && localeDate !== trackInfo.datumStart ) {
+          showTrackLogStateError('tracklog-element', 'date-mismatch' );
+          return; 
+        }
+
+        // get the timing differences
+        // TODO: use also the time zone difference of track and images correctly to show the "real" time deviation which will show 
+        // one difference to 00:00:00 if the image is placed correctly in the track. 
+        // But reverse this time zone difference correctly for the tzone calculation of exifTool!
+        // add one checkbox ofter each time diff respectively where only one of each is selectable : 'Use this for tracklog'
+        // then add button 1 : 'Tracklog matching images with timediff and exiftool'
+        // button 2:  'tracklog matching images with timediff and APP'
+        // button 3 : 'Save all (if not exiftool was used already)'
+        // Finally: show the images on the map!
         
+        let tdiff1 = getTimeDifference(time1, mean);
+        let tdiff2 = getTimeDifference(time2, mean); 
+        console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2); 
+
+        document.getElementById('tracklog-element').innerHTML = '<strong>Fehlt:</strong><br>Implementierung fehlt noch!<br>Time-Diffs sind: <br>'+tdiff1+'<br>'+tdiff2;
+          
 
     });
 }

@@ -1,12 +1,12 @@
 {
-  "width": 2211,
+  "width": 1980,
   "height": 1301,
   "x": 210,
   "y": 121,
   "topBarHeight": 50,
-  "bottomBarHeight": 163,
+  "bottomBarHeight": 161,
   "leftSidebarWidth": 356,
-  "rightSidebarWidth": 342,
+  "rightSidebarWidth": 373,
   "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images\\test-Bilder2",
   "extensions": [
@@ -159,7 +159,8 @@
     "noImageOnMapSelected": "Kein Bild auf der Karte ausgewählt",
     "imageTimeRangeTooHigh": "Bilder zu stark unterschiedlichen Zeiten aufgenommen. Bitte Auswahl anpassen und neuen Marker setzen",
     "seconds": "Sekunden",
-    "timeDeviation": "Zeitabweichung"
+    "timeDeviation": "Zeitabweichung",
+    "dateMismatch": "Aufnahmedatum passt nicht zu GPX-Track"
   },
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
@@ -167,5 +168,5 @@
   "skipImagesWithGPS": "false",
   "ignoreGPXDate": "true",
   "cameraModels": "all",
-  "timeDevSetting": "77"
+  "timeDevSetting": "36"
 }

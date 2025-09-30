@@ -66,7 +66,7 @@ async function showgpx(allMaps, gpxPath) {
 
             allMaps[m].initChart();
             allMaps[m].handleEvents();
-            // TODO: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
+            // TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
         })
     })

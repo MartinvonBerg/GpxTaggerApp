@@ -70,13 +70,57 @@ function calcTimeMeanAndStdDev(imagesSubset) {
     const deviations = timestamps.map(ts => Math.abs(ts - mean));
     const maxDeviation = Math.max(...deviations);
 
+    // If maxDeviation < 86400 seconds (24h) return the date, too.
+    let date = null;
+    if (maxDeviation < 86400) {
+        const meanDate = new Date(mean * 1000);
+        //date = meanDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        date = meanDate.toLocaleDateString(); // Lokales Datumsformat
+    }
+
 
     return {
         mean: new Date(mean * 1000).toISOString(),
-        maxDev: maxDeviation.toFixed(3) + ' seconds'
+        maxDev: maxDeviation.toFixed(3) + ' seconds',
+        date: date
     };
+}
+
+function getTimeDifference(time1, time2) {
+  // Hilfsfunktion zum Parsen der Eingaben
+  function parseTime(input) {
+    if (typeof input === 'string') {
+      return new Date(input);
+    } else if (input instanceof Date) {
+      return input;
+    } else {
+      throw new Error('Ungültiger Zeittyp. Erwartet wird ein String oder ein Date-Objekt.');
+    }
+  }
+
+  const date1 = parseTime(time1);
+  const date2 = parseTime(time2);
+
+  // Differenz in Millisekunden
+  const diffMs = date1 - date2;
+  const isNegative = diffMs < 0;
+  let absDiffMs = Math.abs(diffMs);
+
+  // Umwandlung in hh:mm:ss
+  const hours = Math.floor(absDiffMs / (1000 * 60 * 60));
+  absDiffMs -= hours * 1000 * 60 * 60;
+
+  const minutes = Math.floor(absDiffMs / (1000 * 60));
+  absDiffMs -= minutes * 1000 * 60;
+
+  const seconds = Math.floor(absDiffMs / 1000);
+
+  // Formatierung mit führenden Nullen
+  const pad = (num) => String(num).padStart(2, '0');
+
+  return `${isNegative ? '-' : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 
 
-export { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev };
+export { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference };

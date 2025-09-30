@@ -58,5 +58,6 @@
   "noImageOnMapSelected" : "No image selected on map",
   "imageTimeRangeTooHigh": "Images too different time ranges. Please adjust selection and set new marker",
   "seconds": "Seconds",
-  "timeDeviation": "Time Deviation"
+  "timeDeviation": "Time Deviation",
+  "dateMismatch": "Capture date doesn't match GPX track"
 }

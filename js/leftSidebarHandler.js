@@ -28,6 +28,11 @@ function showTrackLogStateError(HTMLElementID, state) {
       <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
       <div><strong>${i18next.t('timeDeviation')}: ${timeRange} ${i18next.t('seconds')}.</strong> ${i18next.t('imageTimeRangeTooHigh')}</div>
     `;
+  } else if ( el && state === 'date-mismatch') {
+    el.innerHTML = `
+      <h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+      <div><strong>${i18next.t('error')}: </strong>${i18next.t('dateMismatch')}</div>
+    `;
   }
 }
 

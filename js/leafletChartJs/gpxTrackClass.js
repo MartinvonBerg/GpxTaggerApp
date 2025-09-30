@@ -382,8 +382,8 @@ class gpxTrackClass {
                     dist = newdist;
                 }
             }
-            // TODO: this is too simple because the same point can be found multiple times if it is a 'Streckentour'
             return index;
+
         } else {
             // get the index of the point with the maximum distance = returnPoint.
             let maxDist = 0;
@@ -423,7 +423,7 @@ class gpxTrackClass {
                 // slice the coords array
                 let forthCoords = this.coords.slice(0, returnPointIndex+1);
                 n = forthCoords.length;
-                // TODO : something is wrong here
+                
                 dist = Infinity;
                 for (let i = 0; i < n; i++) { 
                 let newdist = calcDist(point.lat, point.lng, forthCoords[i].lat, forthCoords[i].lng);
