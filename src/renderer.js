@@ -419,6 +419,76 @@ function filterImages () {
   }
 }
 
+/**
+ * Event listener for the 'singlePosMarkerAdded' event on a map.
+ * This event is triggered when a single position marker is added to the map.
+ * 
+ * @global {object} allImages which is a global for the whole project.
+ * @global {object} document (common global variable)
+ * @global {function} convertGps, updateAllImagesGPS, getElevation (imported at the top of the file)
+ * @param {string} mapId - The id of the map container element, which is 'map0'for this app.
+ * @param {object} thumbsClass - The ThumbnailSlider class.
+ * @returns {void}
+ */
+function mapPosMarkerEventListener(mapId, thumbsClass) {
+    const mapContainerElement = document.getElementById(mapId);
+
+    mapContainerElement.addEventListener('singlePosMarkerAdded', function(event) {
+        const { lat, lng } = event.detail;
+        const convertedValue = convertGps(`${lat}, ${lng}`);
+        let setHeight = 'true'; // TODO move this to a setting
+
+        // get active thumbs, TODO: check if these have the same CreateDate?
+        let activeThumbs = thumbsClass.getActiveThumbs();
+        
+        // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
+        let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
+        let index = indexArray.join(',');
+        
+        // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
+        // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
+        let input =  document.getElementById('gpsInput');
+        let inputIds = input.dataset.index.replace(/\s+/g, "");
+        
+        if (index === inputIds) {
+          input.value = convertedValue.pos;
+        }
+
+        if (index === inputIds && setHeight === 'true') {
+          getElevation(lat, lng).then(height => {
+            input = document.getElementById('altitudeInput');
+            input.value = validateAltitude(height) ? height : '';
+            let key = 'GPSAltitude';
+            if ( validateAltitude(height)) {
+              indexArray.forEach(index => { allImages[index][key] = input.value; });
+            }
+          })
+        }
+
+        // set the allImages array for these images
+        allImages = updateAllImagesGPS(allImages, index, convertedValue);
+
+        // get the closest track points fot the active images
+        // TODO: add handling if no track is available
+        const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
+        console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
+        console.log('point2: ', {index: index2, distance: dist2, time: time2});
+        // get the time difference for the active images and the closest track points and show it in the UI
+        // get the mean value of the active Images
+        const subset = indexArray.map(index => allImages[index]);
+        const { mean, maxDev } = calcTimeMeanAndStdDev(subset);
+        console.log('mean: ', mean, 'stdDev: ', maxDev);
+        if (parseFloat(maxDev) > 30) { // TODO move this to a setting and show it in the UI as an input element
+          // TODO show an error message and stop the tracklogging. i18next
+          console.log('maxDev', maxDev, ' > 30 s: is too big for tracklogging'); // TODO show this in the UI
+          document.getElementById('tracklog-element').innerHTML = '<strong>Error:</strong><br>maxDev ' + maxDev + ' > 30 s: is too big for tracklogging';
+          return; 
+        }
+        
+
+    });
+}
+
 // ----------- RIGHT SIDEBAR -----------
 /** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
  * 
@@ -617,78 +687,6 @@ function metaGPSEventListener() {
   });
 }
 
-
-/**
- * Event listener for the 'singlePosMarkerAdded' event on a map.
- * This event is triggered when a single position marker is added to the map.
- * 
- * @global {object} allImages which is a global for the whole project.
- * @global {object} document (common global variable)
- * @global {function} convertGps, updateAllImagesGPS, getElevation (imported at the top of the file)
- * @param {string} mapId - The id of the map container element, which is 'map0'for this app.
- * @param {object} thumbsClass - The ThumbnailSlider class.
- * @returns {void}
- */
-function mapPosMarkerEventListener(mapId, thumbsClass) {
-    const mapContainerElement = document.getElementById(mapId);
-
-    mapContainerElement.addEventListener('singlePosMarkerAdded', function(event) {
-        const { lat, lng } = event.detail;
-        const convertedValue = convertGps(`${lat}, ${lng}`);
-        let setHeight = 'true'; // TODO move this to a setting
-
-        // get active thumbs, TODO: check if these have the same CreateDate?
-        let activeThumbs = thumbsClass.getActiveThumbs();
-        
-        // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
-        let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
-        let index = indexArray.join(',');
-        
-        // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
-        // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
-        let input =  document.getElementById('gpsInput');
-        let inputIds = input.dataset.index.replace(/\s+/g, "");
-        
-        if (index === inputIds) {
-          input.value = convertedValue.pos;
-        }
-
-        if (index === inputIds && setHeight === 'true') {
-          getElevation(lat, lng).then(height => {
-            input = document.getElementById('altitudeInput');
-            input.value = validateAltitude(height) ? height : '';
-            let key = 'GPSAltitude';
-            if ( validateAltitude(height)) {
-              indexArray.forEach(index => { allImages[index][key] = input.value; });
-            }
-          })
-        }
-
-        // set the allImages array for these images
-        allImages = updateAllImagesGPS(allImages, index, convertedValue);
-
-        // get the closest track points fot the active images
-        // TODO: add handling if no track is available
-        const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
-        console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
-        console.log('point2: ', {index: index2, distance: dist2, time: time2});
-        // get the time difference for the active images and the closest track points and show it in the UI
-        // get the mean value of the active Images
-        const subset = indexArray.map(index => allImages[index]);
-        const { mean, maxDev } = calcTimeMeanAndStdDev(subset);
-        console.log('mean: ', mean, 'stdDev: ', maxDev);
-        if (parseFloat(maxDev) > 30) { // TODO move this to a setting and show it in the UI as an input element
-          // TODO show an error message and stop the tracklogging. i18next
-          console.log('maxDev', maxDev, ' > 30 s: is too big for tracklogging'); // TODO show this in the UI
-          document.getElementById('tracklog-element').innerHTML = '<strong>Error:</strong><br>maxDev ' + maxDev + ' > 30 s: is too big for tracklogging';
-          return; 
-        }
-        
-
-    });
-}
-
-
 /** Handles the metadata save button in the right sidebar
  * do this only for active images so images that are activated in the thumbnail bar.
  * get and validate all input fields for the metadata of the current image(s)
@@ -877,6 +875,7 @@ function handleSaveButton() {
     }
   }); 
 }
+
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };
