@@ -26,9 +26,11 @@
         "webpack-cli": "*"
     },
     "dependencies": {
+        "@photostructure/tz-lookup": "^11.2.1",
         "awesomplete": "^1.1.7",
         "coordinate-parser": "^1.0.7",
         "exiftool-vendored": "^30.5.0",
+        "geo-tz": "^8.1.4",
         "i18next": "^25.5.2",
         "i18next-fs-backend": "^2.6.0",
         "leaflet": "^1.9.4",

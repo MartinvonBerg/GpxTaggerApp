@@ -29,6 +29,8 @@ class LeafletChartJs extends LeafletMap {
     allBounds =[];
     currentTrack = 0;
     preload = true;
+    tzOffset = 0; // time zone offset to correct the time of the track points
+
     // number is the map-number, elementOnPage is the div-element on the page where the map should be shown
     constructor(number, elementOnPage, preload=null, center=null, zoom=null ) {
         super(number, elementOnPage, center=null, zoom=null);
@@ -144,8 +146,11 @@ class LeafletChartJs extends LeafletMap {
         try {
           // show the local time of the point in the marker on the map
           let dateObj = new Date(classThis.coords[e.detail.index].meta.time);
-          let pointTime = dateObj.toLocaleTimeString();  // z.B. '09:53:41'
-          classThis.createSingleMarker(e.detail.position, "<p>" + pointTime + "</p>");
+          let pointTime =dateObj.setHours(dateObj.getHours() + classThis.tzOffset / 1000 / 60 / 60); // 14:57 für den 2.6.2025
+          pointTime = new Date(pointTime).toLocaleTimeString();
+          //let pointTime = dateObj.toTimeString();  // z.B. '09:53:41'
+          let markerText = "<p>" + pointTime + "</p><br><p>" + classThis.coords[e.detail.index].lat.toFixed(4) + ", " + classThis.coords[e.detail.index].lng.toFixed(4) + "</p>";
+          classThis.createSingleMarker(e.detail.position, "<p>" + pointTime + "</p><br><p>" + classThis.coords[e.detail.index].lat.toFixed(4) + ", " + classThis.coords[e.detail.index].lng.toFixed(4) + "</p>");
         } catch (error) {
           //console.log(error);
         }
@@ -302,5 +307,9 @@ class LeafletChartJs extends LeafletMap {
       // The track is stored in : this.track[0] : extract the leaflet-layer from this variable and remove it from the map
       this.map.removeLayer(this.track[this.number].gpxTracks);
       
+    }
+
+    setTzOffset(tzOffset) {
+      this.tzOffset = tzOffset;
     }
 }

@@ -1,8 +1,8 @@
 import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
-import { convertGps, validateAltitude, validateDirection, getElevation } from '../js/TrackAndGpsHandler.js';
-import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference } from '../js/ExifHandler.js';
+import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
@@ -493,7 +493,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         // set the allImages array for these images
         allImages = updateAllImagesGPS(allImages, index, convertedValue);
 
-        // get the closest track points fot the active images
+        // get the closest track points for the active images
         // TODO: add handling if no track is available
         const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
         console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
@@ -525,12 +525,16 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         // button 3 : 'Save all (if not exiftool was used already)'
         // Finally: show the images on the map!
         
-        let tdiff1 = getTimeDifference(time1, mean);
-        let tdiff2 = getTimeDifference(time2, mean); 
-        console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2); 
+        let tdiff1 = getTimeDifference(time1, mean); // e.g. '-00:05:33' (hh:mm:ss)
+        let tdiff2 = getTimeDifference(time2, mean); // e.g. '00:07:23' (hh:mm:ss)
+        let tdiff = Math.abs(parseTimeDiffToSeconds(tdiff1)) < Math.abs(parseTimeDiffToSeconds(tdiff2)) ? tdiff1 : tdiff2;
+        console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2);
 
-        document.getElementById('tracklog-element').innerHTML = '<strong>Fehlt:</strong><br>Implementierung fehlt noch!<br>Time-Diffs sind: <br>'+tdiff1+'<br>'+tdiff2;
-          
+        document.getElementById('tracklog-element').innerHTML = 
+          `<strong>Geotag Image</strong><br>with Time-Diff: ${tdiff}<br><h4>Run Exiftool for filtered Images</h4>
+          <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>`;
+
+        handleTracklogButton(settings.gpxPath, filteredImages);
 
     });
 }
@@ -921,6 +925,55 @@ function handleSaveButton() {
     }
   }); 
 }
+
+function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
+  const button = document.getElementById('tracklog-button');
+  if (!button) return;
+
+  // Set default values
+  const {
+    verbose = 'v2',
+    charsetFilename = 'latin',
+    geolocate = true,
+    tzoffset = 0 // TODO : get this from UI user input
+  } = params;
+ 
+  button.addEventListener('click', async (event) => {
+    for (const image of filteredImages) {
+      const params = {
+        gpxPath,
+        imagePath: image.imagePath,
+        options: {
+          verbose,
+          charsetFilename,
+          geolocate,
+          tzoffset
+        }
+      };
+
+      try {
+        const result = await window.myAPI.invoke('geotag-exiftool', params);
+        if (result.success) {
+          const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
+          // todo: write the result to the image in filteredImages and allImages and set the status to 'geotagged'
+          console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
+          image.lat = lat;
+          image.lng = lng;
+          image.pos = pos;
+          image.GPSAltitude = alt;
+          image.GPSLatitude = latArray;
+          image.GPSLatitudeRef = latRef;
+          image.GPSLongitude = lngArray;
+          image.GPSLongitudeRef = lngRef;
+          image.status = 'geotagged';
+        }
+      } catch (err) {
+        console.error(`Fehler bei ${image.imagePath}:`, err);
+      }
+    }
+  });
+}
+
 
 
 // Exporte oder Nutzung im Backend

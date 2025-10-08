@@ -62,7 +62,7 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
       <div><strong>${i18next.t('End-Time')}:</strong> ${endTime}</div>
       <div><strong>${i18next.t('duration')}:</strong> ${durationFormatted}</div>
       <div><strong>${i18next.t('timezone')}:</strong> ${timeZoneName}</div>
-      <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset} ${i18next.t('minutes')}</div>
+      <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset}</div>
       <div><strong>${i18next.t('N-Trackpoints')}:</strong> ${NPoints}</div>
     `;
   }

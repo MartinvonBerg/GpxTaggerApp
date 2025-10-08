@@ -5,6 +5,7 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
 const sharp = require("sharp");
+const { exec } = require('child_process');
 //const writeMetadataOneImage = require('./src/exifWriter.js');
 //import writeMetadataOneImage from './src/exifWriter';
 const { exiftool } = require("exiftool-vendored");  
@@ -298,6 +299,11 @@ function createWindow() {
     await writeMetaData(allImages);
     return 'done';
   });
+
+  ipcMain.handle('geotag-exiftool', async (event, data) => {
+    const { gpxPath, imagePath, options } = data;
+    return await geotagImageExiftool(gpxPath, imagePath, options);
+  });
 }  
 
 /**
@@ -588,7 +594,6 @@ async function writeMetaData(allmagesData) {
   };
 }
 
-  
 const sanitize = (value) => {  
   if (typeof value !== "string") return undefined;  
   let v = value.trim();  
@@ -678,4 +683,48 @@ async function writeMetadataOneImage(filePath, metadata) {
   } else {  
     console.log("Keine Metadaten zum Schreiben (alles leer).");  
   }  
-}  
+}
+
+async function geotagImageExiftool(gpxPath, imagePath, options) { 
+  
+  const exiftoolPath = 'exiftool'; // ggf. absoluter Pfad nötig
+
+  // Standardwerte setzen
+  const {
+    verbose = 'v2',
+    charsetFilename = 'latin',
+    geolocate = true
+  } = options;
+
+  return new Promise((resolve) => {
+    // Prüfen, ob exiftool vorhanden ist
+    exec(`${exiftoolPath} -ver`, (err) => {
+      if (err) {
+        return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
+      }
+
+      // Pfade prüfen
+      if (!fs.existsSync(gpxPath)) {
+        return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
+      }
+
+      if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
+        return resolve({ success: false, error: `Image File not found: ${imagePath}` });
+      }
+
+      // Kommando zusammenbauen
+      let command = `"${exiftoolPath}" -${verbose} -charset filename=${charsetFilename} -geotag "${gpxPath}"`;
+      if (geolocate) {
+        command += ' -geolocate=geotag';
+      }
+      command += ` "${imagePath}"`;
+
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+        }
+        resolve({ success: true, output: stdout });
+      });
+    });
+  });
+}

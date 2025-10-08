@@ -1,12 +1,12 @@
 {
-  "width": 1980,
+  "width": 2218,
   "height": 1301,
-  "x": 210,
-  "y": 121,
+  "x": 207,
+  "y": 48,
   "topBarHeight": 50,
   "bottomBarHeight": 161,
   "leftSidebarWidth": 356,
-  "rightSidebarWidth": 373,
+  "rightSidebarWidth": 382,
   "gpxPath": "C:\\Users\\safet\\Downloads\\2025-06-02_wandern.gpx",
   "imagePath": "C:\\Users\\safet\\Projekte-Software\\test_images\\test-Bilder2",
   "extensions": [
@@ -165,7 +165,7 @@
   "lng": "de",
   "iconPath": "C:\\Users\\safet\\Projekte-Software\\electron-panes",
   "imageFilter": "all",
-  "skipImagesWithGPS": "false",
+  "skipImagesWithGPS": "true",
   "ignoreGPXDate": "true",
   "cameraModels": "all",
   "timeDevSetting": "36"

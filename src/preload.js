@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('myAPI', {
   },
   invoke: (channel, data) => {  
     // List of channels allowed  
-    let validChannels = ['save-meta-to-image'];
+    let validChannels = ['save-meta-to-image', 'geotag-exiftool'];
     if (validChannels.includes(channel)) {  
       return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht an main.js geschickt
     }  

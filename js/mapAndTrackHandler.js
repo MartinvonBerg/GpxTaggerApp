@@ -53,6 +53,7 @@ async function showgpx(allMaps, gpxPath) {
             let gpxTrack = allMaps[m].track[0];
             NPoints = gpxTrack.coords.length;
             gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
+            gpxTrack.gpxTracks._info.startPoint = gpxTrack.coords[0]; // add the start point to the info object
 
             // show the track info in the sidebar
             // get the number of trackpoints from the gpx file, the start and end time of the track
@@ -65,6 +66,7 @@ async function showgpx(allMaps, gpxPath) {
             console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);
 
             allMaps[m].initChart();
+            allMaps[m].setTzOffset(trackInfo.tZOffsetMs);
             allMaps[m].handleEvents();
             // TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
@@ -83,9 +85,10 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
   
   // Objekt mit allen Angaben
   const trackData = getTrackInfo(NPoints, trackInfo);
-  const { datumStart, datumEnd, startTime, endTime, durationFormatted, timeZoneName, tZOffset } = trackData;
+  const { datumStart, datumEnd, startTime, endTime, durationFormatted, timeZoneName, tZOffset, tZOffsetMs } = trackData;
 
   // Ausgabe im Frontend mit Übersetzung und Header in Fettdruck und horizontaler Linie am Ende
+  // <div><strong>${i18next.t('timezone')}:</strong> ${timeZoneName}</div>
   const el = document.getElementById(elementId);
   if (el) {
     el.innerHTML = `
@@ -95,8 +98,8 @@ function showTrackInfoTranslated(NPoints, trackInfo, elementId) {
       <div><strong>${i18next.t('Start-Time')}:</strong> ${startTime}</div>
       <div><strong>${i18next.t('End-Time')}:</strong> ${endTime}</div>
       <div><strong>${i18next.t('duration')}:</strong> ${durationFormatted}</div>
-      <div><strong>${i18next.t('timezone')}:</strong> ${timeZoneName}</div>
-      <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset} ${i18next.t('minutes')}</div>
+      
+      <div><strong>${i18next.t('timezoneOffset')}:</strong> ${tZOffset}</div>
       <div><strong>${i18next.t('N-Trackpoints')}:</strong> ${NPoints}</div>
     `;
   }

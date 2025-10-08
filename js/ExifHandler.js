@@ -122,5 +122,13 @@ function getTimeDifference(time1, time2) {
 }
 
 
+function parseTimeDiffToSeconds(timeDiffStr) {
+  const sign = timeDiffStr.startsWith('-') ? -1 : 1;
+  const [hh, mm, ss] = timeDiffStr.replace('-', '').split(':').map(Number);
+  return sign * ( hh * 3600 + mm * 60 + ss );
+}
 
-export { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference };
+
+
+
+export { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds};

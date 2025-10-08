@@ -2,9 +2,11 @@
  * 
  * @file TrackAndGpsHandler.js
  * @requires Coordinates (from coordinate-parser)
+ * @requires tz-lookup
  */
 
 import Coordinates from "coordinate-parser";
+import tz_lookup from "@photostructure/tz-lookup";
 
 /**
  * get the track info for the left sidebar
@@ -16,18 +18,26 @@ function getTrackInfo(NPoints, trackInfo) {
   
   // Start- und Endzeit extrahieren und parsen
   let dateStrStart = trackInfo.duration.start; // liefert Tue Aug 09 2022 09:53:41 GMT+0200 (Mitteleuropäische Sommerzeit)
+  let {tzResult: tZOffset, tzOffsetMs: tZOffsetMs} = getUTCOffsetFromLocation(dateStrStart, trackInfo.startPoint); // e.g. {tzResult: 'UTC+3', tzOffsetMs: 10800000}
+  
+  // correct the time difference here for the start and end time
   let dateObjStart = new Date(dateStrStart);
   let datumStart = dateObjStart.toLocaleDateString(); // z.B. '09.08.2022'
-  let startTime = dateObjStart.toLocaleTimeString();  // z.B. '09:53:41'
-  let timeZoneName = dateStrStart.toString().match(/\(([^)]+)\)$/)?.[1] || dateObjStart.toLocaleTimeString('de-DE', { timeZoneName: 'short' }).split(' ').pop();
-  let tZOffset = dateObjStart.getTimezoneOffset(); // in minutes, e.g. -120 for GMT+2
+  
+  let startTime =dateObjStart.setHours(dateObjStart.getHours() + tZOffsetMs / 1000 / 60 / 60); // 14:57 für den 2.6.2025
+  startTime = dateObjStart.toLocaleString(); // z.B. '09:53:41'
+  // corrrect the locale here : currently 'de-DE' therefore unused
+  let timeZoneName = dateStrStart.toString().match(/\(([^)]+)\)$/)?.[1] || dateObjStart.toLocaleTimeString('de-DE', { timeZoneName: 'short' }).split(' ').pop(); 
                 
   let dateStrEnd =  trackInfo.duration.end;
   let dateObjEnd = new Date(dateStrEnd);
   let datumEnd = dateObjEnd.toLocaleDateString(); // z.B. '09.08.2022'
-  let endTime = dateObjEnd.toLocaleTimeString();  // z.B. '09:53:41'
-  let durationFormatted = '';
 
+  let endTime = dateObjEnd.setHours(dateObjEnd.getHours() + tZOffsetMs / 1000 / 60 / 60); ;  // z.B. '09:53:41' // // 16:43 für den 2.6.2025
+  endTime = dateObjEnd.toLocaleString(); // z.B. '09:53:41'
+
+  // calc the duration of the track
+  let durationFormatted = '';
   if (datumEnd === datumStart) {
     //duration = Math.round((dateObjEnd.getTime() - dateObjStart.getTime()) / 60000).toFixed(2); // in minutes
     // Dauer in Millisekunden
@@ -50,6 +60,7 @@ function getTrackInfo(NPoints, trackInfo) {
     endTime,
     timeZoneName,
     tZOffset,
+    tZOffsetMs,
     durationFormatted
   };
 
@@ -155,6 +166,14 @@ function toDMS(value) {
   return [deg, min, sec];
 }
 
+function dmsToDecimal(dmsStr, ref) {
+    const parts = dmsStr.trim().split(' ').map(parseFloat);
+    const [deg, min, sec] = parts;
+    let decimal = deg + min / 60 + sec / 3600;
+    if (ref === 'S' || ref === 'W') decimal *= -1;
+    return decimal;
+}
+
 async function getElevation(lat, lon) {
     const url = `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`;
     try {
@@ -168,5 +187,92 @@ async function getElevation(lat, lon) {
     }
 }
 
+/**
+ * Returns the time zone offset in milliseconds to UTC and the time zone name.
+ * @param {object} dateObject - The date object to be parsed.
+ * @param {object} coordinate - The coordinates object containing lat and lng.
+ * @returns {object} An object containing the time zone offset in milliseconds to UTC and the time zone name.
+ * @property {string} tzResult - The time zone name in the format "UTC[+-]\d+".
+ * @property {number} tzOffsetMs - The time zone offset in milliseconds to UTC.
+ * @example
+ * getUTCOffsetFromLocation('2022-01-01T12:00:00Z', {lat: 47.756, lng: 22.501}) // returns {tzResult: 'UTC+2', tzOffsetMs: 7200000}
+ */
+function getUTCOffsetFromLocation(dateObject, coordinate) {
+  let timeZone = 'UTC';
 
-export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation };
+  if (coordinate && coordinate.lat && coordinate.lng) {
+    const [lat, lon] = [coordinate.lat, coordinate.lng];
+    timeZone = tz_lookup(lat, lon); // z.B. 'Europe/Bucharest'
+  }
+
+  const date = new Date(dateObject);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    minute: 'numeric',
+    timeZoneName: 'short'
+  });
+  const parts = formatter.formatToParts(date);
+  const tzPart = parts.find(p => p.type === 'timeZoneName')?.value || '';
+  const match = tzPart.match(/(?:UTC|GMT)([+-]\d+)/);
+  let tzResult = match ? `UTC${match[1]}` : 'UTC±0';
+
+  // correct the time offset of the gpx time because this is a local time and not UTC time
+  let tzOffsetMs = match ? parseInt(match[1], 10) * 60 * 60 * 1000 : 0; // This is the time zone offset in milliseconds to UTC for the start coordinate, e.g. 7200000 for UTC+2
+  let coordTimeDelta = (date.getHours() - date.getUTCHours()) * 60 * 60 * 1000; // 13 h - 11 h = + 2 h converted to ms
+  tzOffsetMs = tzOffsetMs - coordTimeDelta; // 7200000 + 7200000 = 14400000 ms (4 h)  
+
+  return {tzResult, tzOffsetMs};
+}
+
+/**
+ * Wandelt einen UTC-Offset-String wie 'UTC+3' oder 'UTC-2.5' in das Format '+03:00' oder '-02:30'
+ * @param {string} utcOffsetStr - z.B. 'UTC+3', 'UTC-2.5'
+ * @returns {string} - z.B. '+03:00', '-02:30'
+ */
+function formatUTCOffset(utcOffsetStr) {
+  const match = utcOffsetStr.match(/UTC([+-]?)(\d+(?:\.\d+)?)/);
+  if (!match) return '+00:00';
+
+  const sign = match[1] === '-' ? '-' : '+';
+  const offset = parseFloat(match[2]);
+
+  const hours = Math.floor(offset);
+  const minutes = Math.round((offset - hours) * 60);
+
+  const formatted = `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return formatted;
+}
+
+function parseExiftoolGPS(exifOutput) {
+
+  
+  const roundTo = (value, decimals) => Math.round(value * 10 ** decimals) / 10 ** decimals;
+  
+  const latMatch = exifOutput.match(/\+ GPS:GPSLatitude = '([\d\s.]+)'/);
+  const latRefMatch = exifOutput.match(/\+ GPS:GPSLatitudeRef = '([NSEW])'/);
+  const lngMatch = exifOutput.match(/\+ GPS:GPSLongitude = '([\d\s.]+)'/);
+  const lngRefMatch = exifOutput.match(/\+ GPS:GPSLongitudeRef = '([NSEW])'/);
+  const altMatch = exifOutput.match(/\+ GPS:GPSAltitude = '([\d.]+)'/);
+  const successMatch = exifOutput.match(/1 image files updated/);
+
+  if (!latMatch || !latRefMatch || !lngMatch || !lngRefMatch || !altMatch || !successMatch) {
+    return null; // oder Fehlerobjekt zurückgeben
+  }
+
+  const lat = roundTo(dmsToDecimal(latMatch[1], latRefMatch[1]), 6); // float
+  const lng = roundTo(dmsToDecimal(lngMatch[1], lngRefMatch[1]), 6); // float
+  const alt = roundTo(parseFloat(altMatch[1]), 2); // float
+  let pos = lat.toString() + ' ' + lng.toString(); // string ' ' as separator
+
+  // split lat and lng match[1] to arrays
+  const latArray = latMatch[1].split(' ').map(parseFloat); // split lat and lng match[1] to arrays and convert to float
+  const latRef = latRefMatch[1];
+  const lngArray = lngMatch[1].split(' ').map(parseFloat);  
+  const lngRef = lngRefMatch[1];
+
+  return { lat, lng, pos, alt, latArray, latRef, lngArray, lngRef };
+}
+
+
+export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation, getUTCOffsetFromLocation, parseExiftoolGPS };
