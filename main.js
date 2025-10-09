@@ -391,7 +391,7 @@ async function readImagesFromFolder(folderPath, extensions) {
             return extensions.includes(ext);  
         });  
   
-        // Define a function to extract required EXIF metadata  
+        // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {  
             const metadata = await exifTool.read(filePath);
             let thumbnailPath = '';
@@ -695,7 +695,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
         if (err) {
           exiftoolAvailable = false;
           // show a simple popup with error message. Do this only once and not for each image.
-          dialog.showErrorBox('Exiftool not found', 'Exiftool is not installed or not in PATH.');
+          dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
           return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
         }
 
