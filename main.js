@@ -11,6 +11,21 @@ const sanitizeHtml = require('sanitize-html');
 const os = require("os");
 
 const isDev = !app.isPackaged;
+
+// write to a log file if the exe is used
+if (!isDev) {
+  const logFilePath = path.join(app.getPath('userData'), 'geotagger.log');
+  const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
+  ['log', 'warn', 'error'].forEach((method) => {
+    //const original = console[method];
+    console[method] = (...args) => {
+      //original(...args); // optional: weiterhin in Konsole anzeigen
+      logStream.write(`[${method.toUpperCase()}] ${new Date().toISOString()} ${args.join(' ')}\n`);
+    };
+  });
+}
+
 let systemLanguage = 'en';
 
 let win; // Variable für das Hauptfenster
@@ -23,7 +38,7 @@ let exiftoolAvailable = true;
 //const settingsFilePath = path.join(__dirname, 'user-settings.json');
 const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
 
-
+// prepare i18next, prepare menu, create window
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
   systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de' 
@@ -178,9 +193,11 @@ app.on('window-all-closed', () => {
 /**
  * Creates and configures the main Electron browser window for the application.
  * Loads user settings, sets up window size and position, and initializes IPC handlers
- * for UI events (resize, move, sidebar width, bar size, image filter updates).
+ * for UI events (resize, move, sidebar widths, bar sizes, image filter updates, 
+ *                exit with unsaved changes, save metadata, geotag image with exifTool).
  * Loads translations and passes them to the renderer process.
- * Loads images from the last used image folder (if available) and sends them to the renderer.
+ * Loads images from the last used image folder (if available) extracts metadata and sends them to the renderer.
+ * Loads last used GPX file (if available) and sends it to the renderer.
  *
  * **Global Variables Used/Modified:**
  * - `settings` (object): Stores user/application settings and is updated/saved during window events.
@@ -562,7 +579,7 @@ async function writeMetaData(allmagesData) {
   }
   
   for (const img of allmagesData) {
-    if (img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS') {
+    if (img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged') {
       console.log('writing meta for image:', img.file + img.extension);
       try {
         await writeMetadataOneImage(img.imagePath, img);
@@ -696,6 +713,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
           exiftoolAvailable = false;
           // show a simple popup with error message. Do this only once and not for each image.
           dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
+          console.error('Exiftool is not installed or not in PATH.');
           return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
         }
 
