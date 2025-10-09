@@ -19,8 +19,9 @@ let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions TBD: is it required?
 let exiftoolAvailable = true;
 
-// TODO: path anpassen, falls nötig. Hier werden die settings bei Updates der app überschrieben!
-const settingsFilePath = path.join(__dirname, 'user-settings.json');
+// Define path for the user settings file
+//const settingsFilePath = path.join(__dirname, 'user-settings.json');
+const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
 
 
 app.whenReady().then(() => {
@@ -310,7 +311,13 @@ function createWindow() {
  * @param {string} settingsFilePath 
  * @returns 
  */
-function loadSettings(settingsFilePath) {  
+function loadSettings(settingsFilePath) {
+  // check if file exists in settingsFilePath. 
+  // If not copy the default settings file from the project folder to the user folder
+  if (!fs.existsSync(settingsFilePath)) {
+    fs.copyFileSync(path.join(__dirname, 'settings', 'user-settings.json'), settingsFilePath);
+  }
+
   try {  
     return JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));  
   } catch (error) {  
@@ -493,7 +500,6 @@ async function readImagesFromFolder(folderPath, extensions) {
         );  
   
         // Sort images by capture time
-        // TODO : in funktion verlagern.
         try {
             imagesData.sort((a, b) => {
                 try {
@@ -761,16 +767,16 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
 }
 
 const sanitize = (value) => {  
+
+  function sanitizeInput(input) {  
+    return sanitizeHtml(input, {  
+      allowedTags: [],  // does not allow any tags!  
+      allowedAttributes: {}  
+    });  
+  }
+
   if (typeof value !== "string") return undefined;  
   let v = value.trim();  
   v = sanitizeInput(v);  
   return v;  
-};  
-  
-function sanitizeInput(input) {  
-  return sanitizeHtml(input, {  
-    allowedTags: [],  // does not allow any tags!  
-    allowedAttributes: {}  
-  });  
-}  
-  
+};
