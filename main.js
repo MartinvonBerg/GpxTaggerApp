@@ -580,7 +580,7 @@ async function writeMetaData(allmagesData) {
   
   for (const img of allmagesData) {
     if (img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged') {
-      console.log('writing meta for image:', img.file + img.extension);
+      console.log('Writing meta for Image:', img.file + img.extension);
       try {
         await writeMetadataOneImage(img.imagePath, img);
       } catch (error) {
@@ -667,10 +667,11 @@ async function writeMetadataOneImage(filePath, metadata) {
   }  
   */
   if (Object.keys(writeData).length > 0) {  
-    await exiftool.write(filePath, writeData);  
-    console.log("Metadaten erfolgreich geschrieben: ", writeData);  
+    await exiftool.write(filePath, writeData);
+    let metaDataString = JSON.stringify(writeData, null, 2);
+    console.log("Metadata successfully written: ", metaDataString);  
   } else {  
-    console.log("Keine Metadaten zum Schreiben (alles leer).");  
+    console.log("No Metadata to write (all fields empty).");  
   }  
 }
 
@@ -732,9 +733,11 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
           command += ' -geolocate=geotag';
         }
         command += ` "${imagePath}"`;
+        console.log("ExifTool Command:", command);
 
         exec(command, (error, stdout, stderr) => {
           if (error) {
+            console.error(`ExifTool-Error: ${stderr || error.message}`);
             return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
           }
           resolve({ success: true, output: stdout });
