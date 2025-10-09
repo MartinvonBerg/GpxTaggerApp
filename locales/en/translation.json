@@ -59,5 +59,9 @@
   "imageTimeRangeTooHigh": "Images too different time ranges. Please adjust selection and set new marker",
   "seconds": "Seconds",
   "timeDeviation": "Time Deviation",
-  "dateMismatch": "Capture date doesn't match GPX track"
+  "dateMismatch": "Capture date doesn't match GPX track",
+  "save": "Save changes",
+  "discard": "Discard changes",
+  "unsavedChanges": "Unsaved changes",
+  "unsavedChangesMessage" : "Unsaved changes exist. Do you want to leave the application?"
 }

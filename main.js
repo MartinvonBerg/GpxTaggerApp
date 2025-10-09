@@ -6,10 +6,9 @@ const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
 const sharp = require("sharp");
 const { exec } = require('child_process');
-//const writeMetadataOneImage = require('./src/exifWriter.js');
-//import writeMetadataOneImage from './src/exifWriter';
 const { exiftool } = require("exiftool-vendored");  
 const sanitizeHtml = require('sanitize-html');
+const os = require("os");
 
 const isDev = !app.isPackaged;
 let systemLanguage = 'en';
@@ -18,11 +17,11 @@ let win; // Variable für das Hauptfenster
 let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions TBD: is it required?
-  
-const settingsFilePath = path.join(__dirname, 'user-settings.json'); // TODO: path anpassen, falls nötig. Hier werden die settings bei Updates der app überschrieben!
+let exiftoolAvailable = true;
 
-// TODO : move functions to separate files except createWindow
-// TODO : read available metadata from xmp files (sidecar files for raw images) - exiftool can do this, too
+// TODO: path anpassen, falls nötig. Hier werden die settings bei Updates der app überschrieben!
+const settingsFilePath = path.join(__dirname, 'user-settings.json');
+
 
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
@@ -49,7 +48,7 @@ app.whenReady().then(() => {
       {    
         label: t('file'),  
         submenu: [    
-          { label: t('reload'), role: 'reload' }, // TODO: check if this is required, it is just for testing
+          //{ label: t('reload'), role: 'reload' }, // this is required just for testing
           { label: t('reloadData'),
               click: () => {
                 // IPC an Renderer senden, um Daten neu zu laden
@@ -169,6 +168,12 @@ app.whenReady().then(() => {
   });  
 });
 
+app.on('window-all-closed', () => {  
+  if (process.platform !== 'darwin') {  
+    app.quit();  
+  }  
+});
+
 /**
  * Creates and configures the main Electron browser window for the application.
  * Loads user settings, sets up window size and position, and initializes IPC handlers
@@ -263,15 +268,13 @@ function createWindow() {
   });
 
   ipcMain.on('exit-with-unsaved-changes', (event, allImages) => {
-      // TODO : the i18next 't' translate function is not available here!
-      // let text = t('file'); this will not work and causes an error
 
       const options = {  
             type: 'question',  
-            buttons: ['Save', 'Discard'],  
+            buttons: [i18next.t('save'), i18next.t('discard')], // ['Save', 'Discard'],  
             defaultId: 0,  
-            title: 'Unsaved Changes',  
-            message: 'You have unsaved changes. Do you want to save them?',  
+            title: i18next.t('unsavedChanges'), //'Unsaved Changes',  
+            message: i18next.t('unsavedChangesMessage'), //'You have unsaved changes. Do you want to save them?',  
         };  
   
       dialog.showMessageBox(win, options).then((response) => {  
@@ -290,12 +293,6 @@ function createWindow() {
   })
 
   ipcMain.handle('save-meta-to-image', async (event, allImages) => {
-    /*
-    await writeMetaData(allImages).then(() => {
-        win.webContents.send('allImages-updated', allImages);
-        return 'done allImages-updated';
-    });
-    */
     await writeMetaData(allImages);
     return 'done';
   });
@@ -304,7 +301,7 @@ function createWindow() {
     const { gpxPath, imagePath, options } = data;
     return await geotagImageExiftool(gpxPath, imagePath, options);
   });
-}  
+}
 
 /**
  * Loads user settings from a JSON file.
@@ -319,7 +316,7 @@ function loadSettings(settingsFilePath) {
   } catch (error) {  
     return {};  
   }  
-}  
+}
 
 /**
  * saves user settings to a JSON file.
@@ -329,19 +326,7 @@ function loadSettings(settingsFilePath) {
  */
 function saveSettings(settingsFilePath, settings) {
   fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
-}  
-  
-app.on('window-all-closed', () => {  
-  if (process.platform !== 'darwin') {  
-    app.quit();  
-  }  
-});  
-  
-app.on('activate', () => {  
-  if (BrowserWindow.getAllWindows().length === 0) {  
-    createWindow();  
-  }  
-});
+}
 
 /**
  * Reads all image files from a folder, extracts EXIF metadata, and returns an array of image data objects.
@@ -350,6 +335,8 @@ app.on('activate', () => {
  * Images are sorted by their capture time (DateTimeOriginal).
  * Uses exiftool-vendored for fast, concurrent metadata extraction.
  *
+ * TODO : read available metadata from xmp files (sidecar files for raw images) - exiftool can do this, too
+ * 
  * @async
  * @function readImagesFromFolder
  * @param {string} folderPath - Absolute path to the folder containing images.
@@ -379,8 +366,10 @@ app.on('activate', () => {
  * @throws Will log errors to the console if reading or parsing fails.
  */
 async function readImagesFromFolder(folderPath, extensions) {
+    const maxProcs = Math.min(os.cpus().length, 16);
+
     const exifTool = new ExifTool({
-      maxProcs: 20, // More concurrent processes TODO: get the number of CPU cores and set it dynamically
+      maxProcs: maxProcs, // More concurrent processes = faster
       minDelayBetweenSpawnMillis: 0, // Faster spawning
       streamFlushMillis: 10, // Faster streaming
     });  
@@ -399,23 +388,39 @@ async function readImagesFromFolder(folderPath, extensions) {
         const getExifData = async (filePath) => {  
             const metadata = await exifTool.read(filePath);
             let thumbnailPath = '';
+            const maxAgeDays = 14;
+            
             if (metadata.ThumbnailImage && metadata.ThumbnailImage.rawValue) {
               const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
+              let useExistingThumbnail = false;
 
-              // delete old thumbnail if exists TODO: check if same file exists already and skip if so
+              // check if thumbnail exists and is not older than maxAgeDays. Delete if older and re-extract or keep existing
               if (fs.existsSync(thumbnailPathTmp)) {
-                fs.unlinkSync(thumbnailPathTmp);
+                const now = Date.now();
+                const maxAgeMillis = maxAgeDays * 24 * 60 * 60 * 1000;
+                const stats = fs.statSync(thumbnailPathTmp);
+
+                if (now - stats.mtimeMs > maxAgeMillis) {
+                  fs.unlinkSync(thumbnailPathTmp);
+                } else {
+                  useExistingThumbnail = true;
+                  thumbnailPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb-2.jpg`);
+                }
               }
-              // Thumbnail mit exiftool extrahieren
-              try {
-                await exifTool.extractThumbnail(filePath, thumbnailPathTmp); // TODO try again with a binary buffer
-              } catch (err) {
-                console.error('Error extracting thumbnail with exiftool for', filePath, err);
-              }
-              try {
-                thumbnailPath = await rotateThumbnail(metadata, filePath, thumbnailPathTmp);
-              } catch (err) {
-                console.error('Error rotating thumbnail with sharp for', filePath, err);
+
+              if (!useExistingThumbnail) {
+                // extract new thumbnail
+                try {
+                  await exifTool.extractThumbnail(filePath, thumbnailPathTmp); // TODO try again with a binary buffer
+                } catch (err) {
+                  console.error('Error extracting thumbnail with exiftool for', filePath, err);
+                }
+                // rotate thumbnail
+                try {
+                  thumbnailPath = await rotateThumbnail(metadata, filePath, thumbnailPathTmp);
+                } catch (err) {
+                  console.error('Error rotating thumbnail with sharp for', filePath, err);
+                }
               }
               
             } else {
@@ -533,48 +538,16 @@ async function readImagesFromFolder(folderPath, extensions) {
         console.error('Error reading images from folder:', error);  
     } finally {  
         await exifTool.end();  
-    }  
+    }
 }
 
-async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
-  const orientation = metadata.Orientation || 1; // default = normal
-  
-  // Mit sharp korrigieren
-  let image = sharp(thumbPathTmp);
-  const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb-2.jpg`);
-
-  switch (orientation) {
-    case 3:
-      image = image.rotate(180);
-      break;
-    case 6:
-      image = image.rotate(90);
-      break;
-    case 8:
-      image = image.rotate(270);
-      break;
-    case 2:
-      image = image.flop(); // horizontal spiegeln
-      break;
-    case 4:
-      image = image.flip(); // vertikal spiegeln
-      break;
-    case 5:
-      image = image.rotate(90).flop();
-      break;
-    case 7:
-      image = image.rotate(270).flop();
-      break;
-    default:
-      // 1 = normal, keine Änderung
-      break;
-  }
-
-  await image.toFile(thumbnailPathTmp); // überschreibt Thumbnail mit korrigierter Version
-
-  return thumbnailPathTmp;
-}
-
+/**
+ * Writes the metadata of all images in the allmagesData array to their respective files.
+ * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' are written.
+ * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
+ * @param {array} allmagesData - an array of objects containing information about all images
+ * @returns {Promise<void>} - a promise that resolves when all metadata has been written
+ */
 async function writeMetaData(allmagesData) {
   // check if exifWriter was loaded correctly
   if (!writeMetadataOneImage) {
@@ -594,21 +567,14 @@ async function writeMetaData(allmagesData) {
   };
 }
 
-const sanitize = (value) => {  
-  if (typeof value !== "string") return undefined;  
-  let v = value.trim();  
-  v = sanitizeInput(v);  
-  return v;
-  //return v.length > 0 ? v : undefined;  
-};  
-  
-function sanitizeInput(input) {  
-  return sanitizeHtml(input, {  
-    allowedTags: [],  // does not allow any tags!  
-    allowedAttributes: {}  
-  });  
-}  
-  
+/**
+ * Writes the metadata of one image to its respective file.
+ * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' are written.
+ * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
+ * @param {string} filePath - the path to the image file
+ * @param {object} metadata - an object containing information about the image
+ * @returns {Promise<void>} - a promise that resolves when the metadata has been written
+ */
 async function writeMetadataOneImage(filePath, metadata) {  
   const writeData = {};
 
@@ -685,46 +651,126 @@ async function writeMetadataOneImage(filePath, metadata) {
   }  
 }
 
+/**
+ * Geotag an image using the GPS data from a GPX file.
+ * This function uses exiftool to write the GPS data from the GPX file to the image file.
+ * If exiftool is not available, a simple popup with an error message will be shown.
+ * If the GPX file or the image file is not found, the function will resolve with an error message.
+ * If the command fails, the function will resolve with an error message.
+ * @param {string} gpxPath - The path to the GPX file.
+ * @param {string|array} imagePath - The path to the image file or an array of image paths.
+ * @param {object} options - An object with the following properties:
+ *   - verbose {string} - The verbosity of the command. Default is 'v2'.
+ *   - charsetFilename {string} - The character set for the filename. Default is 'latin'.
+ *   - geolocate {boolean} - Whether to geolocate the image. Default is true.
+ *   - timeOffset {number} - The time offset in seconds to apply to the GPX data. Default is 0.
+ * @returns {Promise<object>} - A promise that resolves with an object containing a success flag and an error message if applicable.
+ * The output will be an object with the following properties:
+ *   - success {boolean} - Whether the command was successful.
+ *   - error {string} - An error message if the command was not successful.
+ *   - output {string} - The output of the command if it was successful.
+ */
 async function geotagImageExiftool(gpxPath, imagePath, options) { 
   
-  const exiftoolPath = 'exiftool'; // ggf. absoluter Pfad nötig
+  const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
 
   // Standardwerte setzen
   const {
     verbose = 'v2',
     charsetFilename = 'latin',
-    geolocate = true
+    geolocate = true,
+    timeOffset = 0 // in seconds! negative or positive.
   } = options;
 
   return new Promise((resolve) => {
     // Prüfen, ob exiftool vorhanden ist
-    exec(`${exiftoolPath} -ver`, (err) => {
-      if (err) {
-        return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
-      }
-
-      // Pfade prüfen
-      if (!fs.existsSync(gpxPath)) {
-        return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
-      }
-
-      if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
-        return resolve({ success: false, error: `Image File not found: ${imagePath}` });
-      }
-
-      // Kommando zusammenbauen
-      let command = `"${exiftoolPath}" -${verbose} -charset filename=${charsetFilename} -geotag "${gpxPath}"`;
-      if (geolocate) {
-        command += ' -geolocate=geotag';
-      }
-      command += ` "${imagePath}"`;
-
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+    if (exiftoolAvailable) {
+      exec(`${exiftoolPath} -ver`, (err) => {
+        if (err) {
+          exiftoolAvailable = false;
+          // show a simple popup with error message. Do this only once and not for each image.
+          dialog.showErrorBox('Exiftool not found', 'Exiftool is not installed or not in PATH.');
+          return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
         }
-        resolve({ success: true, output: stdout });
+
+        // Pfade prüfen
+        if (!fs.existsSync(gpxPath)) {
+          return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
+        }
+
+        if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
+          return resolve({ success: false, error: `Image File not found: ${imagePath}` });
+        }
+
+        // Kommando zusammenbauen
+        let command = `"${exiftoolPath}" -${verbose} -geosync=${timeOffset} -charset filename=${charsetFilename} -geotag "${gpxPath}"`;
+        if (geolocate) {
+          command += ' -geolocate=geotag';
+        }
+        command += ` "${imagePath}"`;
+
+        exec(command, (error, stdout, stderr) => {
+          if (error) {
+            return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+          }
+          resolve({ success: true, output: stdout });
+        });
       });
-    });
+    }
   });
 }
+
+// ------------ helpers ------------
+async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
+  const orientation = metadata.Orientation || 1; // default = normal
+  
+  // Mit sharp korrigieren
+  let image = sharp(thumbPathTmp);
+  const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb-2.jpg`);
+
+  switch (orientation) {
+    case 3:
+      image = image.rotate(180);
+      break;
+    case 6:
+      image = image.rotate(90);
+      break;
+    case 8:
+      image = image.rotate(270);
+      break;
+    case 2:
+      image = image.flop(); // horizontal spiegeln
+      break;
+    case 4:
+      image = image.flip(); // vertikal spiegeln
+      break;
+    case 5:
+      image = image.rotate(90).flop();
+      break;
+    case 7:
+      image = image.rotate(270).flop();
+      break;
+    default:
+      // 1 = normal, keine Änderung
+      break;
+  }
+
+  await image.toFile(thumbnailPathTmp); // überschreibt Thumbnail mit korrigierter Version
+
+  return thumbnailPathTmp;
+}
+
+const sanitize = (value) => {  
+  if (typeof value !== "string") return undefined;  
+  let v = value.trim();  
+  v = sanitizeInput(v);  
+  return v;  
+};  
+  
+function sanitizeInput(input) {  
+  return sanitizeHtml(input, {  
+    allowedTags: [],  // does not allow any tags!  
+    allowedAttributes: {}  
+  });  
+}  
+  

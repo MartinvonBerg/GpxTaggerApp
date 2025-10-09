@@ -14,6 +14,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
+// TODO: show a map with default coordinates if no track was loaded
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -84,13 +85,14 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     }
     if (settings.map) {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
-      pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+      //pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       console.log('Map settings loaded:', pageVarsForJs[0]);
-      // Initialize map here if needed
+      // TODO: show the map without track here
     }
     if (settings.gpxPath) {
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
-      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      //pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
         trackInfo = newTrackInfo;
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
@@ -101,7 +103,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   window.myAPI.receive('gpx-data', async (gpxPath) => {
     settings.gpxPath = gpxPath;
     pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
-    pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+    //pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
     showgpx(allMaps, gpxPath).then( (newTrackInfo) => {
       trackInfo = newTrackInfo;
       filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
@@ -111,7 +113,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
   window.myAPI.receive('clear-gpx', () => {  
     console.log('GPX-Track löschen Befehl empfangen');
-    // Hier kannst du den GPX-Track aus der Anzeige entfernen
+    // This will remove the track from the map but not the map itself.
     allMaps[0].removeGPXTrack();
     trackInfo = {};
     filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
@@ -133,10 +135,6 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     
     console.log('Empfangener Bilder-Pfad im Renderer:', imagePath);
     settings.imagePath = imagePath;
-    const gpxPathElement = document.getElementById('img-path');
-    if (gpxPathElement) {
-      //gpxPathElement.textContent = `${i18next.t('imageFolder')}: ${settings.imagePath}`;
-    }
 
     // ----------- EXTENSIONS ---------------
     // read images from the parameter loadedImages. Filter them according to the filter settings in settings.imageFilter
@@ -155,7 +153,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     console.log('Bild-Datumsbereich:', minDate , ' bis ', maxDate);  
     
     // show the filters in the left sidebar
-    allImages = loadedImages;
+    allImages = loadedImages; // these two are no deep copies! These are copies by reference. Later changes will affect both arrays!
     filteredImages = allImages; // initially, all images are shown
     showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
     filterImages();
@@ -223,12 +221,11 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
    * @param {string} HTMLElementID - ID of the HTML element where the thumbnails should be generated
    * @param {array} allImages - Array of all images, which should be shown as thumbnails
    */
-  async function showThumbnail(HTMLElementID, allImages) {
+  async function showThumbnail(HTMLElementID, allImages, filteredImages) {
     const thumbnailElement = document.getElementById(HTMLElementID);
     if (!thumbnailElement) return;
 
     thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
-     // import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
        
     import(/* webpackChunkName: "thumbnailSlider" */'../js/thumbnailClass.js').then( (ThumbnailSlider) => {
         let th = new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs.sw_options);
@@ -255,11 +252,10 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
   window.addEventListener('beforeunload', (event) => {  
     // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
-    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS');
+    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged');
     if (hasUnsavedChanges) {  
         // Verhindere das automatische Schließen des Fensters  
         event.preventDefault();
-         
         window.myAPI.send('exit-with-unsaved-changes', allImages); 
     }  
   });
@@ -337,7 +333,7 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
 
   // Filter for maximum allowed time Deviation in seconds
   const timeDevSetter = `
-    <label for="time-deviation"><strong>${i18next.t('timeDeviation')}: </strong></label>
+    <label for="time-deviation"><strong>${i18next.t('timeDeviation')} / s: </strong></label>
     <input type="number" id="time-deviation" min="0" max="100000" step=1 value="${settings.timeDevSetting}">
   `;
 
