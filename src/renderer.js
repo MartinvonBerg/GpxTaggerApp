@@ -535,12 +535,61 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
     });
 }
 
+function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
+  const button = document.getElementById('tracklog-button');
+  if (!button) return;
+
+  // Set default values
+  const {
+    verbose = 'v2',
+    charsetFilename = 'latin',
+    geolocate = true,
+    tzoffset = 0 // TODO : get this from UI user input
+  } = params;
+ 
+  button.addEventListener('click', async (event) => {
+    for (const image of filteredImages) {
+      const params = {
+        gpxPath,
+        imagePath: image.imagePath,
+        options: {
+          verbose,
+          charsetFilename,
+          geolocate,
+          tzoffset
+        }
+      };
+
+      try {
+        const result = await window.myAPI.invoke('geotag-exiftool', params);
+        if (result.success) {
+          const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
+          // todo: write the result to the image in filteredImages and allImages and set the status to 'geotagged'
+          console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
+          image.lat = lat;
+          image.lng = lng;
+          image.pos = pos;
+          image.GPSAltitude = alt;
+          image.GPSLatitude = latArray;
+          image.GPSLatitudeRef = latRef;
+          image.GPSLongitude = lngArray;
+          image.GPSLongitudeRef = lngRef;
+          image.status = 'geotagged';
+        }
+      } catch (err) {
+        console.error(`Fehler bei ${image.imagePath}:`, err);
+      }
+    }
+  });
+}
+
 // ----------- RIGHT SIDEBAR -----------
 /** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
  * 
- * TODO: some translations are missing
+ * TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
  * @global {object} allImages
  * @param {number} index - the index of the image in the allImages array
+ * @param {array} selectedIndexes - the indexes of the images that are selected
  */
 function showMetadataForImageIndex(index, selectedIndexes=[]) {
   let img = allImages[index];
@@ -549,7 +598,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
   // get the identical values for the keys in img if multiple images are selected. img.file, img.extension, img.index
   if (selectedIndexes.length > 1) {
-    // get the identical values for the keys in img or if not identical set them to i18next.t('multiple')
+    // get the identical values for the keys in img or if not identical set them to 'multiple'. The value is not translated here because it is used programmatically.
     img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description'], 'multiple');
     img.index = selectedIndexes.join(', ');
     DateTimeOriginalString = 'multiple';
@@ -564,34 +613,31 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
   if (testPos) img.pos = testPos.pos;
   
   // show some metadata of the image in the right sidebar like it is done in LR 6.14
-  // TODO: go to next field on enter pressed and use arrow keys to navigate
-  // TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
- 
   el.innerHTML = `
     <div class="lr-metadata-panel">
       <div class="meta-file-section meta-section">
-        <label>File Name:</label>
+        <label>${i18next.t('file')}:</label>
         <span class="meta-value"> ${img.file + img.extension}</span>
 
         <label>Date Time Original:</label>
         <span class="meta-value">${DateTimeOriginalString}</span>
 
-        <label>Metadata Status:</label>
-        <span class="meta-value">${img.status}</span>
+        <label>${i18next.t('Metadata-Status')}:</label>
+        <span id="meta-status" class="meta-value">${img.status}</span>
       </div>
       <hr>
 
-      <div><strong>Press Enter for EACH value!</strong></div>
+      <div><small>${i18next.t('enterhint')}</small></div>
       <form id="gps-form">
         <div class="meta-section ">
           <label>GPS-Pos (Lat / Lon):</label> <!-- Lat = Breite von -90 .. 90, Lon = Länge von -180 .. 180 -->
           <input id="gpsInput" type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
           
-          <label>Altitude (m ASL)</label>
+          <label>${i18next.t('Altitude')} (m)</label>
           <input id="altitudeInput" type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
 
-          <label>Direction:</label>
-          <input type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
+          <label>${i18next.t('Direction')}:</label>
+          <input id="directionInput" type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
         </div>
       </form>  
       <hr>
@@ -649,6 +695,9 @@ function metaTextEventListener() {
             if (allImages[index].Description !== otherValue) {
               allImages[index].Description = otherValue;
             }
+            // focus the textarea and set the cursor to the end of the text
+            document.querySelector(".meta-description").focus();
+            document.querySelector(".meta-description").setSelectionRange(document.querySelector(".meta-description").value.length, document.querySelector(".meta-description").value.length);
           } else { // prüfen, ob bei enter in textarea field auch noch der text aktualisiert werden soll
             let otherValue = document.querySelector(".meta-title").value
             if (allImages[index].Title !== otherValue) {
@@ -660,6 +709,7 @@ function metaTextEventListener() {
           input.tagName === "INPUT" ? allImages[index].Title = sanitizedValue : void 0;
           input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
           allImages[index].status = 'meta-manually-changed';
+          updateImageStatus('meta-status', 'meta-manually-changed');
         });
       }
     });
@@ -699,8 +749,19 @@ function metaGPSEventListener() {
             input.value = convertedValue.pos;
         }
 
-        // schreibe die Daten in allImages
+        // schreibe die Daten in allImages und setze den Status entsprechend
         allImages = updateAllImagesGPS(allImages, index, convertedValue);
+        // update the status of the image in the UI. We only reach this line if convertedValue is not null either for a single or for multiple images.
+        // And we won't reach it if the input.value is empty
+        updateImageStatus('meta-status', 'gps-manually-changed');
+
+        // focus the altitude input and set the cursor to the end of the value
+        const nextInput = document.getElementById("altitudeInput");
+        if (nextInput) {
+          nextInput.focus();
+          // note: for number input it is not possible to set the cursor position
+        }
+
       } 
       // für type="number" also Altitude und Bildrichtung -----------------------
       else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
@@ -710,7 +771,7 @@ function metaGPSEventListener() {
         let index = input.dataset.index;
         let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
 
-        if (!isValidIndex || !convertedValue) {
+        if ( (!isValidIndex || !convertedValue) && input.value !== '' ) {
           // go back to the browser input and show an error message
           input.value = '';
           input.focus();
@@ -728,9 +789,31 @@ function metaGPSEventListener() {
           input.className.includes('meta-imgdir') ? allImages[index].GPSImgDirection = input.value : void 0;
           allImages[index].status = 'gps-manually-changed';
         });
+        updateImageStatus('meta-status', 'gps-manually-changed');
+
+        // focus the altitude input and set the cursor to the end of the value
+        if (input.id === "altitudeInput") {
+          const nextInput = document.getElementById("directionInput");
+          if (nextInput) {
+            nextInput.focus();
+            // note: for number input it is not possible to set the cursor position
+          }
+        } else if (input.id === "directionInput") {
+          const nextInput = document.getElementById("titleInput");
+          if (nextInput) {
+            nextInput.focus();
+            // set the cursor to the end of the title input
+            nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+          }
+        }
+  
       }
     });
   });
+}
+
+function updateImageStatus(htmlID, status) {
+  document.getElementById(htmlID).textContent = status;
 }
 
 /** Handles the metadata save button in the right sidebar
@@ -741,7 +824,7 @@ function metaGPSEventListener() {
  * @returns {void} void in case of index out of range of allImages.
  */
 function handleSaveButton() {
-   // Hole den Button mit der Klasse 'meta-button meta-accept'  
+  // Hole den Button mit der Klasse 'meta-button meta-accept'  
   const button = document.querySelector('.meta-button.meta-accept');  
     
   // Füge einen Klick-Event-Listener hinzu  
@@ -896,7 +979,7 @@ function handleSaveButton() {
       }
 
       // Weitere Felder unabhängig von pos
-      const otherFields = ["GPSAltitude", "GPSImgDirection", "Title", "Description"];
+      const otherFields = ["GPSAltitude", "GPSImgDirection", "Title", "Description", "status"];
       otherFields.forEach(field => {
         if (updatedImage[field] !== null) {
           originalImage[field] = updatedImage[field];
@@ -916,58 +999,11 @@ function handleSaveButton() {
       let start = '';
       indexArray.forEach(index => { start += imagesToSave[index].imagePath + ' // '});
       document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
+      updateImageStatus('meta-status', newStatusAfterSave);
     } else {
       document.getElementById('write-meta-status').textContent = 'Saving failed !!!';
     }
   }); 
-}
-
-function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
-  const button = document.getElementById('tracklog-button');
-  if (!button) return;
-
-  // Set default values
-  const {
-    verbose = 'v2',
-    charsetFilename = 'latin',
-    geolocate = true,
-    tzoffset = 0 // TODO : get this from UI user input
-  } = params;
- 
-  button.addEventListener('click', async (event) => {
-    for (const image of filteredImages) {
-      const params = {
-        gpxPath,
-        imagePath: image.imagePath,
-        options: {
-          verbose,
-          charsetFilename,
-          geolocate,
-          tzoffset
-        }
-      };
-
-      try {
-        const result = await window.myAPI.invoke('geotag-exiftool', params);
-        if (result.success) {
-          const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
-          // todo: write the result to the image in filteredImages and allImages and set the status to 'geotagged'
-          console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
-          image.lat = lat;
-          image.lng = lng;
-          image.pos = pos;
-          image.GPSAltitude = alt;
-          image.GPSLatitude = latArray;
-          image.GPSLatitudeRef = latRef;
-          image.GPSLongitude = lngArray;
-          image.GPSLongitudeRef = lngRef;
-          image.status = 'geotagged';
-        }
-      } catch (err) {
-        console.error(`Fehler bei ${image.imagePath}:`, err);
-      }
-    }
-  });
 }
 
 

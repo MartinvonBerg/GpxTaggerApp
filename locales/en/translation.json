@@ -65,5 +65,9 @@
   "unsavedChanges": "Unsaved changes",
   "unsavedChangesMessage" : "Unsaved changes exist. Do you want to leave the application?",
   "NoExiftool" : "Exiftool not found",
-  "exiftoolNotFound" : "Exiftool is not installed or not in PATH. Please install exiftool or add it to PATH."
+  "exiftoolNotFound" : "Exiftool is not installed or not in PATH. Please install exiftool or add it to PATH.",
+  "Metadata-Status" : "Metadata Status",
+  "Altitude" : "Altitude",
+  "Direction" : "Direction",
+  "enterhint" : "Press ENTER to continue. Leave field with Mouse-Click"
 }

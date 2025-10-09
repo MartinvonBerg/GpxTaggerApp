@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('myAPI', {
     // List of channels allowed  
     let validChannels = ['save-meta-to-image', 'geotag-exiftool'];
     if (validChannels.includes(channel)) {  
-      return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht an main.js geschickt
+      return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht an main.js geschickt und ein return-wert an renderer.js zurückgegeben.
     }  
   }, 
 });  

@@ -65,5 +65,9 @@
   "unsavedChanges": "Ungespeicherte Änderungen",
   "unsavedChangesMessage" : "Ungespeicherte Änderungen vorhanden. Wollen Sie die Anwendung wirklich verlassen?",
   "NoExiftool" : "Exiftool nicht gefunden",
-  "exiftoolNotFound" : "Exiftool ist nicht installiert oder nicht im Pfad (PATH) angegeben"
+  "exiftoolNotFound" : "Exiftool ist nicht installiert oder nicht im Pfad (PATH) angegeben",
+  "Metadata-Status" : "Status Metadaten",
+  "Altitude" : "Höhe",
+  "Direction" : "Richtung",
+  "enterhint" : "Nach Eingabe weiter mit ENTER. Leeres Feld mit Mouse-Click verlassen"
 }  
