@@ -699,12 +699,11 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
 
   // Standardwerte setzen
-  const {
-    verbose = 'v2',
-    charsetFilename = 'latin',
-    geolocate = true,
-    timeOffset = 0 // in seconds! negative or positive.
-  } = options;
+  const verbose = options.verbose || 'v2';
+  const charsetFilename = options.charsetFilename || 'latin';
+  const geolocate = options.geolocate || true;
+  const timeOffset = options.tzoffset || 0;
+  
 
   return new Promise((resolve) => {
     // Prüfen, ob exiftool vorhanden ist

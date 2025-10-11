@@ -478,7 +478,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         }
 
         // get and set the altitude for these images if setHeight is true
-        let setHeight = 'true'; // TODO move this to a setting
+        let setHeight = settings.setHeight; // get the setting for this
         if (index === inputIds && setHeight === 'true') {
           getElevation(lat, lng).then(height => {
             input = document.getElementById('altitudeInput');
@@ -533,10 +533,16 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2);
 
           document.getElementById('tracklog-element').innerHTML = 
-            `<h3 class="sectionHeader">Geotag Image</h3><br>
-            with Time-Diff: ${tdiff}<br><h4>Run Exiftool for filtered Images</h4>
-            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>`;
+            `<h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
+            
+            <label for="timeInput">Tracklogwith Time-Diff: (hh:mm:ss):</label>
+            <input type="text" id="timeDiffInput" name="timeDiffInput" value="${tdiff}">
 
+            <h4>Run Exiftool for filtered Images and with Time-Diff.</h4>
+            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>
+            <div id="tracklog-state"></div>`;
+
+          handleTimePicker('timeDiffInput', tdiff); // TODO: prepared for better JS handling of the time diff input
           handleTracklogButton(settings.gpxPath, filteredImages);
 
         } 
@@ -544,6 +550,15 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           showTrackLogStateError('tracklog-element', 'no-trackfile');
         }
     });
+}
+
+function getTimeDiffInput(HTMLElementID) {
+  let value = document.getElementById(HTMLElementID).value;
+  return value
+}
+
+function setTrackLogState(HTMLElementID, state) {
+  document.getElementById(HTMLElementID).innerHTML = state;
 }
 
 function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
@@ -555,7 +570,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
     verbose = 'v2',
     charsetFilename = 'latin',
     geolocate = true,
-    tzoffset = 0 // TODO : get this from UI user input
+    tzoffset = getTimeDiffInput('timeDiffInput')
   } = params;
  
   button.addEventListener('click', async (event) => {
@@ -570,12 +585,13 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           tzoffset
         }
       };
-
+      setTrackLogState('tracklog-state', 'Geotagging...');
       try {
+        setTrackLogState('tracklog-state', `Geotagging für ${image.imagePath}`);
         const result = await window.myAPI.invoke('geotag-exiftool', params);
         if (result.success) {
           const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
-          // todo: write the result to the image in filteredImages and allImages and set the status to 'geotagged'
+          // write the result to the image in filteredImages and allImages and set the status to 'geotagged'
           console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
           image.lat = lat;
           image.lng = lng;
@@ -589,9 +605,17 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
         }
       } catch (err) {
         console.error(`Fehler bei ${image.imagePath}:`, err);
+        setTrackLogState('tracklog-state', `Fehler bei ${image.imagePath}:`, err);
       }
     }
+    setTrackLogState('tracklog-state', 'Geotagging abgeschlossen.');
   });
+}
+
+function handleTimePicker(HTMLElementID, timeDiffDefaultValue) {
+
+  const input = document.getElementById(HTMLElementID);  
+  if (!input) return;
 }
 
 // ----------- RIGHT SIDEBAR -----------

@@ -172,5 +172,6 @@
   "skipImagesWithGPS": "true",
   "ignoreGPXDate": "true",
   "cameraModels": "all",
-  "timeDevSetting": "36"
+  "timeDevSetting": "36",
+  "setHeight": "true"
 }

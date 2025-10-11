@@ -17,10 +17,10 @@
     "devDependencies": {
         "@babel/core": "*",
         "@babel/preset-env": "*",
+        "@electron/packager": "*",
         "babel-loader": "*",
         "css-loader": "^7.1.2",
         "electron": "^38.1.0",
-        "@electron/packager": "*",
         "style-loader": "^4.0.0",
         "webpack": "*",
         "webpack-cli": "^6.0.1"
