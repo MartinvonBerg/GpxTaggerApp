@@ -29,6 +29,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   window.settings = settings;
   window.filteredImages = filteredImages;
   window.allImages = allImages;
+  window.originalImages = [];
   window.trackInfo = trackInfo;
   
 
@@ -155,6 +156,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // show the filters in the left sidebar
     allImages = loadedImages; // these two are no deep copies! These are copies by reference. Later changes will affect both arrays!
     filteredImages = allImages; // initially, all images are shown
+    originalImages = structuredClone(allImages);
     showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
     filterImages();
     

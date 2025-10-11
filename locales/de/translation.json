@@ -69,5 +69,5 @@
   "Metadata-Status" : "Status Metadaten",
   "Altitude" : "Höhe",
   "Direction" : "Richtung",
-  "enterhint" : "Nach Eingabe weiter mit ENTER. Leeres Feld mit Mouse-Click verlassen"
+  "enterhint" : "Nach Eingabe weiter mit ENTER. Leeres Feld mit Mouse-Click verlassen.<br>Leere Werte werden nur mit Speichern Button übernommen!"
 }  
