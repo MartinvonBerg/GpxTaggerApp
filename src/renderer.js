@@ -4,7 +4,7 @@ import { setDataForLanguage } from '../js/locales.js';
 import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
-import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput } from '../js/generalHelpers.js';
+import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
 import { generateThumbnailHTML } from '../js/thumbnnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
@@ -441,6 +441,7 @@ function filterImages () {
  * 
  * @global {object} allImages which is a global for the whole project.
  * @global {object} document (common global variable)
+ * @global {object} trackInfo
  * @global {function} convertGps, updateAllImagesGPS, getElevation (imported at the top of the file)
  * @param {string} mapId - The id of the map container element, which is 'map0'for this app.
  * @param {object} thumbsClass - The ThumbnailSlider class.
@@ -451,15 +452,15 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
 
     mapContainerElement.addEventListener('singlePosMarkerAdded', function(event) {
 
-        // skip if filteredImages is empty
+        // skip if array filteredImages is empty : This is only the case for a activated track or if images without coordinates are in folder.
         if (filteredImages.length === 0) {
           showTrackLogStateError('tracklog-element', 'no-matching-images');
           return;
         };
 
+        // get the 'correct' gps coordinates for lat and lng from the event position on the map.
         const { lat, lng } = event.detail;
         const convertedValue = convertGps(`${lat}, ${lng}`);
-        let setHeight = 'true'; // TODO move this to a setting
 
         // get active thumbs
         let activeThumbs = thumbsClass.getActiveThumbs();
@@ -471,12 +472,13 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
         // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
         let input =  document.getElementById('gpsInput');
-        let inputIds = input.dataset.index.replace(/\s+/g, "");
-        
+        let inputIds = input.dataset.index.replace(/\s+/g, ""); 
         if (index === inputIds) {
           input.value = convertedValue.pos;
         }
 
+        // get and set the altitude for these images if setHeight is true
+        let setHeight = 'true'; // TODO move this to a setting
         if (index === inputIds && setHeight === 'true') {
           getElevation(lat, lng).then(height => {
             input = document.getElementById('altitudeInput');
@@ -488,52 +490,59 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           })
         }
 
-        // set the allImages array for these images
+        // set the coordinates in allImages array for these images including the status.
         allImages = updateAllImagesGPS(allImages, index, convertedValue);
 
-        // get the closest track points for the active images
-        // TODO: add handling if no track is available
-        const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
-        console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
-        console.log('point2: ', {index: index2, distance: dist2, time: time2});
         // get the time difference for the active images and the closest track points and show it in the UI
         // get the mean value of the active Images
         const subset = indexArray.map(index => allImages[index]);
         const { mean, maxDev, date }= calcTimeMeanAndStdDev(subset);
 
         // show the time deviation in the UI if it is too big. This is also the case if images were shot at different days.
-        if (parseFloat(maxDev) > settings.timeDevSetting) {
+        if (parseFloat(maxDev) > parseFloat(settings.timeDevSetting) ) {
           showTrackLogStateError('tracklog-element', 'image-time-range-too-high'+parseInt(maxDev) );
           return; 
         }
-        // time Deviation is OK but the dates do not match
-        let localeDate = date.toLocaleString();
-        if ( (trackInfo.datumStart === trackInfo.datumEnd) && localeDate !== trackInfo.datumStart ) {
-          showTrackLogStateError('tracklog-element', 'date-mismatch' );
-          return; 
+
+        if ( allMaps[0].track[0] && !isObjEmpty(trackInfo) ) {
+          // time Deviation of the images is OK (maxDev < settings.timeDevSetting) but the dates do not match with the track.
+          let localeDate = date.toLocaleString();
+          if ( (trackInfo && trackInfo.datumStart === trackInfo.datumEnd) && localeDate !== trackInfo.datumStart ) {
+            showTrackLogStateError('tracklog-element', 'date-mismatch' );
+            return; 
+          }
+
+          // get the closest track points for the active images
+          const { point1: { index: index1, distance: dist1, time: time1 }, point2: { index: index2, distance: dist2, time: time2 }  , returnPointIndex } = allMaps[0].track[0].getIndexForCoords({lat, lng}, true);
+          console.log('point1: ', {index: index1, distance: dist1, time: time1},  'returnPointIndex: ', returnPointIndex);
+          console.log('point2: ', {index: index2, distance: dist2, time: time2});
+
+          // get the timing differences and select the smaller one for the UI.          
+          let tdiff1 = getTimeDifference(time1, mean); // e.g. '-00:05:33' (hh:mm:ss) or null
+          let tdiff2 = getTimeDifference(time2, mean); // e.g. '00:07:23' (hh:mm:ss) or null
+          let tdiff;
+
+          if ( tdiff1 !== null && tdiff2 !== null ) {
+            tdiff = Math.abs(parseTimeDiffToSeconds(tdiff1)) < Math.abs(parseTimeDiffToSeconds(tdiff2)) ? tdiff1 : tdiff2;
+          } else if ( tdiff1 !== null ) {
+            tdiff = tdiff1;
+          } else if ( tdiff2 !== null ) {
+            tdiff = tdiff2;
+          }
+          
+          console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2);
+
+          document.getElementById('tracklog-element').innerHTML = 
+            `<h3 class="sectionHeader">Geotag Image</h3><br>
+            with Time-Diff: ${tdiff}<br><h4>Run Exiftool for filtered Images</h4>
+            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>`;
+
+          handleTracklogButton(settings.gpxPath, filteredImages);
+
+        } 
+        else {
+          showTrackLogStateError('tracklog-element', 'no-trackfile');
         }
-
-        // get the timing differences
-        // TODO: use also the time zone difference of track and images correctly to show the "real" time deviation which will show 
-        // one difference to 00:00:00 if the image is placed correctly in the track. 
-        // But reverse this time zone difference correctly for the tzone calculation of exifTool!
-        // add one checkbox ofter each time diff respectively where only one of each is selectable : 'Use this for tracklog'
-        // then add button 1 : 'Tracklog matching images with timediff and exiftool'
-        // button 2:  'tracklog matching images with timediff and APP'
-        // button 3 : 'Save all (if not exiftool was used already)'
-        // Finally: show the images on the map!
-        
-        let tdiff1 = getTimeDifference(time1, mean); // e.g. '-00:05:33' (hh:mm:ss)
-        let tdiff2 = getTimeDifference(time2, mean); // e.g. '00:07:23' (hh:mm:ss)
-        let tdiff = Math.abs(parseTimeDiffToSeconds(tdiff1)) < Math.abs(parseTimeDiffToSeconds(tdiff2)) ? tdiff1 : tdiff2;
-        console.log('tdiff1: ', tdiff1, 'tdiff2: ', tdiff2);
-
-        document.getElementById('tracklog-element').innerHTML = 
-          `<strong>Geotag Image</strong><br>with Time-Diff: ${tdiff}<br><h4>Run Exiftool for filtered Images</h4>
-          <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>`;
-
-        handleTracklogButton(settings.gpxPath, filteredImages);
-
     });
 }
 

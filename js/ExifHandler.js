@@ -94,12 +94,17 @@ function getTimeDifference(time1, time2) {
     } else if (input instanceof Date) {
       return input;
     } else {
-      throw new Error('Ungültiger Zeittyp. Erwartet wird ein String oder ein Date-Objekt.');
+      return null;
+      //throw new Warning('Ungültiger Zeittyp. Erwartet wird ein String oder ein Date-Objekt.');
     }
   }
 
   const date1 = parseTime(time1);
   const date2 = parseTime(time2);
+
+  if (date1 === null || date2 === null) {
+    return null;
+  }
 
   // Differenz in Millisekunden
   const diffMs = date1 - date2;

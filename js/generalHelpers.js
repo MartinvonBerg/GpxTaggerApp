@@ -88,4 +88,14 @@ function sanitizeInput(value) {
   return div.innerHTML; // Rückgabe ist sicherer Text
 }
 
-export { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput };
+/**
+ * Checks if an object is empty.
+ *
+ * @param {Object} obj - The object to check.
+ * @return {boolean} Returns true if the object is empty, false otherwise.
+ */
+function isObjEmpty (obj) {
+  return Object.values(obj).length === 0 && obj.constructor === Object;
+}
+
+export { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty };
