@@ -64,7 +64,7 @@ app.whenReady().then(() => {
       {    
         label: t('file'),  
         submenu: [    
-          //{ label: t('reload'), role: 'reload' }, // this is required just for testing
+          { label: t('reload'), role: 'reload' }, // this is required just for testing
           { label: t('reloadData'),
               click: () => {
                 // IPC an Renderer senden, um Daten neu zu laden
@@ -226,6 +226,7 @@ function createWindow() {
   });  
   
   win.loadFile('index.html');  
+  win.webContents.openDevTools(); // TODO: remove in production
   
   win.webContents.on('did-finish-load', () => {  
     // Send the saved settings to the renderer process

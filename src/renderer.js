@@ -89,7 +89,10 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       //pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       console.log('Map settings loaded:', pageVarsForJs[0]);
-      // TODO: show the map without track here
+      // show the map without track here. This works but shows an error in the console.
+      showgpx(allMaps, '').then( () => {
+        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
+      });
     }
     if (settings.gpxPath) {
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed

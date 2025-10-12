@@ -38,36 +38,47 @@ async function showgpx(allMaps, gpxPath) {
     let NPoints = 0;
     
     // Dynamically import the LeafletChartJs class
-    // no slider, only map with gpx-tracks and eventually a chart. chartjs shall be used.
+    // no slider, only map with gpx-tracks and eventually a chart. chartjs shall be used, if so.
     return import(/* webpackChunkName: "leaflet_chartjs" */'../js/leafletChartJs/leafletChartJsClass.js').then( (LeafletChartJs) => {
+
         // reset the map if it was used before. This happens on change of the track
         if (allMaps[m] && allMaps[m] instanceof LeafletChartJs.LeafletChartJs) {
           allMaps[m].map.remove();
         }
+        
         // create the map and show the gpx track
         allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m );
 
         return allMaps[m].createTrackOnMap().then(() => {
-            // Jetzt ist die Initialisierung abgeschlossen!
-            // Hier kannst du auf die geladenen GPX-Daten zugreifen:
-            let gpxTrack = allMaps[m].track[0];
-            NPoints = gpxTrack.coords.length;
-            gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
-            gpxTrack.gpxTracks._info.startPoint = gpxTrack.coords[0]; // add the start point to the info object
-
+            const trackInfo = {};
             // show the track info in the sidebar
-            // get the number of trackpoints from the gpx file, the start and end time of the track
-            const trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
-            console.log(`Anzahl der Trackpunkte: ${NPoints}`);
-            console.log('Datum: ', trackInfo.datumStart === trackInfo.datumEnd ? trackInfo.datumStart : `${trackInfo.datumStart} - ${trackInfo.datumEnd}`);
-            console.log(`Startzeit: ${trackInfo.startTime}, Endzeit: ${trackInfo.endTime}`);
-            console.log('Dauer: ', trackInfo.durationFormatted);
-            console.log('Zeitzone: ', trackInfo.timeZoneName);
-            console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);
+            if (gpxPath !== '') {
+              // get the number of trackpoints from the gpx file, the start and end time of the track
+              let gpxTrack = allMaps[m].track[0];
+              NPoints = gpxTrack.coords.length;
+              gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
+              gpxTrack.gpxTracks._info.startPoint = gpxTrack.coords[0]; // add the start point to the info object
+
+              trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
+              console.log(`Anzahl der Trackpunkte: ${NPoints}`);
+              console.log('Datum: ', trackInfo.datumStart === trackInfo.datumEnd ? trackInfo.datumStart : `${trackInfo.datumStart} - ${trackInfo.datumEnd}`);
+              console.log(`Startzeit: ${trackInfo.startTime}, Endzeit: ${trackInfo.endTime}`);
+              console.log('Dauer: ', trackInfo.durationFormatted);
+              console.log('Zeitzone: ', trackInfo.timeZoneName);
+              console.log('Zeitzonen-Offset in Minuten: ', trackInfo.tZOffset);
+            }
+            // without gpx file an error will be raised from leafletgpxwrapper. Ignore it for the moment. 
+            else {
+              console.log('Kein GPX-Track geladen.');
+            }
 
             allMaps[m].initChart();
             allMaps[m].setTzOffset(trackInfo.tZOffsetMs);
             allMaps[m].handleEvents();
+
+            allMaps[m].map.on('baselayerchange', (event) => {
+              console.log('Layer changed', event);
+            });
             // TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
         })
