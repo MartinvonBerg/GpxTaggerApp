@@ -226,7 +226,7 @@ function createWindow() {
   });  
   
   win.loadFile('index.html');  
-  win.webContents.openDevTools(); // TODO: remove in production
+  //win.webContents.openDevTools(); // TODO: remove in production
   
   win.webContents.on('did-finish-load', () => {  
     // Send the saved settings to the renderer process
@@ -283,6 +283,15 @@ function createWindow() {
     settings.ignoreGPXDate = newSettings.ignoreGPXDate;
     settings.cameraModels = newSettings.cameraModels;
     settings.timeDevSetting = newSettings.timeDevSetting;
+    saveSettings(settingsFilePath, settings);
+  });
+
+  ipcMain.on('update-map-settings', (event, newSettings) => {
+    if (newSettings.map.mapselector) {
+      settings.map.mapselector = newSettings.map.mapselector;
+    }
+    settings.map.mapcenter = newSettings.map.mapcenter;
+    settings.map.zoom = newSettings.map.zoom;
     saveSettings(settingsFilePath, settings);
   });
 

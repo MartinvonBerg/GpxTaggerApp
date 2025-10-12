@@ -31,7 +31,7 @@ import { getTrackInfo } from '../js/TrackAndGpsHandler.js';
  *   console.log('Track loaded:', trackInfo);
  * });
  */
-async function showgpx(allMaps, gpxPath) {
+async function showgpx(allMaps, gpxPath, settings=null) {
     
     // load and parse the gpx file, do this with L.GPX from leaflet-gpx
     let m = 0;
@@ -47,7 +47,7 @@ async function showgpx(allMaps, gpxPath) {
         }
         
         // create the map and show the gpx track
-        allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m );
+        allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m, null , settings?.map?.mapcenter, settings?.map?.zoom); // new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m, null , settings.map.mapcenter, settings.map.zoom);
 
         return allMaps[m].createTrackOnMap().then(() => {
             const trackInfo = {};
@@ -76,9 +76,22 @@ async function showgpx(allMaps, gpxPath) {
             allMaps[m].setTzOffset(trackInfo.tZOffsetMs);
             allMaps[m].handleEvents();
 
-            allMaps[m].map.on('baselayerchange', (event) => {
-              console.log('Layer changed', event);
+            // dispatch an event on mapview chanbe to update the settings accordingly
+            let thisMap = allMaps[m].map;
+            allMaps[m].map.on('baselayerchange moveend zoomend' , (event) => {
+              let layerName = '';
+              if (event.type === 'baselayerchange') {
+                layerName = event.name;
+              };
+              
+              const mapcenter = thisMap.getCenter();
+              const zoom = thisMap.getZoom();
+              const bounds = thisMap.getBounds();
+              
+              window.dispatchEvent(new CustomEvent('mapviewchange', { detail: { layerName: layerName, mapcenter: mapcenter, zoom: zoom, bounds: bounds } }));
+
             });
+
             // TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
         })

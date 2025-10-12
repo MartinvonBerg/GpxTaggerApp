@@ -33,7 +33,7 @@ class LeafletChartJs extends LeafletMap {
 
     // number is the map-number, elementOnPage is the div-element on the page where the map should be shown
     constructor(number, elementOnPage, preload=null, center=null, zoom=null ) {
-        super(number, elementOnPage, center=null, zoom=null);
+        super(number, elementOnPage, center, zoom);
 
         if (preload !== null) {
           this.preload = preload;

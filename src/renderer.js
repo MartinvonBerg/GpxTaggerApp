@@ -14,7 +14,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
-// TODO: show a map with default coordinates if no track was loaded
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -90,7 +89,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       console.log('Map settings loaded:', pageVarsForJs[0]);
       // show the map without track here. This works but shows an error in the console.
-      showgpx(allMaps, '').then( () => {
+      showgpx(allMaps, '', settings).then( () => {
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
       });
     }
@@ -263,6 +262,17 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         event.preventDefault();
         window.myAPI.send('exit-with-unsaved-changes', allImages); 
     }  
+  });
+
+  window.addEventListener('mapviewchange', (event) => {
+    // call the function to show the image metadata in the right sidebar
+    console.log('mapviewchange detected: ', event.detail);
+    if (event.detail.layerName !== '') {
+      settings.map.mapselector = event.detail.layerName;
+    }
+    settings.map.mapcenter = [event.detail.mapcenter.lat, event.detail.mapcenter.lng];
+    settings.map.zoom = event.detail.zoom;
+    window.myAPI.send('update-map-settings', settings);
   });
 }
 
