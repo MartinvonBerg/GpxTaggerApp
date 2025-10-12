@@ -50,7 +50,7 @@ async function showgpx(allMaps, gpxPath, settings=null) {
         allMaps[m] = new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m, null , settings?.map?.mapcenter, settings?.map?.zoom); // new LeafletChartJs.LeafletChartJs(m, 'boxmap' + m, null , settings.map.mapcenter, settings.map.zoom);
 
         return allMaps[m].createTrackOnMap().then(() => {
-            const trackInfo = {};
+            let trackInfo = {};
             // show the track info in the sidebar
             if (gpxPath !== '') {
               // get the number of trackpoints from the gpx file, the start and end time of the track

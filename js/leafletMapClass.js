@@ -624,6 +624,9 @@ class LeafletMap {
             classThis.posMarkers = []; // Leere das Array
         }
 
+        // Prüfe, ob STRG gedrückt war
+        const ctrlPressed = e.originalEvent.ctrlKey;
+
         // Erstelle neuen Marker
         const marker = L.marker(e.latlng, {
             icon: classThis.myIcon3 // Falls du ein benutzerdefiniertes Icon verwenden willst
@@ -631,7 +634,7 @@ class LeafletMap {
         .addTo(classMap)
         .bindPopup(`
             <div class="marker-popup">
-                <h4>GPS Data:</h4>
+                <p>GPS Data:</p>
                 <p>Latitude: ${e.latlng.lat.toFixed(4)}</p>
                 <p>Longitude: ${e.latlng.lng.toFixed(4)}</p>
             </div>
@@ -644,7 +647,8 @@ class LeafletMap {
         const markerAddedEvent = new CustomEvent('singlePosMarkerAdded', {
             detail: {
                 lat: e.latlng.lat,
-                lng: e.latlng.lng
+                lng: e.latlng.lng,
+                ctrlKeyPressed: ctrlPressed
             }
         });
         classMap._container.dispatchEvent(markerAddedEvent); // oder ein anderes Ziel

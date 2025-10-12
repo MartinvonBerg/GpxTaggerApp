@@ -83,19 +83,20 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.rightSidebarWidth) {  
       rightSidebar.style.width = `${settings.rightSidebarWidth}px`;  
     }
-    if (settings.map) {
+    if (settings.map && settings.gpxPath === '') {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
-      //pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-      console.log('Map settings loaded:', pageVarsForJs[0]);
+      
       // show the map without track here. This works but shows an error in the console.
       showgpx(allMaps, '', settings).then( () => {
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
       });
     }
-    if (settings.gpxPath) {
+    if (settings.map && settings.gpxPath !== '') {
+      pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
-      //pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      
       showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
         trackInfo = newTrackInfo;
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
@@ -482,29 +483,31 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
         let index = indexArray.join(',');
         
-        // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
-        // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
-        let input =  document.getElementById('gpsInput');
-        let inputIds = input.dataset.index.replace(/\s+/g, ""); 
-        if (index === inputIds) {
-          input.value = convertedValue.pos;
-        }
+        // change the value in the HTML input field and for the active images only if the ctrl key is pressed
+        if (event.detail.ctrlKeyPressed) {
+          // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
+          // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
+          let input =  document.getElementById('gpsInput');
+          let inputIds = input.dataset.index.replace(/\s+/g, ""); 
+          if (index === inputIds) {
+            input.value = convertedValue.pos;
+          }
+          // set the coordinates in allImages array for these images including the status.
+          allImages = updateAllImagesGPS(allImages, index, convertedValue);
 
-        // get and set the altitude for these images if setHeight is true
-        let setHeight = settings.setHeight; // get the setting for this
-        if (index === inputIds && setHeight === 'true') {
-          getElevation(lat, lng).then(height => {
-            input = document.getElementById('altitudeInput');
-            input.value = validateAltitude(height) ? height : '';
-            let key = 'GPSAltitude';
-            if ( validateAltitude(height)) {
-              indexArray.forEach(index => { allImages[index][key] = input.value; });
-            }
-          })
+          // get and set the altitude for these images if setHeight is true
+          let setHeight = settings.setHeight; // get the setting for this
+          if (index === inputIds && setHeight === 'true') {
+            getElevation(lat, lng).then(height => {
+              input = document.getElementById('altitudeInput');
+              input.value = validateAltitude(height) ? height : '';
+              let key = 'GPSAltitude';
+              if ( validateAltitude(height)) {
+                indexArray.forEach(index => { allImages[index][key] = input.value; });
+              }
+            })
+          }
         }
-
-        // set the coordinates in allImages array for these images including the status.
-        allImages = updateAllImagesGPS(allImages, index, convertedValue);
 
         // get the time difference for the active images and the closest track points and show it in the UI
         // get the mean value of the active Images
@@ -548,11 +551,11 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           document.getElementById('tracklog-element').innerHTML = 
             `<h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
             
-            <label for="timeInput">Tracklogwith Time-Diff: (hh:mm:ss):</label>
-            <input type="text" id="timeDiffInput" name="timeDiffInput" value="${tdiff}">
+            <label for="timeInput">Tracklog with Time-Diff: (hh:mm:ss):</label>
+            <input type="text" id="timeDiffInput" name="timeDiffInput" value="${tdiff}"><button type="button" id="timeDiffInput-Reset">Reset</button>
 
             <h4>Run Exiftool for filtered Images and with Time-Diff.</h4>
-            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button>
+            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button><button type="button" id="tracklog-button-abort" class="tracklog-button tracklog-accept">Abort</button>
             <div id="tracklog-state"></div>`;
 
           handleTimePicker('timeDiffInput', tdiff); // TODO: prepared for better JS handling of the time diff input
@@ -576,7 +579,10 @@ function setTrackLogState(HTMLElementID, state) {
 
 function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
   const button = document.getElementById('tracklog-button');
-  if (!button) return;
+  const abortButton = document.getElementById('tracklog-button-abort');
+  if (!button || !abortButton) return;
+
+  let abortRequested = false;
 
   // Set default values
   const {
@@ -585,9 +591,19 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
     geolocate = true,
     tzoffset = getTimeDiffInput('timeDiffInput')
   } = params;
+
+  // Abort-Button Listener
+  abortButton.addEventListener('click', () => {
+    abortRequested = true;
+    setTrackLogState('tracklog-state', 'Geotagging abgebrochen.');
+  });
  
-  button.addEventListener('click', async (event) => {
+  button.addEventListener('click', async () => {
+    abortRequested = false;
+
     for (const image of filteredImages) {
+      if (abortRequested) break;
+      
       const params = {
         gpxPath,
         imagePath: image.imagePath,
@@ -598,6 +614,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           tzoffset
         }
       };
+      params.options.tzoffset = getTimeDiffInput('timeDiffInput');
       setTrackLogState('tracklog-state', 'Geotagging...');
       try {
         setTrackLogState('tracklog-state', `Geotagging für ${image.imagePath}`);
@@ -629,6 +646,13 @@ function handleTimePicker(HTMLElementID, timeDiffDefaultValue) {
 
   const input = document.getElementById(HTMLElementID);  
   if (!input) return;
+
+  const inputreset = document.getElementById(HTMLElementID+'-Reset');  
+  if (!inputreset) return;
+
+  inputreset.addEventListener('click', () => {
+    input.value = "00:00:00";
+  });
 }
 
 // ----------- RIGHT SIDEBAR -----------
