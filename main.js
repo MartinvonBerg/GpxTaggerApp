@@ -27,18 +27,20 @@ if (!isDev) {
 }
 
 let systemLanguage = 'en';
-
 let win; // Variable für das Hauptfenster
 let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions TBD: is it required?
 let exiftoolAvailable = true;
 
-// Define path for the user settings file
-//const settingsFilePath = path.join(__dirname, 'user-settings.json');
+// Define path for the user settings file which won't be overwritten on update.
 const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
 
-// prepare i18next, prepare menu, create window
+/** prepare i18next, prepare menu, create window
+ * @description: This function is called when the app is ready to run. It creates a new window and sets up the menu.
+ * @returns: nothing 
+ * @uses: saveSettings(), createWindow()
+ */ 
 app.whenReady().then(() => {
   // Ermitteln der Systemsprache  
   systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de' 
@@ -601,7 +603,7 @@ async function writeMetaData(allmagesData) {
 }
 
 /**
- * Writes the metadata of one image to its respective file.
+ * Writes the metadata of one image to its respective file with exiftool-vendored.
  * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' are written.
  * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
  * @param {string} filePath - the path to the image file
@@ -686,11 +688,14 @@ async function writeMetadataOneImage(filePath, metadata) {
 }
 
 /**
- * Geotag an image using the GPS data from a GPX file.
- * This function uses exiftool to write the GPS data from the GPX file to the image file.
+ * Geotag an image using the GPS data from a GPX file with command line tool exiftool.
+ * This function uses (external) exiftool to write the GPS data from the GPX file to the image file.
+ * because exiftool-vendored does not support this functionality directly.
  * If exiftool is not available, a simple popup with an error message will be shown.
  * If the GPX file or the image file is not found, the function will resolve with an error message.
  * If the command fails, the function will resolve with an error message.
+ * @global {boolean} exiftoolAvailable - Whether exiftool is available
+ * @global {object} i18next.t - The i18next translation function
  * @param {string} gpxPath - The path to the GPX file.
  * @param {string|array} imagePath - The path to the image file or an array of image paths.
  * @param {object} options - An object with the following properties:

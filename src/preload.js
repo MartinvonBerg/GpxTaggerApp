@@ -11,11 +11,9 @@ contextBridge.exposeInMainWorld('myAPI', {
   },  
   receive: (channel, func) => {  
     let validChannels = ['load-settings', 'gpx-data', 'clear-gpx', 'set-image-path', 'clear-image-path', 'image-loading-started', 'reload-data'];  
-    if (validChannels.includes(channel)) {  
-      // Strip event as it includes `sender`
-      // hier wird eine Nachricht von main.js gesendet, in renderer.js empfangen und die 
-      // entsprechende Callback-Funktion func in renderer.js aufgerufen
-      ipcRenderer.on(channel, (event, ...args) => func(...args));  
+    if (validChannels.includes(channel)) {
+      // List of channels allowed and strip event as it includes `sender`
+      ipcRenderer.on(channel, (event, ...args) => func(...args));  // hier wird eine Nachricht von main.js gesendet, in renderer.js empfangen und die entsprechende Callback-Funktion func in renderer.js aufgerufen
     }  
   },
   invoke: (channel, data) => {  
