@@ -74,7 +74,14 @@ function updateThumbnailStatus(thumbnailBarHTMLID, imageIndex, imageStatus) {
   if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
     thumbnail.classList.add('thumb_with_gps');
     thumbnail.classList.remove('thumb_no_gps');
-  } else {
+  } else if (imageStatus === 'leave-gps-unchanged') {
+    return;
+  } else if (imageStatus === 'gps-manually-changed') {
+    thumbnail.classList.add('thumb_gps_changed_not_saved');
+    thumbnail.classList.remove('thumb_with_gps');
+    thumbnail.classList.remove('thumb_no_gps');
+  }
+  else {
     thumbnail.classList.add('thumb_no_gps');
     thumbnail.classList.remove('thumb_with_gps');
   }

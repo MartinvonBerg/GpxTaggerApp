@@ -95,6 +95,10 @@
 	background-color: darkred;
 }
 
+.thumb_gps_changed_not_saved {
+	background-color: darkorange;
+}
+
 @-webkit-keyframes activation {
 	30% {
 		-webkit-transform: scale(0.8);

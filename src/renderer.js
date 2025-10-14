@@ -496,6 +496,10 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           }
           // set the coordinates and status in allImages array for these images including the status.
           allImages = updateAllImagesGPS(allImages, index, convertedValue);
+          // set the thumbnail status for these images
+          indexArray.forEach(index => { 
+            updateThumbnailStatus( thumbnailBarHTMLID, index, allImages[index].status);
+          });
 
           // get and set the altitude for these images if setHeight is true
           let setHeight = settings.setHeight; // get the setting for this
@@ -821,14 +825,24 @@ function metaGPSEventListener() {
         let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
 
         //if (index < 0 || index >= allImages.length || !convertedValue) {
-        if (!isValidIndex || !convertedValue) {
+        if ((!isValidIndex || !convertedValue) && input.value !== '' && input.value !== 'multiple') {
           // go back to the browser input and show an error message
           input.value = '';
           input.focus();
           input.select();
-          // TODO how to show a hint for the user here?
+          // show a hint for the user here in the UI
+          updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
-        } else if (convertedValue) {
+        } else if (input.value === 'multiple') {
+          // do nothing, so don not change values or status.
+          return;
+        } // TODO: handle the acceptance and change of status here. The
+        else if (input.value === '') {
+          // TODO: handle the acceptance and change of status here. 
+          // the value should be empty and the status gps-deleted or so.
+          // change the other input fields accoringly!
+          }
+        else if (convertedValue) {
             // setze das input field auf den konvertierten wert, um die Übernahme anzuzeigen
             input.value = convertedValue.pos;
         }
@@ -838,6 +852,13 @@ function metaGPSEventListener() {
         // update the status of the image in the UI. We only reach this line if convertedValue is not null either for a single or for multiple images.
         // And we won't reach it if the input.value is empty
         updateImageStatus('meta-status', 'gps-manually-changed');
+        // update the thumbnail
+        // set the thumbnail status for these images
+        let indexArray = index.split(',').map(t => parseInt(t.replace(' ', '')));
+        indexArray.forEach(index => { 
+            updateThumbnailStatus( thumbnailBarHTMLID, index, allImages[index].status);
+        });
+
 
         // focus the altitude input and set the cursor to the end of the value
         const nextInput = document.getElementById("altitudeInput");
