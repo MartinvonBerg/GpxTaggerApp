@@ -233,7 +233,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
        
     import(/* webpackChunkName: "thumbnailSlider" */'../js/thumbnailClass.js').then( (ThumbnailSlider) => {
-        let th = new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs.sw_options);
+        let th = new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs[0].sw_options);
         // show and activate the first thumbnail metadata and activate listeners for it
         th.setActiveThumb(0);
         showMetadataForImageIndex(0);
@@ -280,13 +280,13 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 // ----------- LEFT SIDEBAR -----------
 /** show the image filters in the left sidebar
  * 
- * @param {Array} includedExts 
- * @param {Array} cameraModels 
- * @param {*} minDate 
- * @param {*} maxDate 
+ * @param {Array} includedExts like ['*.jpg', '*.png', '*.jpeg', '*.CR3']
+ * @param {Array} cameraModels
+ * @param {string} minDate a string in the locale format, e.g. 'YYYY-MM-DD' or 'DD-MM-YYYY'.
+ * @param {string} maxDate a string in the locale format, e.g. 'YYYY-MM-DD' or 'DD-MM-YYYY'.
  * @returns {void}
  */
-function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
+function showImageFilters(includedExts, cameraModels, minDate, maxDate, settings) {
   const el = document.getElementById('image-filter-element');
   if (!el) return;
 
@@ -333,10 +333,10 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
   const dateFilterChecked = settings.ignoreGPXDate === 'true' ? 'checked' : '';
   const dateFilter = `
     <label>
-      <input type="checkbox" id="date-filter" ${dateFilterChecked}>
+      <input type="checkbox" id="date-filter" ${dateFilterChecked}> 
       ${i18next.t('filterByGPXDate')} (${minDate} - ${maxDate})
     </label>
-  `;
+  `; // TODO: disable the checkbox if no GPX file is loaded? Or just leave as is?
 
   // GPS-Filter (Checkbox)
   const gpsFilterChecked = settings.skipImagesWithGPS === 'true' ? 'checked' : '';
@@ -376,7 +376,6 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate) {
     filterImages();
     // save the settings
     window.myAPI.send('update-image-filter', settings);
-    
   });
   document.getElementById('camera-filter').addEventListener('change', e => {
     settings.cameraModels = e.target.value;
@@ -621,7 +620,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
         const result = await window.myAPI.invoke('geotag-exiftool', params);
         if (result.success) {
           const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
-          // write the result to the image in filteredImages and allImages and set the status to 'geotagged'
+          // write the result to the image in filteredImages and allImages (?) and set the status to 'geotagged'
           console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
           image.lat = lat;
           image.lng = lng;
@@ -924,7 +923,7 @@ function handleSaveButton() {
       // schreibe die Daten in imagesToSave nur wenn der Wert korrekt ist
       imagesToSave = updateAllImagesGPS(imagesToSave, index, convertedValue);
     }
-    if (input.value === '') { // convertedValue ist null
+    if (input.value === '') { // convertedValue ist null : der user will die GPS-Daten löschen
       // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn der user den wert abischtlich leer lassen will.
       newStatusAfterSave = 'loaded-no-GPS';
       // setze die Daten in imagesToSave zurück 
@@ -1018,7 +1017,7 @@ function handleSaveButton() {
     // ---------------------------------------------------
     // write the data and save it finally to the file. reset the status. send the array to the backend.
     // wait for the result as acknowledgement
-    const selectedImages = indexArray.map(index => imagesToSave[index]);
+    const selectedImages = indexArray.map(index => imagesToSave[index]); // map erstellt ein neuens array ohne refernz zum alten array.
     const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
     console.log('saving metadata with result:', result);
     
@@ -1077,7 +1076,6 @@ function handleSaveButton() {
     }
   }); 
 }
-
 
 
 // Exporte oder Nutzung im Backend

@@ -75,7 +75,7 @@
       "bar_rel_height": "1%",
       "nail_margin_side": "2px",
       "nail_activeClass": "active_border",
-      "active_border_width": "2px",
+      "active_border_width": "4px",
       "active_border_color": "#ea0000",
       "active_brightness": "1.05",
       "chart_fill_color": "#ea0000",

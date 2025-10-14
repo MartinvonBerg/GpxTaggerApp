@@ -39,12 +39,6 @@
 	margin-right:2px;
 }
 
-/* Hide scrollbar 
-.thumb_inner::-webkit-scrollbar {
-	display: none;
-}
-*/
-
 .thumb_inner_centered {
 	width: -webkit-fit-content;
 	width: -moz-fit-content;
@@ -80,16 +74,25 @@
 }
 
 .thumbnail_slide {
-	-webkit-filter: brightness(0.6);
-	filter: brightness(0.6);
+	-webkit-filter: brightness(0.8);
+	filter: brightness(0.8);
 	-webkit-transition: 150ms;
 	-o-transition: 150ms;
 	transition: 150ms;
+	padding: 5px;
 }
 
 .thumbnail_slide:hover {
-	-webkit-filter: brightness(0.95);
-	filter: brightness(0.95);
+	-webkit-filter: brightness(1.00);
+	filter: brightness(1.00);
+}
+
+.thumb_with_gps {
+	background-color: darkgreen;
+}
+
+.thumb_no_gps {
+	background-color: darkred;
 }
 
 @-webkit-keyframes activation {

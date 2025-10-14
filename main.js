@@ -31,7 +31,8 @@ let win; // Variable für das Hauptfenster
 let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions TBD: is it required?
-let exiftoolAvailable = true;
+const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
+let exiftoolAvailable = false;
 
 // Define path for the user settings file which won't be overwritten on update.
 const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
@@ -41,9 +42,9 @@ const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json'
  * @returns: nothing 
  * @uses: saveSettings(), createWindow()
  */ 
-app.whenReady().then(() => {
+app.whenReady().then( () => {
   // Ermitteln der Systemsprache  
-  systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de' 
+  systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de'
   
   // Initialisiere i18next  
   i18next.use(Backend).init({  
@@ -177,8 +178,18 @@ app.whenReady().then(() => {
   // Menü erstellen und setzen  
     const menu = Menu.buildFromTemplate(menuTemplate);  
     Menu.setApplicationMenu(menu);  
-  });  
+  });
   
+  checkExiftoolAvailable(exiftoolPath).then((isAvailable) => {
+    if (isAvailable) {
+      console.log("ExifTool ist verfügbar");
+      exiftoolAvailable = true;
+    } else {
+      console.log("ExifTool ist NICHT verfügbar");
+      exiftoolAvailable = false;
+    }
+  });
+
   app.on('activate', () => {  
     if (BrowserWindow.getAllWindows().length === 0) {  
       createWindow();  
@@ -488,7 +499,7 @@ async function readImagesFromFolder(folderPath, extensions) {
                 camera: metadata.Model || 'none',
                 lens: metadata.LensModel || '',
                 orientation: metadata.Orientation || '',
-                //type: 'image',  // TODO : extend for videos, too. or remove it and control it by the extensions array?
+                //type: 'image',  // TODO : extend for videos, too. or remove it and control it by the extensions array? But mind that exifTool only works for images!
                 height: metadata.ImageHeight || '',  
                 width: metadata.ImageWidth || '',  
                 
@@ -615,26 +626,61 @@ async function writeMetadataOneImage(filePath, metadata) {
 
   // --- GPS Altitude ---
   const altitude = metadata.GPSAltitude;
-  if (altitude!==undefined && altitude!==null) {
+  if (altitude!==undefined && altitude!==null && altitude !== "") {
     writeData["EXIF:GPSAltitude"] = altitude;
   }
 
   // --- GPS ImageDirection ---
   const imageDirection = metadata.GPSImgDirection;
-  if (imageDirection!==undefined && imageDirection!==null) {
+  if (imageDirection!==undefined && imageDirection!==null && imageDirection !== "") {
     writeData["EXIF:GPSImgDirection"] = imageDirection;
   }
 
   // --- GPS position ---
   const pos = metadata.pos; // this is in different formats yet!
-  if (pos!==undefined && pos!==null) {
+  if (pos!==undefined && pos!==null && pos !== "") {
     writeData["EXIF:GPSPosition"] = pos; // does exiftool automatically write the other fields?
     writeData["EXIF:GPSLatitude"] = metadata.GPSLatitude;
     writeData["EXIF:GPSLatitudeRef"] = metadata.GPSLatitudeRef;
     writeData["EXIF:GPSLongitude"] = metadata.GPSLongitude;
     writeData["EXIF:GPSLongitudeRef"] = metadata.GPSLongitudeRef;
+  } // delete GPS position completely with exiftool including altitude and direction. 
+  else if (exiftoolAvailable) {
+    let command = `"${exiftoolPath}" -gps*= -overwrite_original_in_place "${filePath}"`;
+    console.log("ExifTool Command:", command);
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`ExifTool-Error: ${stderr || error.message}`);
+        return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+      }
+      //resolve({ success: true, output: stdout }); // do not use here because this will resolve the promise immediately.
+    });
+    
+    // does not delete the tags
+    /*
+    writeData["EXIF:GPSPosition"] = null; // does exiftool automatically write the other fields?
+    writeData["EXIF:GPSLatitude"] = null;
+    writeData["EXIF:GPSLatitudeRef"] = null;
+    writeData["EXIF:GPSLongitude"] = null;
+    writeData["EXIF:GPSLongitudeRef"] = null;
+    */
+    // does not delete the tags
+    /*
+    await exiftool.write(filePath, {
+      'GPSLatitude': null,
+      'GPSLongitude': null,
+      'GPSAltitude': null,
+      'GPSLatitudeRef': null,
+      'GPSLongitudeRef': null,
+      'GPSImgDirection': null,
+      'GPSPosition': null
+    });
+    */
+  } else {
+    console.error("exiftool is not available!");
+    dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
+    return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
   }
-  
   
   // --- TITLE ---  
   const title = sanitize(metadata.Title);  
@@ -711,8 +757,6 @@ async function writeMetadataOneImage(filePath, metadata) {
  */
 async function geotagImageExiftool(gpxPath, imagePath, options) { 
   
-  const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
-
   // Standardwerte setzen
   const verbose = options.verbose || 'v2';
   const charsetFilename = options.charsetFilename || 'latin';
@@ -723,14 +767,6 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   return new Promise((resolve) => {
     // Prüfen, ob exiftool vorhanden ist
     if (exiftoolAvailable) {
-      exec(`${exiftoolPath} -ver`, (err) => {
-        if (err) {
-          exiftoolAvailable = false;
-          // show a simple popup with error message. Do this only once and not for each image.
-          dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
-          console.error('Exiftool is not installed or not in PATH.');
-          return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
-        }
 
         // Pfade prüfen
         if (!fs.existsSync(gpxPath)) {
@@ -756,7 +792,10 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
           }
           resolve({ success: true, output: stdout });
         });
-      });
+    } else {
+      dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
+      console.error('Exiftool is not installed or not in PATH.');
+      return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
     }
   });
 }
@@ -815,3 +854,20 @@ const sanitize = (value) => {
   v = sanitizeInput(v);  
   return v;  
 };
+
+/** 
+ * check if exifTool is available in PATH
+ * @param {string} exiftoolPath
+ * @returns {boolean}
+ */
+async function checkExiftoolAvailable(exiftoolPath) {
+  return new Promise((resolve) => {
+    exec(`${exiftoolPath} -ver`, (err) => {
+      if (err) {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+}

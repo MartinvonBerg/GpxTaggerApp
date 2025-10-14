@@ -47,16 +47,22 @@ function generateThumbnailHTML(allImages) {
   </div>
   */
   let html = '<div class="thumb_wrapper"><div id="thumb_inner_0" class="thumb_inner">';
+  let cssClassGps = '';
+  
   allImages.forEach( (img, index) => {
     if (img.thumbnail == img.imagePath) {
       img.src = img.imagePath;
     } else {
       img.src = img.thumbnail;
     }
-    html += `<div class="thumbnail_slide" id="thumb${index}" draggable="false">
+    if (img.status === 'loaded-with-GPS') cssClassGps = 'thumb_with_gps';
+    else cssClassGps = 'thumb_no_gps';
+
+    html += `<div class="thumbnail_slide ${cssClassGps}" id="thumb${index}" draggable="false">
         <img decoding="async" loading="lazy" class="th_wrap_0_img" draggable="false" 
           src="${img.src}" alt="Thumbnail ${index + 1}"></div>`;
   });
+
   html += '</div></div>';
   return html;
 }

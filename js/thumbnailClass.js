@@ -50,7 +50,7 @@ class ThumbnailSlider {
     nail_margin_side    : '1px', // left and right margin of thumbnails in px
     // active thumbnail : only for nail_activeClass = 'active_border'
     active_brightness   : '1.05', // brightness if activate. other values are: 0.6, 0.95, 1.05 currently unused
-    active_border_width : '2px',  // width of bottom border in px
+    active_border_width : '4px',  // width of bottom border in px
     active_border_color : 'red', // Colour of bottom borderin CSS-colors
     allowMultiSelect    : true, // allow multiple selection of thumbnails
   }; 
