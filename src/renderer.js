@@ -834,7 +834,7 @@ function metaGPSEventListener() {
           updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
         } else if (input.value === 'multiple') {
-          // do nothing, so don not change values or status.
+          // do nothing, so do not change values or status.
           return;
         } // TODO: handle the acceptance and change of status here. The
         else if (input.value === '') {
@@ -1102,9 +1102,14 @@ function handleSaveButton() {
         }
       });
 
-      // join the image paths with ' // ' and show that status in the UI.
-      let start = ''; // TODO shorten this string for many images!
-      indexArray.forEach(index => { start += imagesToSave[index].imagePath + ' // '});
+      // join the image filename with ' // ' and show that status in the UI.
+      let start = ''; 
+      indexArray.forEach(index => {
+        const fullPath = imagesToSave[index].imagePath;
+        const fileName = fullPath.split(/[/\\]/).pop(); // Holt den Dateinamen aus dem Pfad
+        start += fileName + ' // ';
+      });
+
       document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
       updateImageStatus('meta-status', newStatusAfterSave);
     } else {
