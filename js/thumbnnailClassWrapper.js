@@ -67,4 +67,20 @@ function generateThumbnailHTML(allImages) {
   return html;
 }
 
-export { generateThumbnailHTML };
+function updateThumbnailStatus(thumbnailBarHTMLID, imageIndex, imageStatus) {
+  // get the thumbnail element
+  let thumbnail = document.getElementById(`thumb${imageIndex}`);
+
+  if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
+    thumbnail.classList.add('thumb_with_gps');
+    thumbnail.classList.remove('thumb_no_gps');
+  } else {
+    thumbnail.classList.add('thumb_no_gps');
+    thumbnail.classList.remove('thumb_with_gps');
+  }
+
+  //console.log('updateThumbnailStatus', thumbnailBarHTMLID, imageIndex, imageStatus);
+  return;
+}
+
+export { generateThumbnailHTML, updateThumbnailStatus };

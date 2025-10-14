@@ -6,7 +6,7 @@ import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, ge
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
-import { generateThumbnailHTML } from '../js/thumbnnailClassWrapper.js';
+import { generateThumbnailHTML, updateThumbnailStatus } from '../js/thumbnnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
@@ -30,6 +30,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   window.allImages = allImages;
   window.originalImages = [];
   window.trackInfo = trackInfo;
+  window.thumbnailBarHTMLID = 'thumbnail-bar';
   
 
   document.addEventListener('DOMContentLoaded', () => {  
@@ -166,7 +167,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // TODO this after here
     
     // show the filtered images in the thumbnail pane below the map and activate the first image
-    showThumbnail('thumbnail-bar', allImages, filteredImages);
+    showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
     // mind that with current filter settings the track logged images will disappear from the thumbnail pane!
     // braucht es für jedes Bild einen kenner, dass die gpx daten ergänzt wurden? Un das überschreibt dann ignoreGPXDate?
 
@@ -448,9 +449,11 @@ function filterImages () {
   }
 }
 
-/**
+/** IMAGE UI UPDATE (CTRL)
  * Event listener for the 'singlePosMarkerAdded' event on a map.
  * This event is triggered when a single position marker is added to the map.
+ * Updates the active Images with GPS and Height data if CTRL key is pressed.
+ * Activates the tracklog-button with timeDiff proposal if a track is available.
  * 
  * @global {object} allImages which is a global for the whole project.
  * @global {object} document (common global variable)
@@ -482,7 +485,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
         let index = indexArray.join(',');
         
-        // change the value in the HTML input field and for the active images only if the ctrl key is pressed
+        // change the value in the HTML input field and for the active images only if the CTRL key is pressed
         if (event.detail.ctrlKeyPressed) {
           // set the input.value for these images with ['thumb2', 'thumb3', 'thumb4'] or ['thumb2'] 
           // the HTML input field has data-index="2 ,3, 4" or data-index="2" in this case
@@ -491,7 +494,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           if (index === inputIds) {
             input.value = convertedValue.pos;
           }
-          // set the coordinates in allImages array for these images including the status.
+          // set the coordinates and status in allImages array for these images including the status.
           allImages = updateAllImagesGPS(allImages, index, convertedValue);
 
           // get and set the altitude for these images if setHeight is true
@@ -576,6 +579,13 @@ function setTrackLogState(HTMLElementID, state) {
   document.getElementById(HTMLElementID).innerHTML = state;
 }
 
+/** UPDATE IMAGES (UI + DISK) (filteredImages)
+ * 
+ * @param {string} gpxPath 
+ * @param {array} filteredImages (array of objects) called by reference, so the original array is updated!
+ * @param {object} params 
+ * @returns void or nothing 
+ */
 function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
   const button = document.getElementById('tracklog-button');
   const abortButton = document.getElementById('tracklog-button-abort');
@@ -631,6 +641,9 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           image.GPSLongitude = lngArray;
           image.GPSLongitudeRef = lngRef;
           image.status = 'geotagged';
+          // update the thumbnail bar with status for every single image because the process might be aborted!
+          updateThumbnailStatus( thumbnailBarHTMLID, image.index, image.status);
+          // TODO : reload the files to show the new geotagged data
         }
       } catch (err) {
         console.error(`Fehler bei ${image.imagePath}:`, err);
@@ -732,7 +745,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
     });
 };
 
-/** Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
+/** UPDATES UI IMAGE: Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
  * 
  * On Enter key press, the input value is sanitized and validated.
  * If the index is valid and the sanitized value is not empty, the value is saved in allImages.
@@ -787,7 +800,7 @@ function metaTextEventListener() {
   });
 }
 
-/** Listens for Enter key press in text input fields for GPS coordinates and altitude in right sidebar.
+/** UPDATES UI IMAGE: Listens for Enter key press in text input fields for GPS coordinates and altitude in right sidebar.
  * 
  * On Enter key press, the input value is sanitized and validated.
  * If the index is valid and the sanitized value is not empty, the value is saved in allImages.
@@ -887,7 +900,7 @@ function updateImageStatus(htmlID, status) {
   document.getElementById(htmlID).textContent = status;
 }
 
-/** Handles the metadata save button in the right sidebar
+/** UPDATES IMAGE (UI + DISK): Handles the metadata save button in the right sidebar
  * do this only for active images so images that are activated in the thumbnail bar.
  * get and validate all input fields for the metadata of the current image(s)
  * 
@@ -1022,7 +1035,7 @@ function handleSaveButton() {
     console.log('saving metadata with result:', result);
     
     // set the status for the changed images to the new status
-    if (newStatusAfterSave !== null) {
+    if (newStatusAfterSave !== null && result === 'done') {
       // Iteriere über imagesToSave und setze den Status, wenn imageIndex übereinstimmt
       imagesToSave.forEach(image => {
         if (indexArray.includes(image.index)) {
@@ -1031,43 +1044,45 @@ function handleSaveButton() {
       });
     }
 
-    // write the result back to allImages global!
-    imagesToSave.forEach(updatedImage => {
-      const originalImage = allImages.find(img => img.index === updatedImage.index);
-      if (!originalImage) return;
+    // write the result back to allImages global and show the status in the UI.
+    if ( result=== 'done') {
+      // write the result back to allImages global
+      selectedImages.forEach(updatedImage => {
+        const originalImage = allImages.find(img => img.index === updatedImage.index);
+        if (!originalImage) return;
 
-      const changedFields = [];
+        const changedFields = [];
 
-      // GPS-Felder nur übernehmen, wenn pos !== null
-      if (updatedImage.pos !== null) {
-        const gpsFields = ["lat", "GPSLatitudeRef", "lng", "GPSLongitudeRef", "pos"];
-        gpsFields.forEach(field => {
+        // GPS-Felder nur übernehmen, wenn pos !== null
+        if (updatedImage.pos !== null) {
+          const gpsFields = ["lat", "GPSLatitudeRef", "lng", "GPSLongitudeRef", "pos"];
+          gpsFields.forEach(field => {
+            if (updatedImage[field] !== null) {
+              originalImage[field] = updatedImage[field];
+              changedFields.push(field);
+            }
+          });
+        }
+
+        // Weitere Felder unabhängig von pos
+        const otherFields = ["GPSAltitude", "GPSImgDirection", "Title", "Description", "status"];
+        otherFields.forEach(field => {
           if (updatedImage[field] !== null) {
             originalImage[field] = updatedImage[field];
             changedFields.push(field);
           }
         });
-      }
 
-      // Weitere Felder unabhängig von pos
-      const otherFields = ["GPSAltitude", "GPSImgDirection", "Title", "Description", "status"];
-      otherFields.forEach(field => {
-        if (updatedImage[field] !== null) {
-          originalImage[field] = updatedImage[field];
-          changedFields.push(field);
+        // Log-Ausgabe, wenn etwas übernommen wurde
+        if (changedFields.length > 0) {
+          console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
+          // update thumbnail bar status (background colour)
+          updateThumbnailStatus(thumbnailBarHTMLID, updatedImage.index, updatedImage.status);
         }
       });
 
-      // Log-Ausgabe, wenn etwas übernommen wurde
-      if (changedFields.length > 0) {
-        console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
-      }
-    });
-
-    // show the status in the UI
-    if ( result=== 'done') {
-      // join the image paths with //
-      let start = '';
+      // join the image paths with ' // ' and show that status in the UI.
+      let start = ''; // TODO shorten this string for many images!
       indexArray.forEach(index => { start += imagesToSave[index].imagePath + ' // '});
       document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
       updateImageStatus('meta-status', newStatusAfterSave);

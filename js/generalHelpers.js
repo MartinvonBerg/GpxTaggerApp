@@ -35,7 +35,7 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
     return result;  
 }  
 
-/** update the allImages array to convertedValue which might 
+/** update the allImages array to convertedValue for GPS-Data and set the status to 'gps-manually-changed'
  * 
  * @param {string} indices an string of image indices like "1, 2, 3, 4" or "1" 
  * @param {string} convertedValue '' or object with { lat, lon, refLat, refLon } as GPS coordinates
