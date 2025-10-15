@@ -647,7 +647,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           image.status = 'geotagged';
           // update the thumbnail bar with status for every single image because the process might be aborted!
           updateThumbnailStatus( thumbnailBarHTMLID, image.index, image.status);
-          // TODO : reload the files to show the new geotagged data
+          // PRIO TODO : reload the files to show the new geotagged data
         }
       } catch (err) {
         console.error(`Fehler bei ${image.imagePath}:`, err);
@@ -838,7 +838,7 @@ function metaGPSEventListener() {
           return;
         } // TODO: handle the acceptance and change of status here. The
         else if (input.value === '') {
-          // TODO: handle the acceptance and change of status here. 
+          // PRIO TODO: handle the acceptance and change of status here. Solve the dependency between left and right sidebar contents, status and events.
           // the value should be empty and the status gps-deleted or so.
           // change the other input fields accoringly!
           }
