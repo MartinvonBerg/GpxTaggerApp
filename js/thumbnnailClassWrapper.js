@@ -4,7 +4,7 @@
  * @requires void
  */
 
-// TODO: multiselect of images in thumbnail bar with https://github.com/simonwep/viselect
+// TODO: multiselect of images in thumbnail bar with https://github.com/simonwep/viselect. Currently it is a simple multi-select with shift-click and ranges with no gaps are supported.
 
 // ----------- THUMBNAIL BAR -----------
 /** generate the HTML for a thumbnail bar under the main map pane 
