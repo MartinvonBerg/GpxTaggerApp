@@ -46,7 +46,7 @@ app.whenReady().then( () => {
   // Ermitteln der Systemsprache  
   systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de'
   
-  // Initialisiere i18next  
+  // Initialisiere i18next and create menu in main window.
   i18next.use(Backend).init({  
     lng: systemLanguage, // Setzen Sie die Standardsprache  
     fallbackLng: 'en',  
@@ -180,12 +180,13 @@ app.whenReady().then( () => {
     Menu.setApplicationMenu(menu);  
   });
   
+  // Check if exiftool is available and set the global exiftoolAvailable accordingly
   checkExiftoolAvailable(exiftoolPath).then((isAvailable) => {
     if (isAvailable) {
-      console.log("ExifTool ist verfügbar");
+      console.log("ExifTool is available");
       exiftoolAvailable = true;
     } else {
-      console.log("ExifTool ist NICHT verfügbar");
+      console.log("ExifTool is not available");
       exiftoolAvailable = false;
     }
   });
@@ -238,8 +239,10 @@ function createWindow() {
     }  
   });  
   
-  win.loadFile('index.html');  
-  //win.webContents.openDevTools(); // TODO: remove in production
+  win.loadFile('index.html');
+  if (isDev) {  
+    //win.webContents.openDevTools();  
+  }
   
   win.webContents.on('did-finish-load', () => {  
     // Send the saved settings to the renderer process
@@ -344,6 +347,7 @@ function createWindow() {
   });
 }
 
+/* ---- helper functions for the main process ---- */
 /**
  * Loads user settings from a JSON file.
  * If the file does not exist or cannot be parsed, returns an empty object.
@@ -413,10 +417,9 @@ function saveSettings(settingsFilePath, settings) {
  * @throws Will log errors to the console if reading or parsing fails.
  */
 async function readImagesFromFolder(folderPath, extensions) {
-    const maxProcs = Math.min(os.cpus().length, 16);
-
+    
     const exifTool = new ExifTool({
-      maxProcs: maxProcs, // More concurrent processes = faster
+      maxProcs: Math.min(os.cpus().length, 16), // More concurrent processes = faster
       minDelayBetweenSpawnMillis: 0, // Faster spawning
       streamFlushMillis: 10, // Faster streaming
     });  
@@ -504,8 +507,10 @@ async function readImagesFromFolder(folderPath, extensions) {
                 width: metadata.ImageWidth || '',  
                 
                 lat: metadata.GPSLatitude || '',
+                GPSLatitude: metadata.GPSLatitude || '',
                 GPSLatitudeRef: metadata.GPSLatitudeRef || '',
                 lng: metadata.GPSLongitude || '',
+                GPSLongitude: metadata.GPSLongitude || '',
                 GPSLongitudeRef: metadata.GPSLongitudeRef || '',
                 pos: metadata.GPSPosition || '',
                 GPSAltitude: metadata.GPSAltitude || '',
@@ -540,39 +545,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         );  
   
         // Sort images by capture time
-        try {
-            imagesData.sort((a, b) => {
-                try {
-                    // Prüfe, ob DateTimeOriginal und rawValue vorhanden sind
-                    const dateA = a.DateTimeOriginal && a.DateTimeOriginal.rawValue
-                        ? new Date(a.DateTimeOriginal.rawValue.replace(':', '-'))
-                        : null;
-                    const dateB = b.DateTimeOriginal && b.DateTimeOriginal.rawValue
-                        ? new Date(b.DateTimeOriginal.rawValue.replace(':', '-'))
-                        : null;
-
-                    // Wenn ein Datum fehlt, gib eine Warnung aus
-                    if (!dateA || isNaN(dateA)) {
-                        console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
-                    }
-                    if (!dateB || isNaN(dateB)) {
-                        console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
-                    }
-
-                    // Sortiere Bilder ohne Datum ans Ende
-                    if (!dateA && !dateB) return 0;
-                    if (!dateA) return 1;
-                    if (!dateB) return -1;
-
-                    return dateA - dateB;
-                } catch (err) {
-                    console.error('Error sorting images:', err, a.imagePath, b.imagePath);
-                    return 0;
-                }
-            });
-        } catch (err) {
-            console.error('Error in imagesData.sort:', err);
-        }
+        sortImagesByCaptureTime(imagesData);
         
         // Laufende Nummer ergänzen
         imagesData.forEach((img, idx) => {
@@ -589,7 +562,7 @@ async function readImagesFromFolder(folderPath, extensions) {
 
 /**
  * Writes the metadata of all images in the allmagesData array to their respective files.
- * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' are written.
+ * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' or 'geotagged' are written.
  * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
  * @param {array} allmagesData - an array of objects containing information about all images
  * @returns {Promise<void>} - a promise that resolves when all metadata has been written
@@ -626,13 +599,13 @@ async function writeMetadataOneImage(filePath, metadata) {
 
   // --- GPS Altitude ---
   const altitude = metadata.GPSAltitude;
-  if (altitude!==undefined && altitude!==null && altitude !== "") {
+  if (altitude!==undefined && altitude!==null) {
     writeData["EXIF:GPSAltitude"] = altitude;
   }
 
   // --- GPS ImageDirection ---
   const imageDirection = metadata.GPSImgDirection;
-  if (imageDirection!==undefined && imageDirection!==null && imageDirection !== "") {
+  if (imageDirection!==undefined && imageDirection!==null) {
     writeData["EXIF:GPSImgDirection"] = imageDirection;
   }
 
@@ -645,7 +618,7 @@ async function writeMetadataOneImage(filePath, metadata) {
     writeData["EXIF:GPSLongitude"] = metadata.GPSLongitude;
     writeData["EXIF:GPSLongitudeRef"] = metadata.GPSLongitudeRef;
   } // delete GPS position completely with exiftool including altitude and direction. 
-  else if (exiftoolAvailable) {
+  else if (exiftoolAvailable && pos !== null) {
     let command = `"${exiftoolPath}" -gps*= -overwrite_original_in_place "${filePath}"`;
     console.log("ExifTool Command:", command);
     exec(command, (error, stdout, stderr) => {
@@ -656,7 +629,7 @@ async function writeMetadataOneImage(filePath, metadata) {
       //resolve({ success: true, output: stdout }); // do not use here because this will resolve the promise immediately.
     });
     
-    // does not delete the tags
+    // do not delete the tags
     /*
     writeData["EXIF:GPSPosition"] = null; // does exiftool automatically write the other fields?
     writeData["EXIF:GPSLatitude"] = null;
@@ -676,7 +649,7 @@ async function writeMetadataOneImage(filePath, metadata) {
       'GPSPosition': null
     });
     */
-  } else {
+  } else if ( !exiftoolAvailable) {
     console.error("exiftool is not available!");
     dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
     return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
@@ -800,7 +773,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   });
 }
 
-// ------------ helpers ------------
+// ------------ helpers for the helpers ------------
 async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   const orientation = metadata.Orientation || 1; // default = normal
   
@@ -869,5 +842,38 @@ async function checkExiftoolAvailable(exiftoolPath) {
         resolve(true);
       }
     });
+  });
+}
+
+/**  
+ * Sorts the image data by capture time.  
+ *   
+ * @param {Object[]} imagesData - Array of image metadata objects.  
+ */  
+function sortImagesByCaptureTime(imagesData) { 
+  imagesData.sort((a, b) => {
+    
+    // Prüfe, ob DateTimeOriginal und rawValue vorhanden sind
+    const dateA = a.DateTimeOriginal && a.DateTimeOriginal.rawValue
+        ? new Date(a.DateTimeOriginal.rawValue.replace(':', '-'))
+        : null;
+    const dateB = b.DateTimeOriginal && b.DateTimeOriginal.rawValue
+        ? new Date(b.DateTimeOriginal.rawValue.replace(':', '-'))
+        : null;
+
+    // Wenn ein Datum fehlt, gib eine Warnung aus
+    if (!dateA || isNaN(dateA)) {
+        console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
+    }
+    if (!dateB || isNaN(dateB)) {
+        console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
+    }
+
+    // Sortiere Bilder ohne Datum ans Ende
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    return dateA - dateB;
   });
 }

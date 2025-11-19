@@ -74,20 +74,22 @@ function updateThumbnailStatus(thumbnailBarHTMLID, imageIndex, imageStatus) {
   if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
     thumbnail.classList.add('thumb_with_gps');
     thumbnail.classList.remove('thumb_no_gps');
-  } else if (imageStatus === 'leave-gps-unchanged') {
-    return;
+    thumbnail.classList.remove('thumb_gps_changed_not_saved');
   } else if (imageStatus === 'gps-manually-changed') {
     thumbnail.classList.add('thumb_gps_changed_not_saved');
     thumbnail.classList.remove('thumb_with_gps');
     thumbnail.classList.remove('thumb_no_gps');
   }
-  else {
-    thumbnail.classList.add('thumb_no_gps');
-    thumbnail.classList.remove('thumb_with_gps');
+  else if (imageStatus === 'thumb_all_meta_saved') {
+    // remove all existing classes
+    thumbnail.className = '';
+    thumbnail.classList.add('thumbnail_slide', 'thumb_all_meta_saved', 'thumb_with_gps');
   }
-
-  //console.log('updateThumbnailStatus', thumbnailBarHTMLID, imageIndex, imageStatus);
-  return;
+  else if (imageStatus === 'meta-manually-changed') {
+    thumbnail.classList.add('thumb_meta_changed_not_saved');
+  }
+  else 
+    return;
 }
 
 export { generateThumbnailHTML, updateThumbnailStatus };

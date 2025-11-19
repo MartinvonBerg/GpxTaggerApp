@@ -87,7 +87,7 @@
 	filter: brightness(1.00);
 }
 
-.thumb_with_gps {
+.thumb_with_gps, .thumb_all_meta_saved {
 	background-color: darkgreen;
 }
 
@@ -96,6 +96,10 @@
 }
 
 .thumb_gps_changed_not_saved {
+	background-color: darkorange;
+}
+
+.thumb_meta_changed_not_saved {
 	background-color: darkorange;
 }
 

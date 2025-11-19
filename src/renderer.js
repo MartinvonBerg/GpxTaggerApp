@@ -258,7 +258,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
   window.addEventListener('beforeunload', (event) => {  
     // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
-    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged');
+    const hasUnsavedChanges = allImages.some(img => img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged' && img.status !== 'thumb_all_meta_saved');
     if (hasUnsavedChanges) {  
         // Verhindere das automatische Schließen des Fensters  
         event.preventDefault();
@@ -798,6 +798,7 @@ function metaTextEventListener() {
           input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
           allImages[index].status = 'meta-manually-changed';
           updateImageStatus('meta-status', 'meta-manually-changed');
+          updateThumbnailStatus( thumbnailBarHTMLID, index, 'meta-manually-changed');
         });
       }
     });
@@ -836,9 +837,9 @@ function metaGPSEventListener() {
         } else if (input.value === 'multiple') {
           // do nothing, so do not change values or status.
           return;
-        } // TODO: handle the acceptance and change of status here. The
+        }
         else if (input.value === '') {
-          // PRIO TODO: handle the acceptance and change of status here. Solve the dependency between left and right sidebar contents, status and events.
+          // TBD: handle the acceptance and change of status here. Solve the dependency between left and right sidebar contents, status and events.
           // the value should be empty and the status gps-deleted or so.
           // change the other input fields accoringly!
           }
@@ -965,14 +966,14 @@ function handleSaveButton() {
     }
     if (input.value === 'multiple') { // convertedValue ist null
       // lasse den Status der einzelnen Bilder unverändert.
-      newStatusAfterSave = null;
-      // setze die Daten in imagesToSave auf null damit nichts geschrieben wird. 
+      newStatusAfterSave = 'unchanged';
+      // setze die Daten in imagesToSave auf null damit nichts in main.js geschrieben wird. 
       imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
     }
     if ( !convertedValue && !(input.value === 'multiple' || input.value === '')) { // convertedValue ist null und der eingegeben wert sind keine gültigen koordinaten
       input.value = 'invalid';
-      // lasse den Status der einzelnen Bilder unverändert.
-      newStatusAfterSave = null;
+      // passe Status der einzelnen Bilder an.
+      newStatusAfterSave = null; // müsste eigentlich invalid sein, aber das gibt es nicht.
       // setze die Daten in imagesToSave auf null damit nichts geschrieben wird. 
       imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
     }
@@ -1060,7 +1061,7 @@ function handleSaveButton() {
       // Iteriere über imagesToSave und setze den Status, wenn imageIndex übereinstimmt
       imagesToSave.forEach(image => {
         if (indexArray.includes(image.index)) {
-          image.status = newStatusAfterSave;
+          image.status = newStatusAfterSave === 'loaded-no-GPS' ? newStatusAfterSave : 'thumb_all_meta_saved';
         }
       });
     }

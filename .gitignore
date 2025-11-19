@@ -4,3 +4,4 @@ transfer/*
 *.log
 build*
 anleitung.txt
+*.docx
