@@ -207,14 +207,39 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     showImageFilters([], [], '', '', settings);
   });
 
-  window.myAPI.receive('reload-data', async () => {  
-    console.log('Reload Data command received');
-    // reload the data here
-    // TODO: use it correctly or remove it. would require: re-read images from folder on reload (rebuild allImages) and re-apply settings, reset allMaps.
-    // Currently solved with a reload of the whole app
-    //import(/* webpackChunkName: "applySettings" */'../js/applySettingsHandler.js').then( (applySettings) => {
-    //  applySettings.applySettings(settings);
-    //})
+  window.myAPI.receive('reload-data', async (imagePath, loadedImages) => {  
+    console.log('Reload Data command received: ',imagePath);
+    // reloaded data is in loadedImages
+    // show the filters in the left sidebar
+    allImages = loadedImages; // these two are no deep copies! These are copies by reference. Later changes will affect both arrays!
+    filteredImages = allImages; // initially, all images are shown
+    originalImages = structuredClone(allImages);
+    //showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
+    filterImages();
+    showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
+    
+    // show the track again
+    if (settings.map && settings.gpxPath === '') {
+      pageVarsForJs[0] = settings.map; // Store map-related settings globally
+      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      
+      // show the map without track here. This works but shows an error in the console.
+      showgpx(allMaps, '', settings).then( () => {
+        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
+      });
+    }
+    if (settings.map && settings.gpxPath !== '') {
+      pageVarsForJs[0] = settings.map; // Store map-related settings globally
+      pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      
+      showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
+        trackInfo = newTrackInfo;
+        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
+      });
+    }
+
+    hideLoadingPopup(); // hide the loading popup when done
   });
 
   /**
@@ -647,7 +672,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           image.status = 'geotagged';
           // update the thumbnail bar with status for every single image because the process might be aborted!
           updateThumbnailStatus( thumbnailBarHTMLID, image.index, image.status);
-          // PRIO TODO : reload the files to show the new geotagged data
+          // TBD : reload the files to show the new geotagged data
         }
       } catch (err) {
         console.error(`Fehler bei ${image.imagePath}:`, err);

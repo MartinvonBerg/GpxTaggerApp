@@ -92,7 +92,7 @@ async function showgpx(allMaps, gpxPath, settings=null) {
 
             });
 
-            // TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
+            // PRIO TODO ???: hier die methode zum ergänzen der marker aufrufen! und den eventlistener hinzufügen
             return trackInfo; // return the trackInfo object
         })
     })

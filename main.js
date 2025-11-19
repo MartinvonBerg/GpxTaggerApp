@@ -69,10 +69,19 @@ app.whenReady().then( () => {
         submenu: [    
           { label: t('reload'), role: 'reload' }, // this is required just for testing
           { label: t('reloadData'),
-              click: () => {
+              click: async () => {
                 // IPC an Renderer senden, um Daten neu zu laden
                 if (win) {
-                  win.webContents.send('reload-data');
+                  // Loading starten
+                  win.webContents.send('image-loading-started', settings.imagePath);
+
+                  try {
+                    let allImages = await readImagesFromFolder(settings.imagePath, extensions);
+                    win.webContents.send('reload-data', settings.imagePath, allImages);
+                  } finally {
+                    // Loading beenden
+                    //win.webContents.send('loading', false);
+                  }
                 }
               }
           }, 
