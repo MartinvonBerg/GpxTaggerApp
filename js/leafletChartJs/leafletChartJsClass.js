@@ -299,6 +299,7 @@ class LeafletChartJs extends LeafletMap {
      * @return {boolean} Returns true if the object is empty, false otherwise.
      */
     isObjEmpty (obj) {
+      if (obj === null || obj === undefined) return true;
       return Object.values(obj).length === 0 && obj.constructor === Object;
     }
 

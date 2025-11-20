@@ -169,9 +169,11 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
-      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail, index: img.index }));
+      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail }));
       //debugger;
       allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
+      pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
+      allMaps[0].setActiveMarker(0);
     }
     // hide the loading popup when done
     hideLoadingPopup(); 
@@ -264,6 +266,11 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
           // call the function to show the image metadata in the right sidebar
           showMetadataForImageIndex(event.detail.newslide, event.detail.selectedIndexes || []);
           console.log('thumbnailchange detected: ', event.detail);
+          // update the map markers accordingly
+          allMaps[0].removeAllMarkers();
+          allMaps[0].createFotoramaMarkers(pageVarsForJs[0].imgdata, true);
+          event.detail.selectedIndexes.forEach( index => { allMaps[0].setActiveMarker(index); });
+          
           metaTextEventListener();
           metaGPSEventListener();
           handleSaveButton();

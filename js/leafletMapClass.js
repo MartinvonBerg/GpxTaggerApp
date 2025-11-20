@@ -92,6 +92,10 @@ class LeafletMap {
      * @param {string} elementOnPage id of the div on the page that shall contain the map
      * @param {array} center the map center as lat, lon coord value
      * @param {int} zoom the zoom factor to use for a map with center coords.
+     * 
+     * @global {object} pageVarsForJs global variable defined in JS.
+     * @global {object} L Leaflet global object
+     * @global {object} document DOM document object
      */
     constructor(number, elementOnPage, center=null, zoom=null) {
         LeafletMap.count++; // update the number of instances on construct.
@@ -564,6 +568,12 @@ class LeafletMap {
         }
     }
 
+    removeAllMarkers() {
+        for (let i = 0; i < this.pageVariables.imgdata.length; i++) {
+            this.map.removeLayer( this.mrk[i] );
+        }
+    }
+
     /**
      * update or change the marker for the active image.
      * @param {int} markerNumber 
@@ -575,7 +585,7 @@ class LeafletMap {
         this.newmarker = this.mrk[markerNumber];
         this.map.removeLayer( this.mrk[markerNumber]);
         // differ between image and video
-        if (this.pageVariables.imgdata[markerNumber].mime === 'video') this.newmarker.setIcon(this.myIcon5) 
+        if (this.pageVariables.imgdata[markerNumber] && this.pageVariables.imgdata[markerNumber].mime === 'video') this.newmarker.setIcon(this.myIcon5) 
         else this.newmarker.setIcon(this.myIcon3);
         this.newmarker.setZIndexOffset(500);
         this.newmarker.addTo(this.map);
