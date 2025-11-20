@@ -250,7 +250,7 @@ function createWindow() {
   
   win.loadFile('index.html');
   if (isDev) {  
-    //win.webContents.openDevTools();  
+    win.webContents.openDevTools();  
   }
   
   win.webContents.on('did-finish-load', () => {  

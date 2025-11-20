@@ -164,26 +164,17 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
     filterImages();
     
-    // TODO this after here
-    
-    // show the filtered images in the thumbnail pane below the map and activate the first image
+    // show all images in the thumbnail pane below the map and activate the first image. TBD: show only filtered images?
     showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
-    // mind that with current filter settings the track logged images will disappear from the thumbnail pane!
-    // braucht es für jedes Bild einen kenner, dass die gpx daten ergänzt wurden? Un das überschreibt dann ignoreGPXDate?
 
-    // show the metadata of the active image(s) in the right sidebar including some input fields for 
-    // Gpx-coords, location details from nominatim, image title and description. Similar to LR 6.14 except the useless fields.
-
-    // track log the images with GPS data to the gpx track, if available or set it manually by drag&drop 
-    // give a proposal for the time offset, if needed and let the user set it and recalculate the image times
-    // once logged: show the images on the map as markers, use the settings from pageVarsForJs[0] for the marker icons
-    // and give a message how many images were logged to the track and how many are left to log
-    // mark these untracked images in the thumbnail pane with a red border or so and let the user drag&drop them to the map
-
-    // Finally pass the filtered and updated images back to the main process and save the changed meta in the images with exiftool
-    // on a button click in the right sidebar. the image array has to have a tag 'wasChanged' for each image, if the user changed something in the right sidebar
-
-    hideLoadingPopup(); // hide the loading popup when done
+    if (settings.map && allMaps[0]) {
+      // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
+      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail, index: img.index }));
+      //debugger;
+      allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
+    }
+    // hide the loading popup when done
+    hideLoadingPopup(); 
     });
 
   window.myAPI.receive('clear-image-path', () => {  

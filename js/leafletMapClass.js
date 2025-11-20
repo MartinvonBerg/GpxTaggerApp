@@ -464,7 +464,7 @@ class LeafletMap {
 
     /**
      * Create the Leaflet Map Markers for the images of fotorama slider.
-     * @param {array} markers
+     * @param {array} markers is the same as imgdata in createMarkers
      * @param {boolean} fit fit the map to the leaflet map markers for the images shown in slider
      */
     createFotoramaMarkers(markers, fit=true) {
@@ -510,7 +510,10 @@ class LeafletMap {
                         maxWidth: "auto",
                     });
                 } else {
-                    marker[j].bindPopup(tour["title"]);
+                    //marker[j].bindPopup(tour["title"]);
+                    marker[j].bindPopup('<div>'+tour['index']+': ' + tour["title"] + '<br><img class="leaf_pup_img" src="' + tour.thumb + '"></div>', {
+                        maxWidth: "auto",
+                    });
                 }
 
                 marker[j].addTo(this.group1);
@@ -608,6 +611,14 @@ class LeafletMap {
         this.map.flyTo( coordinates );
     }
     
+    /**
+     * Creates a single position marker on the map at the location of the click event.
+     * If a marker already exists, it will be removed.
+     * The marker will be added to the map and a popup will be bound to it.
+     * The popup will contain the GPS coordinates of the marker.
+     * A custom event 'singlePosMarkerAdded' will be dispatched after the marker is added.
+     * The event detail will contain the latitude and longitude of the marker and a boolean indicating whether the CTRL key was pressed.
+     */
     createSinglePositionMarker() {
     
     // Entferne vorherige Event-Listener, um Mehrfachregistrierung zu vermeiden
