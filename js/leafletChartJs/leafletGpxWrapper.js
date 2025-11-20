@@ -45,7 +45,11 @@ let leafletGpxWrapper = L.GPX.extend({
  *    - dist: Segment distance calculated from elevation points
  */
 leafletGpxWrapper.addInitHook(function () {
-    let id = this.getLayers()[0]._leaflet_id;
+    let id = this.getLayers()[0] ? this.getLayers()[0]._leaflet_id : null;
+    if (id == null) {
+        console.log("leafletGpxWrapper: No layers found in GPX data. So, not GPX Data loaded.");
+        return;
+    }
     let layers = this._layers[id]._layers;
     let startIndex = 0;
     let stopIndex = 0;

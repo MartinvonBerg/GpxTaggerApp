@@ -11,7 +11,7 @@ import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPan
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
-
+// PRIO TODO: TRack loading, unloading, reload data, reload app does not work correctly.
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
 let settings = {};
@@ -170,7 +170,6 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
       const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail }));
-      //debugger;
       allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
       pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
       allMaps[0].setActiveMarker(0);
@@ -212,6 +211,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
     
     // show the track again
+    
     if (settings.map && settings.gpxPath === '') {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
@@ -221,17 +221,30 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
       });
     }
+    
     if (settings.map && settings.gpxPath !== '') {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+      allMaps[0].removeGPXTrack();
+      trackInfo = {};
       
       showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
         trackInfo = newTrackInfo;
         showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
       });
+      
     }
-
+    
+    if (settings.map && allMaps[0]) {
+      // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
+      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail }));
+      allMaps[0].removeAllMarkers();
+      allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
+      pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
+      allMaps[0].setActiveMarker(0);
+    }
+    
     hideLoadingPopup(); // hide the loading popup when done
   });
 
