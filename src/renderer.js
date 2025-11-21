@@ -85,31 +85,25 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     if (settings.rightSidebarWidth) {  
       rightSidebar.style.width = `${settings.rightSidebarWidth}px`;  
     }
-    if (settings.map && settings.gpxPath === '') {
+    if (settings.map) {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       
-      // show the map without track here. This works but shows an error in the console.
-      showgpx(allMaps, '', settings).then( () => {
-        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
-      });
-    }
-    if (settings.map && settings.gpxPath !== '') {
-      pageVarsForJs[0] = settings.map; // Store map-related settings globally
-      pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
-      pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
-      
-      showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
-        trackInfo = newTrackInfo;
-        showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
-      });
+      if (settings.gpxPath !== null || settings.gpxPath !== undefined) {
+        pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
+        
+        showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
+          trackInfo = newTrackInfo;
+          showTrackLogStateError('tracklog-element', 'no-image-on-map-selected');
+        });
+      }
     }
   });
 
   window.myAPI.receive('gpx-data', async (gpxPath) => {
     settings.gpxPath = gpxPath;
-    pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
-    //pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
+    pageVarsForJs[0].tracks.track_0.url = gpxPath; // Update GPX path if needed
+    
     showgpx(allMaps, gpxPath).then( (newTrackInfo) => {
       trackInfo = newTrackInfo;
       filterImages(); // filter the images again, mind the settings.skipImagesWithGPS
@@ -166,7 +160,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     filterImages();
     
     // show all images in the thumbnail pane below the map and activate the first image. TBD: show only filtered images?
-    showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
+    handleThumbnailBar(thumbnailBarHTMLID, allImages);
 
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
@@ -181,23 +175,25 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
 
   window.myAPI.receive('clear-image-path', () => {  
     console.log('Clear Image Path command received');
-    // Hier kannst du den Image-Pfad aus der Anzeige entfernen
-    const gpxPathElement = document.getElementById('img-path');
-    if (gpxPathElement) {
-      //gpxPathElement.textContent = i18next.t('noImageFolderSelected');
-    }
+    
     // clear all variables, images, data, etc.
     filteredImages = [];
     allImages = [];
     settings.imagePath = '';
+    
     // currently keep the filter settings.
-    /*
-    settings.imageFilter = 'all';
-    settings.cameraModels = 'all';
-    settings.ignoreGPXDate = 'false';
-    settings.skipImagesWithGPS = 'false';
-    */
     showImageFilters([], [], '', '', settings);
+
+    // reset the thumbnail bar to the orginal empty content which is "<div id="thumbnail-bar">No Thumbnails loaded yet ...</div>"
+    // Dispatch an event to notify other parts of the application
+    const event = new CustomEvent('clearThumbnailBar', {
+      detail: {
+        info: 'clearThumbnailBar',
+        text: i18next.t('noImageFolderSelected')
+      }
+    });
+    document.dispatchEvent(event);
+    
   });
 
   window.myAPI.receive('reload-data', async (imagePath, loadedImages) => {  
@@ -209,7 +205,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     originalImages = structuredClone(allImages);
     //showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
     filterImages();
-    showThumbnail(thumbnailBarHTMLID, allImages, filteredImages);
+    handleThumbnailBar(thumbnailBarHTMLID, allImages);
     
     // show the track again
     
@@ -259,7 +255,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
    * @param {string} HTMLElementID - ID of the HTML element where the thumbnails should be generated
    * @param {array} allImages - Array of all images, which should be shown as thumbnails
    */
-  async function showThumbnail(HTMLElementID, allImages, filteredImages) {
+  async function handleThumbnailBar(HTMLElementID, allImages) {
     const thumbnailElement = document.getElementById(HTMLElementID);
     if (!thumbnailElement) return;
 
@@ -293,6 +289,12 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         document.addEventListener('updateThumbnailStatus', function (event) {
           th.updateThumbnailStatus(event.detail.imageIndex, event.detail.imageStatus);
           console.log('updateThumbnailStatus detected: ', event.detail);
+        });
+
+        document.addEventListener('clearThumbnailBar', function (event) {
+          event.preventDefault();
+          th = null;
+          thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">'+event.detail.text+'</div>';
         });
 
     });
