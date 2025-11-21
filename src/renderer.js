@@ -238,7 +238,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
-      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail }));
+      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index, path: img.imagePath, thumb: img.thumbnail }));
       allMaps[0].removeAllMarkers();
       allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
       pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
@@ -288,6 +288,12 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
           metaGPSEventListener();
           handleSaveButton();
         });
+
+        document.addEventListener('updateThumbnailStatus', function (event) {
+          th.updateThumbnailStatus(event.detail.imageIndex, event.detail.imageStatus);
+          console.log('updateThumbnailStatus detected: ', event.detail);
+        });
+
     });
     return;
   }
@@ -534,7 +540,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           allImages = updateAllImagesGPS(allImages, index, convertedValue);
           // set the thumbnail status for these images
           indexArray.forEach(index => { 
-            updateThumbnailStatus( thumbnailBarHTMLID, index, allImages[index].status);
+            updateThumbnailStatus(index, allImages[index].status);
           });
 
           // get and set the altitude for these images if setHeight is true
@@ -671,6 +677,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
         if (result.success) {
           const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
           // write the result to the image in filteredImages and allImages (?) and set the status to 'geotagged'
+          // TODO : replace by updateAllImagesGPS function?
           console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
           image.lat = lat;
           image.lng = lng;
@@ -682,11 +689,11 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           image.GPSLongitudeRef = lngRef;
           image.status = 'geotagged';
           // update the thumbnail bar with status for every single image because the process might be aborted!
-          updateThumbnailStatus( thumbnailBarHTMLID, image.index, image.status);
+          updateThumbnailStatus(image.index, image.status);
           // TBD : reload the files to show the new geotagged data
         }
       } catch (err) {
-        console.error(`Fehler bei ${image.imagePath}:`, err);
+        console.log(`Fehler bei ${image.imagePath}:`, err);
         setTrackLogState('tracklog-state', `Fehler bei ${image.imagePath}:`, err);
       }
     }
@@ -834,7 +841,7 @@ function metaTextEventListener() {
           input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
           allImages[index].status = 'meta-manually-changed';
           updateImageStatus('meta-status', 'meta-manually-changed');
-          updateThumbnailStatus( thumbnailBarHTMLID, index, 'meta-manually-changed');
+          updateThumbnailStatus(index, 'meta-manually-changed'); // coords unchanged here.
         });
       }
     });
@@ -857,7 +864,7 @@ function metaGPSEventListener() {
       if ( input.tagName === "INPUT" && input.type==="text" && e.key === "Enter") { // this is for type="text" so GPS-coordinates
         e.preventDefault();
         
-        const convertedValue = convertGps(input.value);
+        let convertedValue = convertGps(input.value);
         let index = input.dataset.index; // possible values: "1" or "1, 2, 3, 4" or "4, 5, 6, 9" all in [0 ... allImages.length-1]
         let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
 
@@ -874,7 +881,8 @@ function metaGPSEventListener() {
           // do nothing, so do not change values or status.
           return;
         }
-        else if (input.value === '') {
+        else if (input.value === '' && convertedValue === null) {
+          convertedValue = '';
           // TBD: handle the acceptance and change of status here. Solve the dependency between left and right sidebar contents, status and events.
           // the value should be empty and the status gps-deleted or so.
           // change the other input fields accoringly!
@@ -893,7 +901,7 @@ function metaGPSEventListener() {
         // set the thumbnail status for these images
         let indexArray = index.split(',').map(t => parseInt(t.replace(' ', '')));
         indexArray.forEach(index => { 
-            updateThumbnailStatus( thumbnailBarHTMLID, index, allImages[index].status);
+            updateThumbnailStatus(index, allImages[index].status);
         });
 
 
@@ -1135,7 +1143,7 @@ function handleSaveButton() {
         if (changedFields.length > 0) {
           console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
           // update thumbnail bar status (background colour)
-          updateThumbnailStatus(thumbnailBarHTMLID, updatedImage.index, updatedImage.status);
+          updateThumbnailStatus(updatedImage.index, updatedImage.status);
         }
       });
 

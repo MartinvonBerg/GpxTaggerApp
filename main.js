@@ -603,116 +603,76 @@ async function writeMetaData(allmagesData) {
  * @param {object} metadata - an object containing information about the image
  * @returns {Promise<void>} - a promise that resolves when the metadata has been written
  */
-async function writeMetadataOneImage(filePath, metadata) {  
+async function writeMetadataOneImage(filePath, metadata) {
   const writeData = {};
 
   // --- GPS Altitude ---
   const altitude = metadata.GPSAltitude;
-  if (altitude!==undefined && altitude!==null) {
+  if (altitude !== undefined && altitude !== null) {
     writeData["EXIF:GPSAltitude"] = altitude;
   }
 
   // --- GPS ImageDirection ---
   const imageDirection = metadata.GPSImgDirection;
-  if (imageDirection!==undefined && imageDirection!==null) {
+  if (imageDirection !== undefined && imageDirection !== null) {
     writeData["EXIF:GPSImgDirection"] = imageDirection;
   }
 
   // --- GPS position ---
   const pos = metadata.pos; // this is in different formats yet!
-  if (pos!==undefined && pos!==null && pos !== "") {
-    writeData["EXIF:GPSPosition"] = pos; // does exiftool automatically write the other fields?
+  if (pos !== undefined && pos !== null && pos !== "") {
+    writeData["EXIF:GPSPosition"] = pos;
     writeData["EXIF:GPSLatitude"] = metadata.GPSLatitude;
     writeData["EXIF:GPSLatitudeRef"] = metadata.GPSLatitudeRef;
     writeData["EXIF:GPSLongitude"] = metadata.GPSLongitude;
     writeData["EXIF:GPSLongitudeRef"] = metadata.GPSLongitudeRef;
-  } // delete GPS position completely with exiftool including altitude and direction. 
-  else if (exiftoolAvailable && pos !== null) {
+  } else if (exiftoolAvailable && pos !== null) {
     let command = `"${exiftoolPath}" -gps*= -overwrite_original_in_place "${filePath}"`;
     console.log("ExifTool Command:", command);
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`ExifTool-Error: ${stderr || error.message}`);
-        return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
-      }
-      //resolve({ success: true, output: stdout }); // do not use here because this will resolve the promise immediately.
-    });
+
     
-    // do not delete the tags
-    /*
-    writeData["EXIF:GPSPosition"] = null; // does exiftool automatically write the other fields?
-    writeData["EXIF:GPSLatitude"] = null;
-    writeData["EXIF:GPSLatitudeRef"] = null;
-    writeData["EXIF:GPSLongitude"] = null;
-    writeData["EXIF:GPSLongitudeRef"] = null;
-    */
-    // does not delete the tags
-    /*
-    await exiftool.write(filePath, {
-      'GPSLatitude': null,
-      'GPSLongitude': null,
-      'GPSAltitude': null,
-      'GPSLatitudeRef': null,
-      'GPSLongitudeRef': null,
-      'GPSImgDirection': null,
-      'GPSPosition': null
+    // Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
+    const execResult = await new Promise((resolve) => {
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`ExifTool-Error: ${stderr || error.message}`);
+          return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+        }
+        resolve({ success: true, output: stdout });
+      });
     });
-    */
-  } else if ( !exiftoolAvailable) {
+
+  } else if (!exiftoolAvailable) {
     console.error("exiftool is not available!");
-    dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
-    return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
+    dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound'));
+    return { success: false, error: 'Exiftool is not installed or not in PATH.' };
   }
-  
-  // --- TITLE ---  
-  const title = sanitize(metadata.Title);  
-  if (title !== undefined && title !== null) {  
-    writeData["XMP-dc:Title"] = title;  
-    writeData["IPTC:ObjectName"] = title;  
-    writeData["EXIF:ImageDescription"] = title; // oder nur bei Title oder Description, s. Diskussion  
-    writeData["XPTitle"] = title;  
-  }  
-  /*
-  // --- CAPTION (Lightroom Description) ---  
-  const caption = sanitize(metadata.Caption);  
-  if (caption !== undefined && caption !== null) { 
-    writeData["XMP-dc:Description"] = caption;  
-    writeData["IPTC:Caption-Abstract"] = caption;  
-  }  
-  */
-  // --- DESCRIPTION ---  
-  const desc = sanitize(metadata.Description);  
-  if (desc!== undefined && desc !== null) { 
-    writeData["XMP-dc:Description"] = desc;  
-    writeData["IPTC:Caption-Abstract"] = desc;  
-    // Optional: nur Description → EXIF:ImageDescription statt Title  
-    // writeData["EXIF:ImageDescription"] = desc;  
-  }  
-  /*
-  // --- COMMENT ---  
-  const comment = sanitize(metadata.Comment);  
-  if (comment!== undefined && comment !== null) { 
-    writeData["EXIF:UserComment"] = comment;  
-    writeData["XPComment"] = comment;  
-  }  
-  
-  // --- KEYWORDS ---  
-  if (Array.isArray(metadata.Keywords) && metadata.Keywords.length > 0) {  
-    const kw = metadata.Keywords.map(k => k.trim()).filter(k => k.length > 0);  
-    if (kw.length > 0) {  
-      writeData["XMP-dc:Subject"] = kw;  
-      writeData["IPTC:Keywords"] = kw;  
-      writeData["XPKeywords"] = kw.join(";"); // Windows-Format  
-    }  
-  }  
-  */
-  if (Object.keys(writeData).length > 0) {  
+
+  // --- TITLE ---
+  const title = sanitize(metadata.Title);
+  if (title !== undefined && title !== null) {
+    writeData["XMP-dc:Title"] = title;
+    writeData["IPTC:ObjectName"] = title;
+    writeData["EXIF:ImageDescription"] = title;
+    writeData["XPTitle"] = title;
+  }
+
+  // --- DESCRIPTION ---
+  const desc = sanitize(metadata.Description);
+  if (desc !== undefined && desc !== null) {
+    writeData["XMP-dc:Description"] = desc;
+    writeData["IPTC:Caption-Abstract"] = desc;
+  }
+
+  if (Object.keys(writeData).length > 0) {
     await exiftool.write(filePath, writeData);
     let metaDataString = JSON.stringify(writeData, null, 2);
-    console.log("Metadata successfully written: ", metaDataString);  
-  } else {  
-    console.log("No Metadata to write (all fields empty).");  
-  }  
+    console.log("Metadata successfully written: ", metaDataString);
+    return { success: true, data: writeData };
+  } else {
+    console.log("No Metadata to write (all fields empty).");
+    return { success: true, message: "No metadata written." };
+  }
 }
 
 /**

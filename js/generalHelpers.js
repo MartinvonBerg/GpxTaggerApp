@@ -43,7 +43,7 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
 function updateAllImagesGPS(allImages, indices, convertedValue = '') {  
     // Splitte den String und konvertiere in ein Array von Zahlen  
     const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
-  
+    // TODO: Why not lat lng here? And why not altittude?
     indexArray.forEach(index => {  
         if (index < 0 || index >= allImages.length) {  
             console.error(`Index ${index} ist außerhalb des Bereichs.`);  

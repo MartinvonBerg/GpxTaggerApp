@@ -238,8 +238,6 @@ class ThumbnailSlider {
     this.lastSelectedIndex = this.activeIndexes[this.activeIndexes.length - 1];
   }
 
-
-
   /**
    * update CSS rules that are used according to the options and client
    */
@@ -449,7 +447,6 @@ class ThumbnailSlider {
     return activeThumbs;
   }
 
-
   /**
    * resize the thumbnail bar 
    * @param {event} e resize event of the parent div
@@ -486,5 +483,46 @@ class ThumbnailSlider {
       }
     }
     
+  }
+
+  /**
+   * Updates the thumbnail status in the thumbnail bar based on the image status.
+   * 
+   * @param {number} imageIndex - index of the image in the thumbnail bar
+   * @param {string} imageStatus - status of the image, can be one of:
+   *   - 'loaded-with-GPS' - image has been geotagged and GPS information is available
+   *   - 'geotagged' - image has been geotagged and GPS information is available
+   *   - 'gps-manually-changed' - GPS information has been manually changed
+   *   - 'thumb_all_meta_saved' - all metadata of the image has been saved
+   *   - 'meta-manually-changed' - metadata of the image has been manually changed
+   */
+  updateThumbnailStatus(imageIndex, imageStatus) {
+    // get the thumbnail element
+    let thumbnail = document.getElementById(`thumb${imageIndex}`);
+
+    if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
+      thumbnail.classList.add('thumb_with_gps');
+      thumbnail.classList.remove('thumb_no_gps');
+      thumbnail.classList.remove('thumb_gps_changed_not_saved');
+    }
+    else if (imageStatus === 'loaded-no-GPS') {
+      thumbnail.className = '';
+      thumbnail.classList.add('thumbnail_slide', 'thumb_no_gps');
+    } 
+    else if (imageStatus === 'gps-manually-changed') {
+      thumbnail.classList.add('thumb_gps_changed_not_saved');
+      thumbnail.classList.remove('thumb_with_gps');
+      thumbnail.classList.remove('thumb_no_gps');
+    }
+    else if (imageStatus === 'thumb_all_meta_saved') {
+      // remove all existing classes
+      thumbnail.className = '';
+      thumbnail.classList.add('thumbnail_slide', 'thumb_all_meta_saved', 'thumb_with_gps');
+    }
+    else if (imageStatus === 'meta-manually-changed') {
+      thumbnail.classList.add('thumb_meta_changed_not_saved');
+    }
+    else 
+      return;
   }
 }

@@ -67,29 +67,27 @@ function generateThumbnailHTML(allImages) {
   return html;
 }
 
-function updateThumbnailStatus(thumbnailBarHTMLID, imageIndex, imageStatus) {
-  // get the thumbnail element
-  let thumbnail = document.getElementById(`thumb${imageIndex}`);
-
-  if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
-    thumbnail.classList.add('thumb_with_gps');
-    thumbnail.classList.remove('thumb_no_gps');
-    thumbnail.classList.remove('thumb_gps_changed_not_saved');
-  } else if (imageStatus === 'gps-manually-changed') {
-    thumbnail.classList.add('thumb_gps_changed_not_saved');
-    thumbnail.classList.remove('thumb_with_gps');
-    thumbnail.classList.remove('thumb_no_gps');
-  }
-  else if (imageStatus === 'thumb_all_meta_saved') {
-    // remove all existing classes
-    thumbnail.className = '';
-    thumbnail.classList.add('thumbnail_slide', 'thumb_all_meta_saved', 'thumb_with_gps');
-  }
-  else if (imageStatus === 'meta-manually-changed') {
-    thumbnail.classList.add('thumb_meta_changed_not_saved');
-  }
-  else 
-    return;
+/**
+ * Dispatches the event to update the thumbnail status in the thumbnail bar.
+ *  
+ * @param {number} imageIndex - index of the image in the thumbnail bar
+ * @param {string} imageStatus - status of the image, can be one of:
+ *   - 'loaded-with-GPS' - image has been geotagged and GPS information is available
+ *   - 'geotagged' - image has been geotagged and GPS information is available
+ *   - 'gps-manually-changed' - GPS information has been manually changed
+ *   - 'thumb_all_meta_saved' - all metadata of the image has been saved
+ *   - 'meta-manually-changed' - metadata of the image has been manually changed
+ */
+function updateThumbnailStatus(imageIndex, imageStatus) {
+  // Dispatch an event to notify other parts of the application
+  const event = new CustomEvent('updateThumbnailStatus', {
+    detail: {
+      imageIndex: imageIndex,
+      imageStatus: imageStatus
+    }
+  });
+  document.dispatchEvent(event);
+  return;
 }
 
 export { generateThumbnailHTML, updateThumbnailStatus };

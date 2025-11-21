@@ -67,15 +67,41 @@ function getTrackInfo(NPoints, trackInfo) {
   return trackData;
 }
 
+/** Checks if the given latitude and longitude are valid
+ *   * 
+ * @param {number|string} lat the latitude as number or string
+ * @param {number|string} lng the longitude as number or string
+ * @returns {boolean} true if valid lat/lng, false otherwise
+ */
+function isValidLatLng(lat, lng) {
+    // Versuche, die Werte in Zahlen umzuwandeln
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+
+    // Prüfe, ob beide Werte tatsächlich Zahlen sind
+    if (isNaN(latNum) || isNaN(lngNum)) {
+        return false;
+    }
+
+    // Prüfe, ob die Werte im gültigen Bereich liegen
+    return latNum >= -90 && latNum <= 90 && lngNum >= -180 && lngNum <= 180;
+}
+
+
 /**
  * Konvertiert einen GPS-String in Dezimalgrad und gibt Normalform zurück
  * Unterstützt: DD, DMS, DMM
  * @param {string} input - GPS Koordinaten
- * @returns {object|null} { lat, lon, refLat, refLon, pos } oder null bei Fehler
+ * @returns {object|null} { lat, lon, refLat, refLon, pos } oder null bei Fehler, d.h. wenn keine konvertierbare Eingabe.
  */
 function convertGps(input) {
+  /**
+   * Checks if a given GPS position is valid.
+   * @param {string} position - The GPS position to check.
+   * @returns {boolean} True if the position is valid, false otherwise.
+   */
   const isValidPosition = function(position) {
-    let error;
+    
     let isValid;
     try {
       isValid = true;
@@ -275,4 +301,4 @@ function parseExiftoolGPS(exifOutput) {
 }
 
 
-export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation, getUTCOffsetFromLocation, parseExiftoolGPS };
+export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation, getUTCOffsetFromLocation, parseExiftoolGPS, isValidLatLng };
