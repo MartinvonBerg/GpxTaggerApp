@@ -12,6 +12,7 @@ import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
 // PRIO TODO: TRack loading, unloading, reload data, reload app does not work correctly.
+// TODO: map update after geotagging images or other changes is missing
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
 let settings = {};
