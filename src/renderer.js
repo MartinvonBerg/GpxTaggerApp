@@ -6,7 +6,7 @@ import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, ge
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
-import { generateThumbnailHTML, updateThumbnailStatus } from '../js/thumbnnailClassWrapper.js';
+import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
@@ -160,7 +160,15 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     filterImages();
     
     // show all images in the thumbnail pane below the map and activate the first image. TBD: show only filtered images?
-    handleThumbnailBar(thumbnailBarHTMLID, allImages);
+    const deps = {
+        generateThumbnailHTML,
+        showMetadataForImageIndex,
+        metaTextEventListener,
+        metaGPSEventListener,
+        handleSaveButton,
+        mapPosMarkerEventListener
+      };
+    handleThumbnailBar(thumbnailBarHTMLID, allImages, pageVarsForJs[0].sw_options, deps);
 
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
@@ -205,7 +213,15 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     originalImages = structuredClone(allImages);
     //showImageFilters(includedExts, cameraModels, minDate, maxDate, settings);
     filterImages();
-    handleThumbnailBar(thumbnailBarHTMLID, allImages);
+    const deps = {
+        generateThumbnailHTML,
+        showMetadataForImageIndex,
+        metaTextEventListener,
+        metaGPSEventListener,
+        handleSaveButton,
+        mapPosMarkerEventListener
+      };
+    handleThumbnailBar(thumbnailBarHTMLID, allImages, pageVarsForJs[0].sw_options, deps);
     
     // show the track again
     
@@ -245,61 +261,22 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     hideLoadingPopup(); // hide the loading popup when done
   });
 
-  /**
-   * Generates and shows the thumbnails for the images in the thumbnail pane below the map.
-   * Activates the first thumbnail and shows its metadata in the right sidebar.
-   * Activates listeners for the thumbnail change event, which shows the metadata of the newly selected image in the right sidebar.
-   * 
-   * HINT: This function was not moved to an ES6 module because of its interaction with the right sidebar and its events.
-   * 
-   * @param {string} HTMLElementID - ID of the HTML element where the thumbnails should be generated
-   * @param {array} allImages - Array of all images, which should be shown as thumbnails
-   */
-  async function handleThumbnailBar(HTMLElementID, allImages) {
-    const thumbnailElement = document.getElementById(HTMLElementID);
-    if (!thumbnailElement) return;
+  window.myAPI.receive('save-meta-progress', (progressObject) => {  
+    // progressObject has the structure: { currentIndex: number, totalImages: number, result: string, imagePath: string}
+    console.log('Save Meta Progress command received: ',progressObject);
+    
+    // update the UI accordingly
+    const progressElement = document.getElementById('write-meta-status')
+    let part = progressObject.currentIndex + ' / ' + progressObject.totalImages;
 
-    thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
-       
-    import(/* webpackChunkName: "thumbnailSlider" */'../js/thumbnailClass.js').then( (ThumbnailSlider) => {
-        let th = new ThumbnailSlider.ThumbnailSlider(0, pageVarsForJs[0].sw_options);
-        // show and activate the first thumbnail metadata and activate listeners for it
-        th.setActiveThumb(0);
-        showMetadataForImageIndex(0);
-        metaTextEventListener();
-        metaGPSEventListener();
-        handleSaveButton();
-        mapPosMarkerEventListener('map0',th);
-
-        document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
-          
-          // call the function to show the image metadata in the right sidebar
-          showMetadataForImageIndex(event.detail.newslide, event.detail.selectedIndexes || []);
-          console.log('thumbnailchange detected: ', event.detail);
-          // update the map markers accordingly
-          allMaps[0].removeAllMarkers();
-          allMaps[0].createFotoramaMarkers(pageVarsForJs[0].imgdata, true);
-          event.detail.selectedIndexes.forEach( index => { allMaps[0].setActiveMarker(index); });
-          
-          metaTextEventListener();
-          metaGPSEventListener();
-          handleSaveButton();
-        });
-
-        document.addEventListener('updateThumbnailStatus', function (event) {
-          th.updateThumbnailStatus(event.detail.imageIndex, event.detail.imageStatus);
-          console.log('updateThumbnailStatus detected: ', event.detail);
-        });
-
-        document.addEventListener('clearThumbnailBar', function (event) {
-          event.preventDefault();
-          th = null;
-          thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">'+event.detail.text+'</div>';
-        });
-
-    });
-    return;
-  }
+    if (progressElement && progressObject.result === 'done') {
+      progressElement.textContent = i18next.t('metasaved') + ' (' + part + '): ' + progressObject.imagePath;
+    } else if (progressElement && progressObject.result === 'error') {
+      progressElement.textContent = i18next.t('error')     + ' (' + part + '): ' + progressObject.imagePath;
+    } else if (progressElement && progressObject.result === 'skipped') {
+      progressElement.textContent = i18next.t('skipped')   + ' (' + part + '): ' + progressObject.imagePath;
+    }
+  });
 
   window.addEventListener('beforeunload', (event) => {  
     // Überprüfe, ob im array allImages ein status ungleich 'loaded-with-GPS' oder 'loaded-no-GPS' vorhanden ist
@@ -321,6 +298,8 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     settings.map.zoom = event.detail.zoom;
     window.myAPI.send('update-map-settings', settings);
   });
+
+
 }
 
 // ----------- LEFT SIDEBAR -----------
@@ -466,6 +445,7 @@ function filterImages () {
   if (settings.imageFilter && settings.imageFilter !== 'all') {
     newfilteredImages = newfilteredImages.filter(img => img.extension.includes(settings.imageFilter));
   }
+
   // filter by date. get the date range from the gpx file and filter the images accordingly
   // data is stored in global trackInfo
   if (settings.ignoreGPXDate && settings.ignoreGPXDate === 'true' && trackInfo.datumStart && trackInfo.datumEnd) {
@@ -484,14 +464,13 @@ function filterImages () {
   }
 
   // finally, update the global variable
-  console.log(`Filtered images: ${newfilteredImages.length} of ${allImages.length}`);
-  console.log(newfilteredImages);
   filteredImages = newfilteredImages;
-
+  console.log(`Filtered images: ${filteredImages.length} of ${allImages.length}`);
+  console.log(filteredImages);
+  
+  // show the number of filtered images in the UI
   const el = document.getElementById('images-after-filter');
-  if (el) {
-    el.innerHTML = `<strong>${i18next.t('imagesAfterFilter')}:</strong> ${filteredImages.length} ${i18next.t('of')} ${allImages.length}`;
-  }
+  if (el) {el.innerHTML = `<strong>${i18next.t('imagesAfterFilter')}:</strong> ${filteredImages.length} ${i18next.t('of')} ${allImages.length}`;}
 }
 
 /** IMAGE UI UPDATE (CTRL)
@@ -543,7 +522,7 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           allImages = updateAllImagesGPS(allImages, index, convertedValue);
           // set the thumbnail status for these images
           indexArray.forEach(index => { 
-            updateThumbnailStatus(index, allImages[index].status);
+            triggerUpdateThumbnailStatus(index, allImages[index].status);
           });
 
           // get and set the altitude for these images if setHeight is true
@@ -631,11 +610,11 @@ function setTrackLogState(HTMLElementID, state) {
 /** UPDATE IMAGES (UI + DISK) (filteredImages)
  * 
  * @param {string} gpxPath 
- * @param {array} filteredImages (array of objects) called by reference, so the original array is updated!
+ * @global {array} filteredImages (array of objects) called by reference, so the original array is updated!
  * @param {object} params 
  * @returns void or nothing 
  */
-function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
+function handleTracklogButton(gpxPath, params = {} ) {
   const button = document.getElementById('tracklog-button');
   const abortButton = document.getElementById('tracklog-button-abort');
   if (!button || !abortButton) return;
@@ -692,7 +671,7 @@ function handleTracklogButton(gpxPath, filteredImages, params = {} ) {
           image.GPSLongitudeRef = lngRef;
           image.status = 'geotagged';
           // update the thumbnail bar with status for every single image because the process might be aborted!
-          updateThumbnailStatus(image.index, image.status);
+          triggerUpdateThumbnailStatus(image.index, image.status);
           // TBD : reload the files to show the new geotagged data
         }
       } catch (err) {
@@ -721,9 +700,13 @@ function handleTimePicker(HTMLElementID, timeDiffDefaultValue) {
 /** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
  * 
  * TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
- * @global {object} allImages
+ * 
  * @param {number} index - the index of the image in the allImages array
  * @param {array} selectedIndexes - the indexes of the images that are selected
+ * @global {object} document, allImages
+ * @global {function} getIdenticalValuesForKeysInImages, exifDateToJSLocaleDate, exifDateTimeToJSTime, convertGps, initAutocomplete, i18next
+ * 
+ * @returns void
  */
 function showMetadataForImageIndex(index, selectedIndexes=[]) {
   let img = allImages[index];
@@ -763,7 +746,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
       <div><small>${i18next.t('enterhint')}</small></div>
       <form id="gps-form">
-        <div class="meta-section ">
+        <div class="meta-section">
           <label>GPS-Pos (Lat / Lon):</label> <!-- Lat = Breite von -90 .. 90, Lon = Länge von -180 .. 180 -->
           <input id="gpsInput" type="text" class="meta-input meta-gps meta-pos" data-index="${img.index}" value="${img.pos || ''}" title="Enter valid GPS coordinates in format: Lat, Lon (e.g., 48.8588443, 2.2943506)"> <!-- did not work: onchange="handleGPSInputChange(this.value)" -->
           
@@ -786,7 +769,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       <div class="meta-section">
         <!-- show a button to accept, validate and save the metadata in the right sidebar -->
         <button type="button" class="meta-button meta-accept" data-index="${img.index}">${i18next.t('accept')}</button>
-        <div id="write-meta-status"></div>
+        <div id="write-meta-status">Nothing written yet!</div>
       </div>
     </div>`;
 
@@ -844,7 +827,7 @@ function metaTextEventListener() {
           input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
           allImages[index].status = 'meta-manually-changed';
           updateImageStatus('meta-status', 'meta-manually-changed');
-          updateThumbnailStatus(index, 'meta-manually-changed'); // coords unchanged here.
+          triggerUpdateThumbnailStatus(index, 'meta-manually-changed'); // coords unchanged here.
         });
       }
     });
@@ -904,7 +887,7 @@ function metaGPSEventListener() {
         // set the thumbnail status for these images
         let indexArray = index.split(',').map(t => parseInt(t.replace(' ', '')));
         indexArray.forEach(index => { 
-            updateThumbnailStatus(index, allImages[index].status);
+            triggerUpdateThumbnailStatus(index, allImages[index].status);
         });
 
 
@@ -1002,27 +985,26 @@ function handleSaveButton() {
       // go back to the browser input and show the converted value and set the status
       input.value = convertedValue.pos;
       newStatusAfterSave = 'loaded-with-GPS';
-      // schreibe die Daten in imagesToSave nur wenn der Wert korrekt ist
-      imagesToSave = updateAllImagesGPS(imagesToSave, index, convertedValue);
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, convertedValue, newStatusAfterSave);
     }
     if (input.value === '') { // convertedValue ist null : der user will die GPS-Daten löschen
       // leere die Daten für GPX, da sie nicht gesetzt werden sollen, wenn der user den wert abischtlich leer lassen will.
       newStatusAfterSave = 'loaded-no-GPS';
       // setze die Daten in imagesToSave zurück 
-      imagesToSave = updateAllImagesGPS(imagesToSave, index, '');
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, '', newStatusAfterSave);
     }
     if (input.value === 'multiple') { // convertedValue ist null
       // lasse den Status der einzelnen Bilder unverändert.
       newStatusAfterSave = 'unchanged';
       // setze die Daten in imagesToSave auf null damit nichts in main.js geschrieben wird. 
-      imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, null, newStatusAfterSave);
     }
     if ( !convertedValue && !(input.value === 'multiple' || input.value === '')) { // convertedValue ist null und der eingegeben wert sind keine gültigen koordinaten
       input.value = 'invalid';
       // passe Status der einzelnen Bilder an.
       newStatusAfterSave = null; // müsste eigentlich invalid sein, aber das gibt es nicht.
       // setze die Daten in imagesToSave auf null damit nichts geschrieben wird. 
-      imagesToSave = updateAllImagesGPS(imagesToSave, index, null);
+      imagesToSave = updateAllImagesGPS(imagesToSave, index, null, newStatusAfterSave);
     }
     
     // ----------------- ALTITUDE ----------------------------
@@ -1100,7 +1082,7 @@ function handleSaveButton() {
     // write the data and save it finally to the file. reset the status. send the array to the backend.
     // wait for the result as acknowledgement
     const selectedImages = indexArray.map(index => imagesToSave[index]); // map erstellt ein neuens array ohne refernz zum alten array.
-    const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
+    const result = await window.myAPI.invoke('save-meta-to-image', selectedImages); // the funtion in main.js updates the UI directly via event 'save-meta-progress'
     console.log('saving metadata with result:', result);
     
     // set the status for the changed images to the new status
@@ -1146,22 +1128,11 @@ function handleSaveButton() {
         if (changedFields.length > 0) {
           console.log(`Bild index ${updatedImage.index}: Übernommen → ${changedFields.join(", ")}`);
           // update thumbnail bar status (background colour)
-          updateThumbnailStatus(updatedImage.index, updatedImage.status);
+          triggerUpdateThumbnailStatus(updatedImage.index, updatedImage.status);
         }
       });
 
-      // join the image filename with ' // ' and show that status in the UI.
-      let start = ''; 
-      indexArray.forEach(index => {
-        const fullPath = imagesToSave[index].imagePath;
-        const fileName = fullPath.split(/[/\\]/).pop(); // Holt den Dateinamen aus dem Pfad
-        start += fileName + ' // ';
-      });
-
-      document.getElementById('write-meta-status').textContent = i18next.t('metasaved') + ': ' + start;
       updateImageStatus('meta-status', newStatusAfterSave);
-    } else {
-      document.getElementById('write-meta-status').textContent = 'Saving failed !!!';
     }
   }); 
 }

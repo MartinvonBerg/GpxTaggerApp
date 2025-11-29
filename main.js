@@ -4,25 +4,41 @@ const fs = require('fs');
 const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
-const sharp = require("sharp");
+const sharp = require('sharp');
 const { exec } = require('child_process');
-const { exiftool } = require("exiftool-vendored");  
 const sanitizeHtml = require('sanitize-html');
-const os = require("os");
+const os = require('os');
 
 const isDev = !app.isPackaged;
-
-// write to a log file if the exe is used
+// write to a log file if the exe is used (production only)
 if (!isDev) {
   const logFilePath = path.join(app.getPath('userData'), 'geotagger.log');
   const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
+  // handle stream errors once
+  logStream.on('error', (err) => {
+    // Optional: minimal stderr-Fallback ohne die Console-Methoden zu verwenden.
+    try {
+      process.stderr.write(`[LOG-STREAM ERROR] ${new Date().toISOString()} ${String(err)}\n`);
+    } catch { /* schlucken, um Rekursion zu vermeiden */ }
+  });
+
+  // helper: safe stringify of any argument
+  const safe = (a) => {
+    if (typeof a === 'string') return a;
+    try { return JSON.stringify(a); }
+    catch { return String(a); }
+  };
+
   ['log', 'warn', 'error'].forEach((method) => {
-    //const original = console[method];
     console[method] = (...args) => {
-      //original(...args); // optional: weiterhin in Konsole anzeigen
-      logStream.write(`[${method.toUpperCase()}] ${new Date().toISOString()} ${args.join(' ')}\n`);
+      const line = args.map(safe).join(' ');
+      logStream.write(`[${method.toUpperCase()}] ${new Date().toISOString()} ${line}\n`);
     };
+  });
+
+  app.on('will-quit', () => {
+    try { logStream.end(); } catch {}
   });
 }
 
@@ -34,55 +50,100 @@ let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; /
 const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
 let exiftoolAvailable = false;
 
-// Define path for the user settings file which won't be overwritten on update.
+// Basisverzeichnis der App
+const appRoot = app.getAppPath();
+const localesPath = path.join(appRoot, 'locales');
+const iconsPath = path.join(appRoot, 'assets', 'icons');
 const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
 
-/** prepare i18next, prepare menu, create window
- * @description: This function is called when the app is ready to run. It creates a new window and sets up the menu.
- * @returns: nothing 
- * @uses: saveSettings(), createWindow()
- */ 
-app.whenReady().then( () => {
-  // Ermitteln der Systemsprache  
-  systemLanguage = app.getLocale(); // Gibt den Sprachcode des Systems zurück, z.B. 'de'
-  
-  // Initialisiere i18next and create menu in main window.
-  i18next.use(Backend).init({  
-    lng: systemLanguage, // Setzen Sie die Standardsprache  
-    fallbackLng: 'en',  
-    backend: {  
-      loadPath: __dirname + '/locales/{{lng}}/translation.json'  
-    }  
-  }, (err, t) => {  
-    if (err) {  
-      console.error('Error initializing i18next:', err);  
-      return;  
-    }
-  
-    // Erstellen des Fensters  
-    createWindow();
+// Settings direkt beim Start laden
+try {
+  if (fs.existsSync(settingsFilePath)) {
+    settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
+  }
+} catch (err) {
+  console.error('Failed to load settings:', err);
+}
 
-  // Menüvorlage erstellen, nachdem i18next Initialisierung abgeschlossen ist  
-    const menuTemplate = [  
+/** Hauptstart */
+app.whenReady().then(async () => {
+  systemLanguage = (app.getLocale() || 'en').split('-')[0];
+
+  try {
+    await i18next.use(Backend).init({
+      lng: systemLanguage,
+      fallbackLng: 'en',
+      backend: { loadPath: path.join(localesPath, '{{lng}}', 'translation.json') },
+    });
+  } catch (err) {
+    console.error('Error initializing i18next:', err);
+
+    // Fallback auf Englisch
+    try {
+      await i18next.init({ lng: 'en', fallbackLng: 'en' });
+    } catch (err2) {
+      console.error('Fallback i18next init failed:', err2);
+    }
+  }
+
+  createWindow();
+
+  // win.on('closed') hinzufügen
+  if (win) {
+    win.on('closed', () => {
+      win = null;
+    });
+  }
+
+  setupMenu(i18next.t.bind(i18next));
+
+  exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('before-quit', () => {
+  win = null;
+});
+
+
+/* ---- main window creation and configuration ---- */
+function setupMenu(t) {
+  
+  const menuTemplate = [  
       {    
         label: t('file'),  
         submenu: [    
           { label: t('reload'), role: 'reload' }, // this is required just for testing
           { label: t('reloadData'),
               click: async () => {
-                // IPC an Renderer senden, um Daten neu zu laden
-                if (win) {
-                  // Loading starten
-                  win.webContents.send('image-loading-started', settings.imagePath);
-
-                  try {
-                    let allImages = await readImagesFromFolder(settings.imagePath, extensions);
-                    win.webContents.send('reload-data', settings.imagePath, allImages);
-                  } finally {
-                    // Loading beenden
-                    //win.webContents.send('loading', false);
-                  }
+                if (!win || !settings.imagePath) {
+                    console.warn('No image path set; reloadData skipped');
+                    // TODO : update the UI to show that no image path is set
+                    return;
                 }
+
+                // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
+                sendToRenderer('image-loading-started', settings.imagePath);
+
+                try {
+                    const allImages = await readImagesFromFolder(settings.imagePath, extensions);
+                    sendToRenderer('reload-data', settings.imagePath, allImages);
+                  } catch (e) {
+                    console.error('Error reloading data:', e);
+                    sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
+                  }
+                
               }
           }, 
           { label: t('quit'), role: 'quit' }  
@@ -102,18 +163,13 @@ app.whenReady().then( () => {
   
               if (!canceled && filePaths.length > 0) {    
                 gpxPath = filePaths[0];    
-                fs.readFile(gpxPath, 'utf8', (err, data) => {    
-                  if (err) {    
-                    console.error(t('errorReadingGpxFile'), err);    
-                    return;    
-                  }  
-  
-                  console.log(t('gpxPath'), gpxPath);    
-                  settings.gpxPath = gpxPath; 
-                  settings.iconPath = __dirname; // set the path to the icons for the map
-                  win.webContents.send('gpx-data', gpxPath);
-                  saveSettings(settingsFilePath, settings);    
-                });    
+                console.log(t('gpxPath'), gpxPath);    
+                settings.gpxPath = gpxPath; 
+                // set the path to the icons for the map, which is required for leaflet map to show the icons on the track correctly.
+                settings.iconPath = appRoot;
+                sendToRenderer('gpx-data', gpxPath);
+                saveSettings(settingsFilePath, settings);
+          
               }    
             }    
           },  
@@ -121,8 +177,8 @@ app.whenReady().then( () => {
             label: t('clearGpxFile'),  
             click: () => {  
               settings.gpxPath = '';
-              settings.iconPath = __dirname; // set the path to the icons for the map
-              win.webContents.send('clear-gpx');  
+              settings.iconPath = appRoot; // set the path to the icons for the map
+              sendToRenderer('clear-gpx');  
               saveSettings(settingsFilePath, settings);  
             }  
           }  
@@ -140,13 +196,13 @@ app.whenReady().then( () => {
               });  
   
               if (!canceled && filePaths.length > 0) {  
-                imagePath = filePaths[0];  
+                const imagePath = filePaths[0];  
                 console.log(t('imagePath'), imagePath);  
                 settings.imagePath = imagePath;  
-                settings.iconPath = __dirname;
+                settings.iconPath = appRoot;
                 saveSettings(settingsFilePath, settings);
                 // read images from the folder if this is possible in the renderer process
-                win.webContents.send('image-loading-started', imagePath);
+                sendToRenderer('image-loading-started', imagePath);
                 
                 // Vor dem Aufruf von readImagesFromFolder
                 const startTime = Date.now();
@@ -157,7 +213,7 @@ app.whenReady().then( () => {
                 console.log('Finished reading images at:', new Date(endTime).toLocaleString());
                 console.log('Duration (ms):', endTime - startTime);
                 // send the images to the renderer process
-                win.webContents.send('set-image-path', imagePath, allImages);
+                sendToRenderer('set-image-path', imagePath, allImages);
               }  
             }  
           },  
@@ -165,8 +221,8 @@ app.whenReady().then( () => {
             label: t('clearImageFolder'),  
             click: () => {  
               settings.imagePath = '';  
-              settings.iconPath = __dirname;
-              win.webContents.send('clear-image-path');  
+              settings.iconPath = appRoot;
+              sendToRenderer('clear-image-path');  
               saveSettings(settingsFilePath, settings);  
             }  
           }  
@@ -183,35 +239,11 @@ app.whenReady().then( () => {
         ]  
       }  
     ].filter(Boolean);
-
-  // Menü erstellen und setzen  
-    const menu = Menu.buildFromTemplate(menuTemplate);  
-    Menu.setApplicationMenu(menu);  
-  });
   
-  // Check if exiftool is available and set the global exiftoolAvailable accordingly
-  checkExiftoolAvailable(exiftoolPath).then((isAvailable) => {
-    if (isAvailable) {
-      console.log("ExifTool is available");
-      exiftoolAvailable = true;
-    } else {
-      console.log("ExifTool is not available");
-      exiftoolAvailable = false;
-    }
-  });
+  const menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu);
+}
 
-  app.on('activate', () => {  
-    if (BrowserWindow.getAllWindows().length === 0) {  
-      createWindow();  
-    }  
-  });  
-});
-
-app.on('window-all-closed', () => {  
-  if (process.platform !== 'darwin') {  
-    app.quit();  
-  }  
-});
 
 /**
  * Creates and configures the main Electron browser window for the application.
@@ -233,13 +265,13 @@ app.on('window-all-closed', () => {
  */
 function createWindow() {  
   settings = loadSettings(settingsFilePath);
-  settings.iconPath = __dirname;
+  settings.iconPath = appRoot;
   
   win = new BrowserWindow({  
     width: settings.width || 800,  
     height: settings.height || 600,  
     webPreferences: {  
-      preload: path.join(__dirname, './src/preload.js'),  
+      preload: path.join(appRoot, './src/preload.js'),  
       nodeIntegration: true,  
       contextIsolation: true,
       webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
@@ -346,17 +378,39 @@ function createWindow() {
   })
 
   ipcMain.handle('save-meta-to-image', async (event, allImages) => {
-    await writeMetaData(allImages);
+    await writeMetaData(allImages, event.sender);
     return 'done';
   });
 
   ipcMain.handle('geotag-exiftool', async (event, data) => {
     const { gpxPath, imagePath, options } = data;
-    return await geotagImageExiftool(gpxPath, imagePath, options);
+    if (exiftoolAvailable) {
+      return await geotagImageExiftool(gpxPath, imagePath, options);
+    } else {
+      dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
+      console.error('Exiftool is not installed or not in PATH.');
+      return { success: false, error: i18next.t('exiftoolNotAvailable') };
+    }
   });
 }
 
 /* ---- helper functions for the main process ---- */
+
+/**
+ * Sends a message to the renderer process with the given channel and arguments.
+ * If the renderer is not available (e.g., it has been closed or has not been created yet),
+ * a warning will be logged to the console.
+ * @param {string} channel - the channel to send the message to
+ * @param {...any} args - the arguments to send to the renderer
+ */
+function sendToRenderer(channel, ...args) {
+  if (win && !win.isDestroyed() && win.webContents) {
+    win.webContents.send(channel, ...args);
+  } else {
+    console.warn('Renderer not available:', channel);
+  }
+}
+
 /**
  * Loads user settings from a JSON file.
  * If the file does not exist or cannot be parsed, returns an empty object.
@@ -368,7 +422,7 @@ function loadSettings(settingsFilePath) {
   // check if file exists in settingsFilePath. 
   // If not copy the default settings file from the project folder to the user folder
   if (!fs.existsSync(settingsFilePath)) {
-    fs.copyFileSync(path.join(__dirname, 'settings', 'user-settings.json'), settingsFilePath);
+    fs.copyFileSync(path.join(appRoot, 'settings', 'user-settings.json'), settingsFilePath);
   }
 
   try {  
@@ -573,25 +627,50 @@ async function readImagesFromFolder(folderPath, extensions) {
  * Writes the metadata of all images in the allmagesData array to their respective files.
  * Only images with status 'loaded-with-GPS' or 'loaded-no-GPS' or 'geotagged' are written.
  * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
+ * Sends progress updates to the sender (if provided) after each image is processed.
+ * 
+ * @param {object} sender - the IPC sender to send progress updates to (optional)
  * @param {array} allmagesData - an array of objects containing information about all images
  * @returns {Promise<void>} - a promise that resolves when all metadata has been written
  */
-async function writeMetaData(allmagesData) {
-  // check if exifWriter was loaded correctly
-  if (!writeMetadataOneImage) {
-    console.error("exifWriter is not initialized!");
-    return;
-  }
-  
+async function writeMetaData(allmagesData, sender=null) {
+  let totalImages = allmagesData.length;
+  let currentIndex = 1;
+
   for (const img of allmagesData) {
     if (img.status !== 'loaded-with-GPS' && img.status !== 'loaded-no-GPS' && img.status !== 'geotagged') {
       console.log('Writing meta for Image:', img.file + img.extension);
+
+      // progressObject has the structure: { currentIndex: number, totalImages: number, result: string, imagePath: string}
       try {
-        await writeMetadataOneImage(img.imagePath, img);
+        const result = await writeMetadataOneImage(img.imagePath, img);
+        sender.send('save-meta-progress', {
+          currentIndex,
+          totalImages,
+          imagePath: img.imagePath,
+          result: result.success ? 'done' : 'error',
+          message: result.data || result.message
+        });
       } catch (error) {
-        console.error('Error writing metadata for image:', img.imagePath, error);
+        sender.send('save-meta-progress', {
+          currentIndex,
+          totalImages,
+          imagePath: img.imagePath,
+          result: 'error',
+          message: error.message
+        });
       }
+    } else {
+      console.log('Skipping Image (no meta to write):', img.file + img.extension);
+      sender.send('save-meta-progress', {
+        currentIndex,
+        totalImages,
+        imagePath: img.imagePath,
+        result: 'skipped'
+      })
     }
+
+    currentIndex++;
   };
 }
 
@@ -679,11 +758,9 @@ async function writeMetadataOneImage(filePath, metadata) {
  * Geotag an image using the GPS data from a GPX file with command line tool exiftool.
  * This function uses (external) exiftool to write the GPS data from the GPX file to the image file.
  * because exiftool-vendored does not support this functionality directly.
- * If exiftool is not available, a simple popup with an error message will be shown.
  * If the GPX file or the image file is not found, the function will resolve with an error message.
  * If the command fails, the function will resolve with an error message.
- * @global {boolean} exiftoolAvailable - Whether exiftool is available
- * @global {object} i18next.t - The i18next translation function
+ * 
  * @param {string} gpxPath - The path to the GPX file.
  * @param {string|array} imagePath - The path to the image file or an array of image paths.
  * @param {object} options - An object with the following properties:
@@ -705,40 +782,32 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   const geolocate = options.geolocate || true;
   const timeOffset = options.tzoffset || 0;
   
-
   return new Promise((resolve) => {
-    // Prüfen, ob exiftool vorhanden ist
-    if (exiftoolAvailable) {
-
-        // Pfade prüfen
-        if (!fs.existsSync(gpxPath)) {
-          return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
-        }
-
-        if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
-          return resolve({ success: false, error: `Image File not found: ${imagePath}` });
-        }
-
-        // Kommando zusammenbauen
-        let command = `"${exiftoolPath}" -${verbose} -geosync=${timeOffset} -charset filename=${charsetFilename} -geotag "${gpxPath}"`;
-        if (geolocate) {
-          command += ' -geolocate=geotag';
-        }
-        command += ` "${imagePath}"`;
-        console.log("ExifTool Command:", command);
-
-        exec(command, (error, stdout, stderr) => {
-          if (error) {
-            console.error(`ExifTool-Error: ${stderr || error.message}`);
-            return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
-          }
-          resolve({ success: true, output: stdout });
-        });
-    } else {
-      dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
-      console.error('Exiftool is not installed or not in PATH.');
-      return resolve({ success: false, error: 'Exiftool is not installed or not in PATH.' });
+    
+    // Pfade prüfen
+    if (!fs.existsSync(gpxPath)) {
+      return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
     }
+
+    if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
+      return resolve({ success: false, error: `Image File not found: ${imagePath}` });
+    }
+
+    // Kommando zusammenbauen
+    let command = `"${exiftoolPath}" -${verbose} -geosync=${timeOffset} -charset filename=${charsetFilename} -geotag "${gpxPath}"`;
+    if (geolocate) {
+      command += ' -geolocate=geotag';
+    }
+    command += ` "${imagePath}"`;
+    console.log("ExifTool Command:", command);
+
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`ExifTool-Error: ${stderr || error.message}`);
+        return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
+      }
+      resolve({ success: true, output: stdout });
+    });
   });
 }
 
@@ -798,7 +867,7 @@ const sanitize = (value) => {
 };
 
 /** 
- * check if exifTool is available in PATH
+ * check if the system exiftool is available in PATH. (not using exiftool-vendored here).
  * @param {string} exiftoolPath
  * @returns {boolean}
  */
@@ -806,8 +875,10 @@ async function checkExiftoolAvailable(exiftoolPath) {
   return new Promise((resolve) => {
     exec(`${exiftoolPath} -ver`, (err) => {
       if (err) {
+        console.log("Sys ExifTool is not available");
         resolve(false);
       } else {
+        console.log("Sys ExifTool is available");
         resolve(true);
       }
     });

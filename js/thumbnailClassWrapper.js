@@ -1,18 +1,97 @@
 /** @module thumbnailClassWrapper
  * 
  * @file thumbnailClassWrapper.js
- * @requires void
+ * @requires module:generalHelpers:isObjEmpty
+ * @description
+ *  This module provides functions to handle the thumbnail bar functionality in the application.
+ *  It includes generating thumbnails, handling thumbnail selection events, and updating thumbnail statuses.
+ * @author Martin von Berg
+ * @version 1.0.0
+ * @license MIT
+ * @todo multiselect of images in thumbnail bar with https://github.com/simonwep/viselect. Currently it is a simple multi-select with shift-click and ranges with no gaps are supported.
  */
 
-// TODO: multiselect of images in thumbnail bar with https://github.com/simonwep/viselect. Currently it is a simple multi-select with shift-click and ranges with no gaps are supported.
+import { isObjEmpty } from '../js/generalHelpers.js';
 
-// ----------- THUMBNAIL BAR -----------
+/**
+ * Generates and shows the thumbnails for the images in the thumbnail pane below the map.
+ * Activates the first thumbnail and shows its metadata in the right sidebar.
+ * Activates listeners for the thumbnail change event, which shows the metadata of the newly selected image in the right sidebar.
+ * 
+ * HINT: This function was not moved to an ES6 module because of its interaction with the right sidebar and its events.
+ * 
+ * @param {string} target - ID of the HTML element where the thumbnails should be generated
+ * @param {array} allImages - Array of all images, which should be shown as thumbnails
+ * @param {object} options - Options for the thumbnail slider, e.g. like pageVarsForJs[0].sw_options
+ * 
+ * @global {object} document The global document object
+ * @global {function} generateThumbnailHTML, showMetadataForImageIndex, metaTextEventListener, metaGPSEventListener, handleSaveButton, mapPosMarkerEventListener
+ */
+export async function handleThumbnailBar(target, allImages, options = {}, deps = {}) {
+    const thumbnailElement = document.getElementById(target);
+    if (!thumbnailElement || !allImages || isObjEmpty(options) || isObjEmpty(deps)) {
+      thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">Error generating Thumbnail Bar!</div>';
+      return;
+    }
+
+    // destructure dependencies for the previously global functions
+    const {
+        generateThumbnailHTML,
+        showMetadataForImageIndex,
+        metaTextEventListener,
+        metaGPSEventListener,
+        handleSaveButton,
+        mapPosMarkerEventListener
+      } = deps;
+
+    thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
+    const { ThumbnailSlider } = await import('../js/thumbnailClass.js');
+    const th = new ThumbnailSlider(0, options);
+
+    // show and activate the first thumbnail metadata and activate listeners for it
+    th.setActiveThumb(0);
+    showMetadataForImageIndex(0);
+    metaTextEventListener();
+    metaGPSEventListener();
+    handleSaveButton();
+    mapPosMarkerEventListener('map0',th); // prio TODO: move this to the map class  ????
+
+    document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
+      
+      // call the function to show the image metadata in the right sidebar
+      showMetadataForImageIndex(event.detail.newslide, event.detail.selectedIndexes || []);
+      console.log('thumbnailchange detected: ', event.detail);
+
+      // PRIO TODO: move this to the map class and update the map markers accordingly
+      allMaps[0].removeAllMarkers();
+      allMaps[0].createFotoramaMarkers(pageVarsForJs[0].imgdata, true);
+      event.detail.selectedIndexes.forEach( index => { allMaps[0].setActiveMarker(index); });
+      
+      metaTextEventListener();
+      metaGPSEventListener();
+      handleSaveButton();
+    });
+
+    document.addEventListener('updateThumbnailStatus', function (event) {
+      th.updateThumbnailStatus(event.detail.imageIndex, event.detail.imageStatus);
+      console.log('updateThumbnailStatus detected: ', event.detail);
+    });
+
+    document.addEventListener('clearThumbnailBar', function (event) {
+      event.preventDefault();
+      th = null;
+      thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">'+event.detail.text+'</div>';
+    });
+
+    return;
+}
+
 /** generate the HTML for a thumbnail bar under the main map pane 
  * 
  * @param {object} allImages 
  * @returns {string} the HTML code for the thumbnail bar
  */
-function generateThumbnailHTML(allImages) {
+export function generateThumbnailHTML(allImages) {
   // generates the HTML for a thumbnail image including EXIF data
   if (!allImages || allImages.length === 0) return '<div>No images available</div>';
   // HTML should be like this:
@@ -78,7 +157,7 @@ function generateThumbnailHTML(allImages) {
  *   - 'thumb_all_meta_saved' - all metadata of the image has been saved
  *   - 'meta-manually-changed' - metadata of the image has been manually changed
  */
-function updateThumbnailStatus(imageIndex, imageStatus) {
+export function triggerUpdateThumbnailStatus(imageIndex, imageStatus) {
   // Dispatch an event to notify other parts of the application
   const event = new CustomEvent('updateThumbnailStatus', {
     detail: {
@@ -89,5 +168,3 @@ function updateThumbnailStatus(imageIndex, imageStatus) {
   document.dispatchEvent(event);
   return;
 }
-
-export { generateThumbnailHTML, updateThumbnailStatus };

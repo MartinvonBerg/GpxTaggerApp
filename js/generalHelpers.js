@@ -37,26 +37,33 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
 
 /** update the allImages array to convertedValue for GPS-Data and set the status to 'gps-manually-changed'
  * 
+ * @param {object[]} allImages array of all images
  * @param {string} indices an string of image indices like "1, 2, 3, 4" or "1" 
  * @param {string} convertedValue '' or object with { lat, lon, refLat, refLon } as GPS coordinates
+ * @param {string} newStatusAfterSave optional status to set after saving the data
  */
-function updateAllImagesGPS(allImages, indices, convertedValue = '') {  
+function updateAllImagesGPS(allImages, indices, convertedValue = '', newStatusAfterSave = '') {  
     // Splitte den String und konvertiere in ein Array von Zahlen  
-    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
+    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+
     // TODO: Why not lat lng here? And why not altittude?
     indexArray.forEach(index => {  
         if (index < 0 || index >= allImages.length) {  
-            console.error(`Index ${index} ist außerhalb des Bereichs.`);  
-            return;  
-        }  
-        if ( convertedValue === '' ) {  
-            allImages[index].pos = '';  
-            allImages[index].GPSLatitude = '';  
-            allImages[index].GPSLatitudeRef = '';  
-            allImages[index].GPSLongitude = '';  
-            allImages[index].GPSLongitudeRef = '';  
-            allImages[index].status = 'gps-manually-changed';  
-            return;  
+          console.error(`Index ${index} ist außerhalb des Bereichs.`);  
+          return;  
+        }
+        // TODO: newStatusAfterSave wird nur hier benutzt und der alte status auch nicht.
+        if ( convertedValue && convertedValue.pos === allImages[index].pos && newStatusAfterSave === 'loaded-with-GPS' ) {
+          // Wenn die Werte gleich sind und der neue Status 'loaded-with-GPS' ist, gehe zum naechsten Bild
+          return; // return here skips to the next iteration of the loop
+        }
+        else if ( convertedValue === '' ) {  
+          allImages[index].pos = '';  
+          allImages[index].GPSLatitude = '';  
+          allImages[index].GPSLatitudeRef = '';  
+          allImages[index].GPSLongitude = '';  
+          allImages[index].GPSLongitudeRef = '';  
+          allImages[index].status = 'gps-manually-changed';
         } else if ( convertedValue ) {
           allImages[index].pos = toDMS(convertedValue.lat) + ' ' + convertedValue.refLat + ', ' + toDMS(convertedValue.lon) + ' ' + convertedValue.refLon;  
           allImages[index].GPSLatitude = toDMS(convertedValue.lat);  

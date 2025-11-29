@@ -50,6 +50,7 @@
   "gpsHint" : "GPS-Koordinaten in WGS84 (Breite, Länge) in &plusm 41.40338, &plusm 2.17403 / 41°24'12.2\"N 2°10'26.5\"E oder 48°51.5304′ N, 2°17.6610′ E  ",
   "accept": "Prüfe und speichere Metadaten",
   "metasaved": "Metadaten gespeichert für",
+  "skipped": "Übersprungen",
   "multiple" : "verschiedene",
   "reloadData": "Daten neu laden",
   "error": "Fehler",

@@ -1,3 +1,19 @@
+/** @module preload contextBridge
+ * 
+ * @file src/preload.js
+ * @requires electron:contextBridge
+ * @requires electron:ipcRenderer
+ * @description
+ *  This module establishes IPC communication between the renderer process (renderer.js) and the main process (main.js).
+ *  It uses Electron's contextBridge to expose a limited API to the renderer process, allowing it to send and receive messages securely.
+ *  The exposed API includes methods for sending messages to the main process, receiving messages from it, and invoking methods that return promises.
+ *  This setup is crucial for maintaining security in Electron applications by preventing direct access to Node.js APIs from the renderer process.
+ * 
+ * @author Martin von Berg
+ * @version 1.0.0
+ * @license MIT
+ */
+
 const { contextBridge, ipcRenderer } = require('electron');  
   
 // Expose a limited API to the renderer  
@@ -10,7 +26,7 @@ contextBridge.exposeInMainWorld('myAPI', {
     }  
   },  
   receive: (channel, func) => {  
-    let validChannels = ['load-settings', 'gpx-data', 'clear-gpx', 'set-image-path', 'clear-image-path', 'image-loading-started', 'reload-data'];  
+    let validChannels = ['load-settings', 'gpx-data', 'clear-gpx', 'set-image-path', 'clear-image-path', 'image-loading-started', 'reload-data', 'save-meta-progress'];  
     if (validChannels.includes(channel)) {
       // List of channels allowed and strip event as it includes `sender`
       ipcRenderer.on(channel, (event, ...args) => func(...args));  // hier wird eine Nachricht von main.js gesendet, in renderer.js empfangen und die entsprechende Callback-Funktion func in renderer.js aufgerufen
@@ -20,7 +36,7 @@ contextBridge.exposeInMainWorld('myAPI', {
     // List of channels allowed  
     let validChannels = ['save-meta-to-image', 'geotag-exiftool'];
     if (validChannels.includes(channel)) {  
-      return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht an main.js geschickt und ein return-wert an renderer.js zurückgegeben.
+      return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht 'data' von renderer.js an main.js geschickt und ein return-wert an renderer.js zurückgegeben.
     }  
   }, 
 });  
