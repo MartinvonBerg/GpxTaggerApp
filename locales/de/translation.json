@@ -70,5 +70,9 @@
   "Metadata-Status" : "Status Metadaten",
   "Altitude" : "Höhe",
   "Direction" : "Richtung",
-  "enterhint" : "Nach Eingabe weiter mit ENTER. Leeres Feld mit Mouse-Click verlassen.<br>Leere Werte werden nur mit Speichern Button übernommen!"
+  "enterhint" : "Nach Eingabe weiter mit ENTER. Leeres Feld mit Mouse-Click verlassen.<br>Leere Werte werden nur mit Speichern Button übernommen!",
+  "loading": "Laden...",
+  "GpxFileNotFound": "GPX-Datei nicht gefunden",
+  "FileNotFoundMessage": "Die ausgewählte Datei wurde nicht gefunden.",
+  "ImageFileNotFound": "Bilddatei nicht gefunden"
 }  

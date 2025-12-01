@@ -70,5 +70,9 @@
   "Metadata-Status" : "Metadata Status",
   "Altitude" : "Altitude",
   "Direction" : "Direction",
-  "enterhint" : "Press ENTER to continue. Leave field with Mouse-Click.<br>Empty values will only be accepted with Save Button!"
+  "enterhint" : "Press ENTER to continue. Leave field with Mouse-Click.<br>Empty values will only be accepted with Save Button!",
+  "loading": "Loading...",
+  "GpxFileNotFound": "GPX-File not found",
+  "FileNotFoundMessage": "The selected file was not found.",
+  "ImageFileNotFound": "Image file not found"
 }

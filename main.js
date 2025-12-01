@@ -4,10 +4,12 @@ const fs = require('fs');
 const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
+const { exiftool } = require("exiftool-vendored");  // TODO : solve the double import problem
 const sharp = require('sharp');
 const { exec } = require('child_process');
 const sanitizeHtml = require('sanitize-html');
 const os = require('os');
+const { send } = require('process');
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -44,10 +46,9 @@ if (!isDev) {
 
 let systemLanguage = 'en';
 let win; // Variable für das Hauptfenster
-let gpxPath = ''; // Variable zum Speichern des GPX-Pfads
 let settings = {}; // Variable zum Speichern der Einstellungen
-let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions TBD: is it required?
-const exiftoolPath = 'exiftool'; // exiftool must be in PATH for this to work!
+let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions. TBD: is it required?
+const exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work!
 let exiftoolAvailable = false;
 
 // Basisverzeichnis der App
@@ -69,6 +70,7 @@ try {
 app.whenReady().then(async () => {
   systemLanguage = (app.getLocale() || 'en').split('-')[0];
 
+  // i18next initialisieren
   try {
     await i18next.use(Backend).init({
       lng: systemLanguage,
@@ -86,9 +88,9 @@ app.whenReady().then(async () => {
     }
   }
 
+  if (win && !win.isDestroyed()) return;
   createWindow();
 
-  // win.on('closed') hinzufügen
   if (win) {
     win.on('closed', () => {
       win = null;
@@ -117,9 +119,12 @@ app.on('before-quit', () => {
 });
 
 
-/* ---- main window creation and configuration ---- */
+/**
+ * Setup the main menu for the application.
+ * @param {function} t - The translation function for i18next.
+ * @returns void
+ */
 function setupMenu(t) {
-  
   const menuTemplate = [  
       {    
         label: t('file'),  
@@ -137,7 +142,7 @@ function setupMenu(t) {
                 sendToRenderer('image-loading-started', settings.imagePath);
 
                 try {
-                    const allImages = await readImagesFromFolder(settings.imagePath, extensions);
+                    const allImages = await readImagesFromFolder(settings.imagePath, extensions); // TODO: optimize 
                     sendToRenderer('reload-data', settings.imagePath, allImages);
                   } catch (e) {
                     console.error('Error reloading data:', e);
@@ -161,9 +166,9 @@ function setupMenu(t) {
                 properties: ['openFile']    
               });  
   
-              if (!canceled && filePaths.length > 0) {    
-                gpxPath = filePaths[0];    
-                console.log(t('gpxPath'), gpxPath);    
+              if (!canceled && filePaths.length > 0) {
+                const gpxPath = filePaths[0];
+                console.log(t('gpxPath'), gpxPath);
                 settings.gpxPath = gpxPath; 
                 // set the path to the icons for the map, which is required for leaflet map to show the icons on the track correctly.
                 settings.iconPath = appRoot;
@@ -244,7 +249,6 @@ function setupMenu(t) {
   Menu.setApplicationMenu(menu);
 }
 
-
 /**
  * Creates and configures the main Electron browser window for the application.
  * Loads user settings, sets up window size and position, and initializes IPC handlers
@@ -272,11 +276,10 @@ function createWindow() {
     height: settings.height || 600,  
     webPreferences: {  
       preload: path.join(appRoot, './src/preload.js'),  
-      nodeIntegration: true,  
+      nodeIntegration: false,  
       contextIsolation: true,
       webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
-      // CORS, Content-Security-Policy, Same-Origin-Policy
-      // verhindert aber nicht den Zugriff auf lokale Ressourcen, wie z.B. lokale Dateien
+        // CORS, Content-Security-Policy, Same-Origin-Policy. Verhindert aber nicht den Zugriff auf lokale Ressourcen, wie z.B. lokale Dateien
     }  
   });  
   
@@ -291,16 +294,16 @@ function createWindow() {
     // append the translation object to the settings object
     settings.translation = translation;
     settings.lng = systemLanguage;
-    win.webContents.send('load-settings', settings);  
+    sendToRenderer('load-settings', settings);  
 
     if (settings.imagePath && fs.existsSync(settings.imagePath)) {
-      win.webContents.send('image-loading-started', settings.imagePath);
+      sendToRenderer('image-loading-started', settings.imagePath);
       
       // Vor dem Aufruf von readImagesFromFolder
       const startTime = Date.now();
       console.log('Start reading images from folder at then:', new Date(startTime).toLocaleString());
       readImagesFromFolder(settings.imagePath, extensions).then(allImages => {
-        win.webContents.send('set-image-path', settings.imagePath, allImages);
+        sendToRenderer('set-image-path', settings.imagePath, allImages);
         const endTime = Date.now();
         console.log('Finished reading images at:', new Date(endTime).toLocaleString());
         console.log('Duration (ms):', endTime - startTime);
@@ -360,30 +363,43 @@ function createWindow() {
             defaultId: 0,  
             title: i18next.t('unsavedChanges'), //'Unsaved Changes',  
             message: i18next.t('unsavedChangesMessage'), //'You have unsaved changes. Do you want to save them?',  
-        };  
+      };  
   
       dialog.showMessageBox(win, options).then((response) => {  
-            if (response.response === 0) {  
-                //event.sender.send('save-changes');
-                // call the function to save the changes in allImages which is available here
+            if (response.response === 0) {  // 'Save' button
                 writeMetaData(allImages).then(() => {
-                    app.exit();
+                    app.quit();
                 });
-                //app.exit();
             } else {  
-                //event.sender.send('discard-changes'); do nothing an exit. The changes will be lost!
-                app.exit();
+                // 'Discard' button, do nothing an quit. The changes will be lost!
+                app.quit();
             }  
         }); 
   })
 
   ipcMain.handle('save-meta-to-image', async (event, allImages) => {
+    
+    if (!Array.isArray(allImages)) {
+      return { success: false, error: 'Invalid data format' };
+    }
+
     await writeMetaData(allImages, event.sender);
     return 'done';
   });
 
   ipcMain.handle('geotag-exiftool', async (event, data) => {
     const { gpxPath, imagePath, options } = data;
+    // check if paths to files are valid
+    if (!fs.existsSync(gpxPath)) {
+      dialog.showErrorBox(i18next.t('GpxFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
+      return { success: false, error: i18next.t('GpxFileNotFound') };
+    }
+
+    if (!fs.existsSync(imagePath)) {
+      dialog.showErrorBox(i18next.t('ImageFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
+      return { success: false, error: i18next.t('ImageFileNotFound') };
+    }
+
     if (exiftoolAvailable) {
       return await geotagImageExiftool(gpxPath, imagePath, options);
     } else {
@@ -395,7 +411,6 @@ function createWindow() {
 }
 
 /* ---- helper functions for the main process ---- */
-
 /**
  * Sends a message to the renderer process with the given channel and arguments.
  * If the renderer is not available (e.g., it has been closed or has not been created yet),
@@ -481,15 +496,18 @@ function saveSettings(settingsFilePath, settings) {
  */
 async function readImagesFromFolder(folderPath, extensions) {
     
-    const exifTool = new ExifTool({
+    const exifTool = new ExifTool({ // TODO: use global exifTool instance?
       maxProcs: Math.min(os.cpus().length, 16), // More concurrent processes = faster
       minDelayBetweenSpawnMillis: 0, // Faster spawning
       streamFlushMillis: 10, // Faster streaming
     });  
   
     try {  
-        // Read all files in the directory  
-        const files = fs.readdirSync(folderPath);  
+        // Read all files in the directory
+        let start = performance.now();
+        const files = fs.readdirSync(folderPath);
+        let end = performance.now();
+        console.log(`Read ${files.length} files from ${folderPath} in ${end - start}ms`);
   
         // Filter files by the specified extensions  
         const imageFiles = files.filter(file => {  
@@ -539,22 +557,6 @@ async function readImagesFromFolder(folderPath, extensions) {
             } else {
               thumbnailPath = filePath; // fallback to the file path if no thumbnail is available
             }
-            /*
-              Title: 'schwäbische alb',
-              Caption-Abstract: 'schwäbische alb'
-              Description: 'schwäbische alb'
-              ImageDescription: 'schwäbische alb'
-              XPTitle: 'schwäbische alb'
-
-              Keywords: 'rot'
-                LastKeywordIPTC: (1) ['rot']
-                LastKeywordXMP: (1) ['rot']
-                Subject: (1) ['rot']
-              XPKeywords: 'rot'
-
-              XPComment: 'Dies ist ein Martin Kommentra'
-              XPSubject: 'Wanderung in Nördlingen'	
-            */
 
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
@@ -599,21 +601,30 @@ async function readImagesFromFolder(folderPath, extensions) {
             };
         };
   
-        // Extract EXIF data for each image and sort by capture time  
+        // Extract EXIF data for each image and sort by capture time
+        start = performance.now();
         const imagesData = await Promise.all(  
             imageFiles.map(async file => {  
                 const filePath = path.join(folderPath, file);  
                 return await getExifData(filePath);  
             })  
         );  
-  
+        end = performance.now();
+        console.log(`Extracted EXIF data for ${imagesData.length} images in ${end - start}ms`);
+
         // Sort images by capture time
+        start = performance.now();
         sortImagesByCaptureTime(imagesData);
+        end = performance.now();
+        console.log(`Sorted ${imagesData.length} images by capture time in ${end - start}ms`);
         
         // Laufende Nummer ergänzen
+        start
         imagesData.forEach((img, idx) => {
             img.index = idx; // Start bei 0, alternativ idx+1 für Start bei 1
         });
+        end = performance.now();
+        console.log(`Added index to ${imagesData.length} images in ${end - start}ms`);
 
         return imagesData;  
     } catch (error) {  
@@ -672,6 +683,38 @@ async function writeMetaData(allmagesData, sender=null) {
 
     currentIndex++;
   };
+}
+
+async function writeMetadataWithExiftool(filePath, writeData) {
+  
+  const exifTool = new ExifTool({
+    maxProcs: Math.min(os.cpus().length, 4),
+  });
+
+  try {
+    const payload = Object.fromEntries(
+      Object.entries(writeData || {}).filter(([_, v]) =>
+        v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '')
+      )
+    );
+
+    if (Object.keys(payload).length === 0) {
+      console.log("No metadata to write (all fields empty).");
+      return { success: true, message: "No metadata written." };
+    }
+
+    await exifTool.writeTags(filePath, payload, {
+      writeArgs: ['-overwrite_original'], // verhindert Backup-Dateien
+      ignoreMinorErrors: true,            // toleriert kleine Fehler
+      useMWG: true                        // MWG-konform (empfohlen)
+    });
+
+    console.log("Metadata successfully written:", JSON.stringify(payload, null, 2));
+    return { success: true, data: payload };
+  } catch (err) {
+    console.error("Failed to write metadata:", err);
+    return { success: false, message: String(err?.message || err) };
+  }
 }
 
 /**
