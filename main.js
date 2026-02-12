@@ -5,11 +5,20 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
 const { exiftool } = require("exiftool-vendored");  // TODO : solve the double import problem
-const sharp = require('sharp');
+//const sharp = require('sharp');
 const { exec } = require('child_process');
 const sanitizeHtml = require('sanitize-html');
 const os = require('os');
-const { send } = require('process');
+
+// sharp availabability check
+let sharpAvailable = false;
+let sharp;
+try {
+  sharp = require('sharp');
+  sharpAvailable = true;
+} catch (err) {
+  console.warn('Sharp not available, skipping thumbnail rotation');
+}
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -285,7 +294,7 @@ function createWindow() {
   
   win.loadFile('index.html');
   if (isDev) {  
-    win.webContents.openDevTools();  
+    //win.webContents.openDevTools();  
   }
   
   win.webContents.on('did-finish-load', () => {  
@@ -454,6 +463,7 @@ function loadSettings(settingsFilePath) {
  * @param {object} settings 
  */
 function saveSettings(settingsFilePath, settings) {
+  console.log('Saving settings to', settingsFilePath);
   fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
 }
 
@@ -513,11 +523,12 @@ async function readImagesFromFolder(folderPath, extensions) {
         const imageFiles = files.filter(file => {  
             const ext = path.extname(file).toLowerCase().replace('.', '');  
             return extensions.includes(ext);  
-        });  
+        });
   
         // Define a function to extract required EXIF metadata. 
-        const getExifData = async (filePath) => {  
-            const metadata = await exifTool.read(filePath);
+        const getExifData = async (filePath) => {
+          
+            const metadata = await exifTool.read(filePath, { ignoreMinorErrors: true });
             let thumbnailPath = '';
             const maxAgeDays = 14;
             
@@ -535,7 +546,7 @@ async function readImagesFromFolder(folderPath, extensions) {
                   fs.unlinkSync(thumbnailPathTmp);
                 } else {
                   useExistingThumbnail = true;
-                  thumbnailPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb-2.jpg`);
+                  thumbnailPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
                 }
               }
 
@@ -557,7 +568,7 @@ async function readImagesFromFolder(folderPath, extensions) {
             } else {
               thumbnailPath = filePath; // fallback to the file path if no thumbnail is available
             }
-
+            
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
                 DateCreated: metadata.DateCreated || '',
@@ -619,7 +630,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         console.log(`Sorted ${imagesData.length} images by capture time in ${end - start}ms`);
         
         // Laufende Nummer ergänzen
-        start
+        start = performance.now();
         imagesData.forEach((img, idx) => {
             img.index = idx; // Start bei 0, alternativ idx+1 für Start bei 1
         });
@@ -857,10 +868,11 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
 // ------------ helpers for the helpers ------------
 async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   const orientation = metadata.Orientation || 1; // default = normal
+  if ( !sharpAvailable) return thumbPathTmp;
   
   // Mit sharp korrigieren
   let image = sharp(thumbPathTmp);
-  const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb-2.jpg`);
+  const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
 
   switch (orientation) {
     case 3:

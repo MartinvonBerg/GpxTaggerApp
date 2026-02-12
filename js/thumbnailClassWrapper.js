@@ -23,6 +23,7 @@ import { isObjEmpty } from '../js/generalHelpers.js';
  * @param {string} target - ID of the HTML element where the thumbnails should be generated
  * @param {array} allImages - Array of all images, which should be shown as thumbnails
  * @param {object} options - Options for the thumbnail slider, e.g. like pageVarsForJs[0].sw_options
+ * @param {object} deps - Dependencies for the previously global functions
  * 
  * @global {object} document The global document object
  * @global {function} generateThumbnailHTML, showMetadataForImageIndex, metaTextEventListener, metaGPSEventListener, handleSaveButton, mapPosMarkerEventListener
@@ -46,7 +47,7 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
 
     thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
     const { ThumbnailSlider } = await import('../js/thumbnailClass.js');
-    const th = new ThumbnailSlider(0, options);
+    let th = new ThumbnailSlider(0, options);
 
     // show and activate the first thumbnail metadata and activate listeners for it
     th.setActiveThumb(0);
@@ -81,6 +82,8 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
       event.preventDefault();
       th = null;
       thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">'+event.detail.text+'</div>';
+      // PRIO TODO: move this to the map class and update the map markers accordingly
+      allMaps[0].removeAllMarkers();
     });
 
     return;

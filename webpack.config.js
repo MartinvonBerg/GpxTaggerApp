@@ -7,7 +7,10 @@ module.exports = {
     filename: 'bundle.js',  
     path: path.resolve(__dirname, 'build'),  
   },  
-  target: 'web',  
+  target: 'web',
+  externals: {
+    sharp: 'commonjs sharp'
+  },
   module: {  
     rules: [
       {
