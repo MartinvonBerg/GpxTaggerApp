@@ -180,6 +180,19 @@ function setupMenu(t) {
                 settings.iconPath = appRoot;
                 sendToRenderer('gpx-data', gpxPath);
                 saveSettings(settingsFilePath, settings);
+                // reload the data
+                if (settings.imagePath && settings.imagePath.length > 3) {
+                  // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
+                  sendToRenderer('image-loading-started', settings.imagePath);
+
+                  try {
+                      const allImages = await readImagesFromFolder(settings.imagePath, extensions);
+                      sendToRenderer('reload-data', settings.imagePath, allImages);
+                    } catch (e) {
+                      console.error('Error reloading data:', e);
+                      sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
+                    }
+                }
               }    
             }    
           },  
