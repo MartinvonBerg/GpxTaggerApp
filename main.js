@@ -5,7 +5,6 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const { ExifTool } = require('exiftool-vendored');
 const { exiftool } = require("exiftool-vendored");  // TODO : solve the double import problem
-//const sharp = require('sharp');
 const { exec } = require('child_process');
 const sanitizeHtml = require('sanitize-html');
 const os = require('os');
@@ -56,20 +55,20 @@ if (!isDev) {
 let systemLanguage = 'en';
 let win; // Variable für das Hauptfenster
 let settings = {}; // Variable zum Speichern der Einstellungen
-let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions. TBD: is it required?
+let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions as default
 const exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work!
 let exiftoolAvailable = false;
 
 // Basisverzeichnis der App
 const appRoot = app.getAppPath();
 const localesPath = path.join(appRoot, 'locales');
-const iconsPath = path.join(appRoot, 'assets', 'icons');
 const settingsFilePath = path.join(app.getPath('userData'), 'user-settings.json');
 
 // Settings direkt beim Start laden
 try {
   if (fs.existsSync(settingsFilePath)) {
     settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
+    if (settings.extensions && Array.isArray(settings.extensions)) extensions = settings.extensions;
   }
 } catch (err) {
   console.error('Failed to load settings:', err);
@@ -143,7 +142,6 @@ function setupMenu(t) {
               click: async () => {
                 if (!win || !settings.imagePath) {
                     console.warn('No image path set; reloadData skipped');
-                    // TODO : update the UI to show that no image path is set
                     return;
                 }
 
@@ -151,13 +149,12 @@ function setupMenu(t) {
                 sendToRenderer('image-loading-started', settings.imagePath);
 
                 try {
-                    const allImages = await readImagesFromFolder(settings.imagePath, extensions); // TODO: optimize 
+                    const allImages = await readImagesFromFolder(settings.imagePath, extensions);
                     sendToRenderer('reload-data', settings.imagePath, allImages);
                   } catch (e) {
                     console.error('Error reloading data:', e);
                     sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
                   }
-                
               }
           }, 
           { label: t('quit'), role: 'quit' }  
@@ -183,7 +180,6 @@ function setupMenu(t) {
                 settings.iconPath = appRoot;
                 sendToRenderer('gpx-data', gpxPath);
                 saveSettings(settingsFilePath, settings);
-          
               }    
             }    
           },  
@@ -222,7 +218,7 @@ function setupMenu(t) {
                 const startTime = Date.now();
                 console.log('Start reading images from folder at:', new Date(startTime).toLocaleString());
                 let allImages = await readImagesFromFolder(imagePath, extensions);
-                // ... später kannst du die Endzeit und die Dauer berechnen:
+                // Endzeit und Dauer berechnen:
                 const endTime = Date.now();
                 console.log('Finished reading images at:', new Date(endTime).toLocaleString());
                 console.log('Duration (ms):', endTime - startTime);
@@ -274,6 +270,7 @@ function setupMenu(t) {
  * - `settingsFilePath` (string): Path to the JSON file where settings are saved/loaded.
  *
  * @function createWindow
+ * @global {object} settings, settingsFilePath, appRoot, win
  * @returns {void}
  */
 function createWindow() {  
@@ -377,10 +374,14 @@ function createWindow() {
       dialog.showMessageBox(win, options).then((response) => {  
             if (response.response === 0) {  // 'Save' button
                 writeMetaData(allImages).then(() => {
+                    console.log('exit-with-unsaved-changes: Changes saved.');
+                    app.exit();
                     app.quit();
                 });
             } else {  
                 // 'Discard' button, do nothing an quit. The changes will be lost!
+                console.log('exit-with-unsaved-changes: Changes skipped.');
+                app.exit();
                 app.quit();
             }  
         }); 
@@ -426,6 +427,8 @@ function createWindow() {
  * a warning will be logged to the console.
  * @param {string} channel - the channel to send the message to
  * @param {...any} args - the arguments to send to the renderer
+ * @global {BrowserWindow} win
+ * 
  */
 function sendToRenderer(channel, ...args) {
   if (win && !win.isDestroyed() && win.webContents) {
@@ -440,6 +443,8 @@ function sendToRenderer(channel, ...args) {
  * If the file does not exist or cannot be parsed, returns an empty object.
  * 
  * @param {string} settingsFilePath 
+ * @global {string} appRoot
+ * @global {object} JSON
  * @returns 
  */
 function loadSettings(settingsFilePath) {
@@ -461,6 +466,8 @@ function loadSettings(settingsFilePath) {
  * 
  * @param {string} settingsFilePath 
  * @param {object} settings 
+ * @global {object} fs
+ * @global {object} JSON
  */
 function saveSettings(settingsFilePath, settings) {
   console.log('Saving settings to', settingsFilePath);
@@ -480,6 +487,10 @@ function saveSettings(settingsFilePath, settings) {
  * @function readImagesFromFolder
  * @param {string} folderPath - Absolute path to the folder containing images.
  * @param {string[]} extensions - Array of allowed file extensions (e.g. ['jpg', 'cr3']).
+ * @global {object} ExifTool : from exiftool-vendored, is only used here!
+ * @global {object} fs
+ * @global {object} path
+ * 
  * @returns {Promise<Object[]>} Resolves with an array of image metadata objects:
  *   {
  *     DateTimeOriginal: {rawValue: string, ...} | string,
@@ -666,7 +677,7 @@ async function writeMetaData(allmagesData, sender=null) {
       // progressObject has the structure: { currentIndex: number, totalImages: number, result: string, imagePath: string}
       try {
         const result = await writeMetadataOneImage(img.imagePath, img);
-        sender.send('save-meta-progress', {
+        if (sender) sender.send('save-meta-progress', {
           currentIndex,
           totalImages,
           imagePath: img.imagePath,
@@ -674,7 +685,7 @@ async function writeMetaData(allmagesData, sender=null) {
           message: result.data || result.message
         });
       } catch (error) {
-        sender.send('save-meta-progress', {
+        if (sender) sender.send('save-meta-progress', {
           currentIndex,
           totalImages,
           imagePath: img.imagePath,
@@ -684,7 +695,7 @@ async function writeMetaData(allmagesData, sender=null) {
       }
     } else {
       console.log('Skipping Image (no meta to write):', img.file + img.extension);
-      sender.send('save-meta-progress', {
+      if (sender) sender.send('save-meta-progress', {
         currentIndex,
         totalImages,
         imagePath: img.imagePath,
@@ -734,6 +745,9 @@ async function writeMetadataWithExiftool(filePath, writeData) {
  * If writeMetadataOneImage is not initialized, an error is logged and the function returns.
  * @param {string} filePath - the path to the image file
  * @param {object} metadata - an object containing information about the image
+ * @global {object} exifTool
+ * @global {string} exiftoolPath
+ * @global {boolean} exiftoolAvailable
  * @returns {Promise<void>} - a promise that resolves when the metadata has been written
  */
 async function writeMetadataOneImage(filePath, metadata) {
@@ -822,6 +836,7 @@ async function writeMetadataOneImage(filePath, metadata) {
  *   - charsetFilename {string} - The character set for the filename. Default is 'latin'.
  *   - geolocate {boolean} - Whether to geolocate the image. Default is true.
  *   - timeOffset {number} - The time offset in seconds to apply to the GPX data. Default is 0.
+ * @global {string} exiftoolPath
  * @returns {Promise<object>} - A promise that resolves with an object containing a success flag and an error message if applicable.
  * The output will be an object with the following properties:
  *   - success {boolean} - Whether the command was successful.
@@ -866,6 +881,21 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
 }
 
 // ------------ helpers for the helpers ------------
+
+/**
+ * Rotate a thumbnail according to the EXIF orientation value.
+ * The function takes a sharp image object and applies the necessary
+ * transformations to rotate the image according to the EXIF orientation
+ * value. If the sharp library is not available, the original
+ * thumbnail path is returned. The function returns a promise with
+ * the path to the rotated thumbnail as a fulfillment value.
+ *
+ * @param {object} metadata - The metadata of the image, containing the Orientation value.
+ * @param {string} filePath - The path to the original image file.
+ * @param {string} thumbPathTmp - The path to the temporary thumbnail file.
+ * @global {boolean} sharpAvailable
+ * @returns {Promise<string>} - A promise with the path to the rotated thumbnail as a fulfillment value.
+ */
 async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   const orientation = metadata.Orientation || 1; // default = normal
   if ( !sharpAvailable) return thumbPathTmp;

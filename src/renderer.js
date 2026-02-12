@@ -201,7 +201,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       }
     });
     document.dispatchEvent(event);
-    
+    resetRightSidebar();
   });
 
   window.myAPI.receive('reload-data', async (imagePath, loadedImages) => {  
@@ -1135,6 +1135,16 @@ function handleSaveButton() {
       updateImageStatus('meta-status', newStatusAfterSave);
     }
   }); 
+}
+
+function resetRightSidebar() {
+  // reset the right sidebar
+  const rightSidebar = document.getElementById('right-sidebar');
+  rightSidebar.innerHTML = `<div id="image-metadata-element" class="rightbar-Section">
+    Image Metadata will be displayed here
+  </div>
+  <div id="metadata-button-element" class="rightbar-Section">
+  </div>`;
 }
 
 
