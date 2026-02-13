@@ -76,9 +76,16 @@ try {
 
 /** Hauptstart */
 app.whenReady().then(async () => {
-  systemLanguage = (app.getLocale() || 'en').split('-')[0];
 
+  try {
+    exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
+    console.log(`Exiftool available: ${exiftoolAvailable}`); 
+  } catch (err) {
+    console.error('Failed to check exiftool availability:', err);
+  }
+  
   // i18next initialisieren
+  systemLanguage = (app.getLocale() || 'en').split('-')[0];
   try {
     await i18next.use(Backend).init({
       lng: systemLanguage,
@@ -107,7 +114,6 @@ app.whenReady().then(async () => {
 
   setupMenu(i18next.t.bind(i18next));
 
-  exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
 });
 
 app.on('activate', () => {
@@ -483,7 +489,7 @@ function loadSettings(settingsFilePath) {
  * @global {object} JSON
  */
 function saveSettings(settingsFilePath, settings) {
-  console.log('Saving settings to', settingsFilePath);
+  //console.log('Saving settings to', settingsFilePath);
   fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
 }
 
@@ -551,7 +557,6 @@ async function readImagesFromFolder(folderPath, extensions) {
   
         // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {
-          
             const metadata = await exifTool.read(filePath, { ignoreMinorErrors: true });
             let thumbnailPath = '';
             const maxAgeDays = 14;
@@ -592,7 +597,6 @@ async function readImagesFromFolder(folderPath, extensions) {
             } else {
               thumbnailPath = filePath; // fallback to the file path if no thumbnail is available
             }
-            
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
                 DateCreated: metadata.DateCreated || '',
@@ -641,7 +645,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         const imagesData = await Promise.all(  
             imageFiles.map(async file => {  
                 const filePath = path.join(folderPath, file);  
-                return await getExifData(filePath);  
+                return await getExifData(filePath);
             })  
         );  
         end = performance.now();
@@ -971,12 +975,10 @@ const sanitize = (value) => {
  */
 async function checkExiftoolAvailable(exiftoolPath) {
   return new Promise((resolve) => {
-    exec(`${exiftoolPath} -ver`, (err) => {
+    exec(`${exiftoolPath} -ver`, { shell: true }, (err) => {
       if (err) {
-        console.log("Sys ExifTool is not available");
         resolve(false);
       } else {
-        console.log("Sys ExifTool is available");
         resolve(true);
       }
     });

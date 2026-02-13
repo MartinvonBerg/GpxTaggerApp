@@ -15,6 +15,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 // TODO: map update after geotagging images or other changes is missing
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
+// TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
