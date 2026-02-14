@@ -26,6 +26,7 @@ import { isObjEmpty } from '../js/generalHelpers.js';
  * @param {object} deps - Dependencies for the previously global functions
  * 
  * @global {object} document The global document object
+ * @global {object} allMaps[0] is set by this function to an LeafletChartJs instance.
  * @global {function} generateThumbnailHTML, showMetadataForImageIndex, metaTextEventListener, metaGPSEventListener, handleSaveButton, mapPosMarkerEventListener
  */
 export async function handleThumbnailBar(target, allImages, options = {}, deps = {}) {
@@ -65,8 +66,21 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
 
       // PRIO TODO: move this to the map class and update the map markers accordingly
       allMaps[0].removeAllMarkers();
-      allMaps[0].createFotoramaMarkers(pageVarsForJs[0].imgdata, true);
-      event.detail.selectedIndexes.forEach( index => { allMaps[0].setActiveMarker(index); });
+      allMaps[0].createFotoramaMarkers(pageVarsForJs[0].imgdata, false);
+
+      event.detail.selectedIndexes.forEach( index => { 
+        //allMaps[0].setActiveMarker(index);
+        let coords = pageVarsForJs[0].imgdata[index].coord; 
+        if ( coords.every(parseFloat) ) {
+          allMaps[0].mapFlyTo(pageVarsForJs[0].imgdata[index].coord);
+        }
+        allMaps[0].mrk.forEach( marker => {
+          if (coords[0] == marker._latlng['lat'] && coords[1] == marker._latlng['lng']) {
+            allMaps[0].setActiveMarker(marker.options.id);
+          }
+        })
+        
+      });
       
       metaTextEventListener();
       metaGPSEventListener();

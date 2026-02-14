@@ -20,7 +20,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('myAPI', {  
   send: (channel, data) => {  
     // List of channels allowed  
-    let validChannels = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes', 'update-map-settings'];
+    let validChannels = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes', 'update-map-settings', 'main-reload-data'];
     if (validChannels.includes(channel)) {  
       ipcRenderer.send(channel, data);  // hier wird eine Nachricht an main.js geschickt
     }  

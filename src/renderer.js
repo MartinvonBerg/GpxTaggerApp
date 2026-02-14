@@ -681,6 +681,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
       }
     }
     setTrackLogState('tracklog-state', 'Geotagging abgeschlossen.');
+    window.myAPI.send('main-reload-data', settings);
   });
 }
 

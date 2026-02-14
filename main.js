@@ -151,16 +151,7 @@ function setupMenu(t) {
                     return;
                 }
 
-                // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
-                sendToRenderer('image-loading-started', settings.imagePath);
-
-                try {
-                    const allImages = await readImagesFromFolder(settings.imagePath, extensions);
-                    sendToRenderer('reload-data', settings.imagePath, allImages);
-                  } catch (e) {
-                    console.error('Error reloading data:', e);
-                    sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
-                  }
+                reloadImageData(settings);
               }
           }, 
           { label: t('quit'), role: 'quit' }  
@@ -188,16 +179,7 @@ function setupMenu(t) {
                 saveSettings(settingsFilePath, settings);
                 // reload the data
                 if (settings.imagePath && settings.imagePath.length > 3) {
-                  // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
-                  sendToRenderer('image-loading-started', settings.imagePath);
-
-                  try {
-                      const allImages = await readImagesFromFolder(settings.imagePath, extensions);
-                      sendToRenderer('reload-data', settings.imagePath, allImages);
-                    } catch (e) {
-                      console.error('Error reloading data:', e);
-                      sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
-                    }
+                  reloadImageData(settings);
                 }
               }    
             }    
@@ -436,6 +418,10 @@ function createWindow() {
       console.error('Exiftool is not installed or not in PATH.');
       return { success: false, error: i18next.t('exiftoolNotAvailable') };
     }
+  });
+
+  ipcMain.on('main-reload-data', (event, settings) => {
+    reloadImageData(settings);
   });
 }
 
@@ -897,6 +883,20 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   });
 }
 
+async function reloadImageData(settings) {
+  // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
+  sendToRenderer('image-loading-started', settings.imagePath);
+
+  try {
+      const allImages = await readImagesFromFolder(settings.imagePath, extensions);
+      sendToRenderer('reload-data', settings.imagePath, allImages);
+      return true;
+    } catch (e) {
+      console.error('Error reloading data:', e);
+      sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
+      return false;
+    }
+}
 // ------------ helpers for the helpers ------------
 
 /**
