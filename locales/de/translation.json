@@ -74,5 +74,9 @@
   "loading": "Laden...",
   "GpxFileNotFound": "GPX-Datei nicht gefunden",
   "FileNotFoundMessage": "Die ausgewählte Datei wurde nicht gefunden.",
-  "ImageFileNotFound": "Bilddatei nicht gefunden"
+  "ImageFileNotFound": "Bilddatei nicht gefunden",
+  "trackLogTimeDiffLabel": "Tracklog mit Zeitabweichung",
+  "trackLogRunButton": "Tracklog starten",
+  "trackLogAbortButton": "Abbrechen",
+  "trackLogRunExiftoolHeader": "Exiftool auf gefilterte Bilder mit Zeitabweichung anwenden"
 }  

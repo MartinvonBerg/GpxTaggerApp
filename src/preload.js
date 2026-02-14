@@ -20,22 +20,22 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('myAPI', {  
   send: (channel, data) => {  
     // List of channels allowed  
-    let validChannels = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes', 'update-map-settings', 'main-reload-data'];
-    if (validChannels.includes(channel)) {  
+    const validChannels_send = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes', 'update-map-settings', 'main-reload-data'];
+    if (validChannels_send.includes(channel)) {  
       ipcRenderer.send(channel, data);  // hier wird eine Nachricht an main.js geschickt
     }  
   },  
   receive: (channel, func) => {  
-    let validChannels = ['load-settings', 'gpx-data', 'clear-gpx', 'set-image-path', 'clear-image-path', 'image-loading-started', 'reload-data', 'save-meta-progress'];  
-    if (validChannels.includes(channel)) {
+    const validChannels_receive = ['load-settings', 'gpx-data', 'clear-gpx', 'set-image-path', 'clear-image-path', 'image-loading-started', 'reload-data', 'save-meta-progress'];  
+    if (validChannels_receive.includes(channel)) {
       // List of channels allowed and strip event as it includes `sender`
       ipcRenderer.on(channel, (event, ...args) => func(...args));  // hier wird eine Nachricht von main.js gesendet, in renderer.js empfangen und die entsprechende Callback-Funktion func in renderer.js aufgerufen
     }  
   },
   invoke: (channel, data) => {  
     // List of channels allowed  
-    let validChannels = ['save-meta-to-image', 'geotag-exiftool'];
-    if (validChannels.includes(channel)) {  
+    const validChannels_invoke = ['save-meta-to-image', 'geotag-exiftool'];
+    if (validChannels_invoke.includes(channel)) {  
       return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht 'data' von renderer.js an main.js geschickt und ein return-wert an renderer.js zurückgegeben.
     }  
   }, 

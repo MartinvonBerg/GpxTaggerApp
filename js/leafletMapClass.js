@@ -511,7 +511,7 @@ class LeafletMap {
                 marker.push(new L.Marker(image["coord"], { title: image["title"], icon: selectedIcon, id: j, riseOnHover: true, }));
 
                 if (("srcset" in image) && (Object.keys(image["srcset"]).length)) { // "srcset" in image
-                    var key = Object.keys(image.srcset)[0];
+                    const key = Object.keys(image.srcset)[0];
                     marker[j].bindPopup('<div>' + image["title"] + '<br><img class="leaf_pup_img" src="' + image.srcset[key] + '"></div>', {
                         maxWidth: "auto",
                     });

@@ -11,8 +11,6 @@ import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPan
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
-// PRIO TODO: TRack loading, unloading, reload data, reload app does not work correctly.
-// TODO: map update after geotagging images or other changes is missing
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
 // TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
@@ -90,7 +88,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
       
-      if (settings.gpxPath !== null || settings.gpxPath !== undefined) {
+      if (settings.gpxPath !== null && settings.gpxPath !== undefined) {
         pageVarsForJs[0].tracks.track_0.url = settings.gpxPath; // Update GPX path if needed
         
         showgpx(allMaps, settings.gpxPath).then( (newTrackInfo) => {
@@ -136,6 +134,15 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     
     console.log('Empfangener Bilder-Pfad im Renderer:', imagePath);
     settings.imagePath = imagePath;
+
+    // reset map and thumbnailbar if a folder without images was selected
+    if (loadedImages.length === 0) {
+      window.myAPI.send('main-reload-data', settings);
+      // TODO: reset the right sidebar
+      resetRightSidebar();
+      hideLoadingPopup(); 
+      return;
+    }
 
     // ----------- EXTENSIONS ---------------
     // read images from the parameter loadedImages. Filter them according to the filter settings in settings.imageFilter
@@ -252,7 +259,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     
     if (settings.map && allMaps[0]) {
       // create the imgData array for the fotorama slider markers on the map, the mime is just used for image or video. So 'image/jpeg' is ok for all images here.
-      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index, path: img.imagePath, thumb: img.thumbnail }));
+      const imgData = allImages.map(img => ({ title: img.Title, mime: 'image/jpeg', coord: [img.lat, img.lng], index: img.index+1, path: img.imagePath, thumb: img.thumbnail }));
       allMaps[0].removeAllMarkers();
       allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
       pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
@@ -582,11 +589,13 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
           document.getElementById('tracklog-element').innerHTML = 
             `<h3 class="sectionHeader">${i18next.t('trackLogHeader')}</h3>
             
-            <label for="timeInput">Tracklog with Time-Diff: (hh:mm:ss):</label>
-            <input type="text" id="timeDiffInput" name="timeDiffInput" value="${tdiff}"><button type="button" id="timeDiffInput-Reset">Reset</button>
+            <label for="timeInput">${i18next.t('trackLogTimeDiffLabel')} (hh:mm:ss):</label>
+            <input type="text" id="timeDiffInput" name="timeDiffInput" value="${tdiff}">
+            <button type="button" id="timeDiffInput-Reset">Reset</button>
 
-            <h4>Run Exiftool for filtered Images and with Time-Diff.</h4>
-            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">Tracklog</button><button type="button" id="tracklog-button-abort" class="tracklog-button tracklog-accept">Abort</button>
+            <h4>${i18next.t('trackLogRunExiftoolHeader')}</h4>
+            <button type="button" id="tracklog-button" class="tracklog-button tracklog-accept" data-index="${index}">${i18next.t('trackLogRunButton')}</button>
+            <button type="button" id="tracklog-button-abort" class="tracklog-button tracklog-accept">${i18next.t('trackLogAbortButton')}</button>
             <div id="tracklog-state"></div>`;
 
           handleTimePicker('timeDiffInput', tdiff); // TODO: prepared for better JS handling of the time diff input
@@ -680,7 +689,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
         setTrackLogState('tracklog-state', `Fehler bei ${image.imagePath}:`, err);
       }
     }
-    setTrackLogState('tracklog-state', 'Geotagging abgeschlossen.');
+    setTrackLogState('tracklog-state', 'Geotagging abgeschlossen.'); // TODO : i18next
     window.myAPI.send('main-reload-data', settings);
   });
 }
@@ -963,7 +972,8 @@ function updateImageStatus(htmlID, status) {
  */
 function handleSaveButton() {
   // Hole den Button mit der Klasse 'meta-button meta-accept'  
-  const button = document.querySelector('.meta-button.meta-accept');  
+  const button = document.querySelector('.meta-button.meta-accept');
+  if (!button) return;
     
   // Füge einen Klick-Event-Listener hinzu  
   button.addEventListener('click', async function(event) {  
@@ -1148,7 +1158,6 @@ function resetRightSidebar() {
   <div id="metadata-button-element" class="rightbar-Section">
   </div>`;
 }
-
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };

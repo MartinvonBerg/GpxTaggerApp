@@ -3,8 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
-const { ExifTool } = require('exiftool-vendored');
-const { exiftool } = require("exiftool-vendored");  // TODO : solve the double import problem
+const { exiftool } = require("exiftool-vendored");
 const { exec } = require('child_process');
 const sanitizeHtml = require('sanitize-html');
 const os = require('os');
@@ -492,42 +491,49 @@ function saveSettings(settingsFilePath, settings) {
  * @function readImagesFromFolder
  * @param {string} folderPath - Absolute path to the folder containing images.
  * @param {string[]} extensions - Array of allowed file extensions (e.g. ['jpg', 'cr3']).
- * @global {object} ExifTool : from exiftool-vendored, is only used here!
+ * @global {object} exiftool : singleton from exiftool-vendored
  * @global {object} fs
  * @global {object} path
  * 
- * @returns {Promise<Object[]>} Resolves with an array of image metadata objects:
- *   {
- *     DateTimeOriginal: {rawValue: string, ...} | string,
- *     DateCreated: string,
- *     DateTimeCreated: string,
- *     OffsetTimeOriginal: string,
- *     camera: string,
- *     lens: string,
- *     type: string,
- *     height: number|string,
- *     width: number|string,
- *     lat: number|string,
- *     GPSLatRef: string,
- *     GPSLngRef: string,
- *     lng: number|string,
- *     ele: number|string,
- *     pos: string,
- *     GPSImageDirection: string,
- *     file: string,
- *     extension: string,
- *     imagePath: string
- *   }
+ * @returns {Promise<ImageMeta[]>} Resolves with an array of image metadata objects.
  * @throws Will log errors to the console if reading or parsing fails.
  */
 async function readImagesFromFolder(folderPath, extensions) {
-    
-    const exifTool = new ExifTool({ // TODO: use global exifTool instance?
-      maxProcs: Math.min(os.cpus().length, 16), // More concurrent processes = faster
-      minDelayBetweenSpawnMillis: 0, // Faster spawning
-      streamFlushMillis: 10, // Faster streaming
-    });  
-  
+   /**
+    * @typedef {Object} ImageMeta
+    * @property {string|{rawValue: string}} DateTimeOriginal
+    * @property {string} DateCreated
+    * @property {string} DateTimeCreated
+    * @property {string} OffsetTimeOriginal
+    * @property {string} camera
+    * @property {string} lens
+    * @property {string} orientation
+    * @property {number|string} height
+    * @property {number|string} width
+    * @property {number|string} lat
+    * @property {number|string} lng
+    * @property {string} GPSLatitude
+    * @property {string} GPSLatitudeRef
+    * @property {string} GPSLongitude
+    * @property {string} GPSLongitudeRef
+    * @property {string} GPSAltitude
+    * @property {string} GPSImgDirection
+    * @property {string} pos
+    * @property {string} file
+    * @property {string} extension
+    * @property {string} imagePath
+    * @property {string} thumbnail
+    * @property {string} status
+    * @property {string} Title
+    * @property {string} CaptionAbstract
+    * @property {string} Description
+    * @property {string} ImageDescription
+    * @property {string} XPTitle
+    * @property {string} XPSubject
+    * @property {string} XPComment
+    * @property {number} index
+    */
+
     try {  
         // Read all files in the directory
         let start = performance.now();
@@ -543,7 +549,36 @@ async function readImagesFromFolder(folderPath, extensions) {
   
         // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {
-            const metadata = await exifTool.read(filePath, { ignoreMinorErrors: true });
+          const metadata = await exiftool.read(filePath, { 
+              ignoreMinorErrors: true,
+              tags: [ // das wird nicht benutzt!
+                "DateTimeOriginal",
+                "DateCreated",
+                "DateTimeCreated",
+                "OffsetTimeOriginal",
+                "Model",
+                //"LensModel",
+                "Orientation",
+                //"ImageHeight",
+                //"ImageWidth",
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef",
+                "GPSPosition",
+                "GPSAltitude",
+                "GPSImgDirection",
+                "Title",
+                "CaptionAbstract",
+                "Description",
+                "ImageDescription",
+                "XPTitle",
+                "XPSubject",
+                "XPComment",
+                //"ThumbnailImage",
+              ]
+            });
+
             let thumbnailPath = '';
             const maxAgeDays = 14;
             
@@ -561,14 +596,14 @@ async function readImagesFromFolder(folderPath, extensions) {
                   fs.unlinkSync(thumbnailPathTmp);
                 } else {
                   useExistingThumbnail = true;
-                  thumbnailPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
+                  thumbnailPath = thumbnailPathTmp;
                 }
               }
 
               if (!useExistingThumbnail) {
                 // extract new thumbnail
                 try {
-                  await exifTool.extractThumbnail(filePath, thumbnailPathTmp); // TODO try again with a binary buffer
+                  await exiftool.extractThumbnail(filePath, thumbnailPathTmp); // TODO try again with a binary buffer
                 } catch (err) {
                   console.error('Error extracting thumbnail with exiftool for', filePath, err);
                 }
@@ -654,8 +689,6 @@ async function readImagesFromFolder(folderPath, extensions) {
         return imagesData;  
     } catch (error) {  
         console.error('Error reading images from folder:', error);  
-    } finally {  
-        await exifTool.end();  
     }
 }
 
@@ -708,38 +741,6 @@ async function writeMetaData(allmagesData, sender=null) {
 
     currentIndex++;
   };
-}
-
-async function writeMetadataWithExiftool(filePath, writeData) {
-  
-  const exifTool = new ExifTool({
-    maxProcs: Math.min(os.cpus().length, 4),
-  });
-
-  try {
-    const payload = Object.fromEntries(
-      Object.entries(writeData || {}).filter(([_, v]) =>
-        v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '')
-      )
-    );
-
-    if (Object.keys(payload).length === 0) {
-      console.log("No metadata to write (all fields empty).");
-      return { success: true, message: "No metadata written." };
-    }
-
-    await exifTool.writeTags(filePath, payload, {
-      writeArgs: ['-overwrite_original'], // verhindert Backup-Dateien
-      ignoreMinorErrors: true,            // toleriert kleine Fehler
-      useMWG: true                        // MWG-konform (empfohlen)
-    });
-
-    console.log("Metadata successfully written:", JSON.stringify(payload, null, 2));
-    return { success: true, data: payload };
-  } catch (err) {
-    console.error("Failed to write metadata:", err);
-    return { success: false, message: String(err?.message || err) };
-  }
 }
 
 /**
@@ -833,7 +834,7 @@ async function writeMetadataOneImage(filePath, metadata) {
  * If the command fails, the function will resolve with an error message.
  * 
  * @param {string} gpxPath - The path to the GPX file.
- * @param {string|array} imagePath - The path to the image file or an array of image paths.
+ * @param {string} imagePath - The path to the image file.
  * @param {object} options - An object with the following properties:
  *   - verbose {string} - The verbosity of the command. Default is 'v2'.
  *   - charsetFilename {string} - The character set for the filename. Default is 'latin'.
@@ -849,10 +850,13 @@ async function writeMetadataOneImage(filePath, metadata) {
 async function geotagImageExiftool(gpxPath, imagePath, options) { 
   
   // Standardwerte setzen
-  const verbose = options.verbose || 'v2';
-  const charsetFilename = options.charsetFilename || 'latin';
-  const geolocate = options.geolocate || true;
-  const timeOffset = options.tzoffset || 0;
+  const {
+    verbose = 'v2',
+    charsetFilename = 'latin',
+    geolocate = true,
+    timeOffset = 0,
+  } = options ?? {};
+
   
   return new Promise((resolve) => {
     
@@ -861,7 +865,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
       return resolve({ success: false, error: `GPX-File not found: ${gpxPath}` });
     }
 
-    if (!fs.existsSync(imagePath || typeof imagePath !== Array)) {
+    if (!fs.existsSync(imagePath) || !fs.statSync(imagePath).isFile()) {
       return resolve({ success: false, error: `Image File not found: ${imagePath}` });
     }
 
@@ -916,10 +920,11 @@ async function reloadImageData(settings) {
 async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   const orientation = metadata.Orientation || 1; // default = normal
   if ( !sharpAvailable) return thumbPathTmp;
+  if (orientation === 1) return thumbPathTmp;
   
   // Mit sharp korrigieren
   let image = sharp(thumbPathTmp);
-  const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
+  const rotatedThumbPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb_rotated.jpg`);
 
   switch (orientation) {
     case 3:
@@ -948,9 +953,11 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
       break;
   }
 
-  await image.toFile(thumbnailPathTmp); // überschreibt Thumbnail mit korrigierter Version
+  await image.toFile(rotatedThumbPath); // erzeugt neues Thumbnail mit korrigierter Version
+  // rename the file to the original name
+  fs.renameSync(rotatedThumbPath, thumbPathTmp); // überschreibt Thumbnail mit korrigierter Version
 
-  return thumbnailPathTmp;
+  return thumbPathTmp;
 }
 
 const sanitize = (value) => {  
@@ -992,28 +999,82 @@ async function checkExiftoolAvailable(exiftoolPath) {
  */  
 function sortImagesByCaptureTime(imagesData) { 
   imagesData.sort((a, b) => {
-    
-    // Prüfe, ob DateTimeOriginal und rawValue vorhanden sind
     const dateA = a.DateTimeOriginal && a.DateTimeOriginal.rawValue
-        ? new Date(a.DateTimeOriginal.rawValue.replace(':', '-'))
-        : null;
+      ? parseExifDateTime(a.DateTimeOriginal.rawValue)
+      : null;
     const dateB = b.DateTimeOriginal && b.DateTimeOriginal.rawValue
-        ? new Date(b.DateTimeOriginal.rawValue.replace(':', '-'))
-        : null;
+      ? parseExifDateTime(b.DateTimeOriginal.rawValue)
+      : null;
 
-    // Wenn ein Datum fehlt, gib eine Warnung aus
-    if (!dateA || isNaN(dateA)) {
-        console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
+    if (!dateA) {
+      console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
     }
-    if (!dateB || isNaN(dateB)) {
-        console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
+    if (!dateB) {
+      console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
     }
 
-    // Sortiere Bilder ohne Datum ans Ende
+    // Sort images without a date to the end
     if (!dateA && !dateB) return 0;
     if (!dateA) return 1;
     if (!dateB) return -1;
 
     return dateA - dateB;
   });
+}
+
+/**
+ * Safely parses EXIF-style DateTime strings (e.g. "YYYY:MM:DD HH:MM:SS")
+ * into a JavaScript Date object.
+ *
+ * Returns null if the value cannot be parsed into a valid date.
+ *
+ * @param {string} rawValue
+ * @returns {Date|null}
+ */
+function parseExifDateTime(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return null;
+  }
+
+  // Typical EXIF format: "YYYY:MM:DD HH:MM:SS"
+  // Some variants may omit the time part.
+  const dateTimeParts = rawValue.trim().split(' ');
+  const datePart = dateTimeParts[0];
+  const timePart = dateTimeParts[1] || '00:00:00';
+
+  const dateSegments = datePart.split(':');
+  if (dateSegments.length < 3) {
+    return null;
+  }
+
+  const [yearStr, monthStr, dayStr] = dateSegments;
+  const [hourStr = '0', minuteStr = '0', secondStr = '0'] = timePart.split(':');
+
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const second = parseInt(secondStr, 10);
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+
+  // JavaScript Date months are 0-based.
+  const date = new Date(year, month - 1, day, hour, minute, second);
+
+  // Guard against invalid dates (e.g. month 13, day 32, etc.).
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 }
