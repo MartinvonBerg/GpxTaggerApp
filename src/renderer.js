@@ -1,10 +1,10 @@
 import i18next from 'i18next';
 
-import { setDataForLanguage } from '../js/locales.js';
-import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
+import { setDataForLanguage } from '../js/locales.js'; // reviewed allready.
+import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js'; // reviewed allready.
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js'; // reviewed allready.
-import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
-import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
+import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js'; // reviewed allready.
+import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js'; // reviewed allready.
 import { initAutocomplete } from '../js/autocomplete.js';
 import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';

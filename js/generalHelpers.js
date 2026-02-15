@@ -12,7 +12,7 @@ import { toDMS } from './TrackAndGpsHandler.js';
  * @param {number[]} indexes - the array of indexes of the images in the images array
  * @param {string[]} keys - the array of property names of the images to check for identical values
  * @param {string} multipleValue - the value to return if the values for a key are not identical
- * @returns {object} - an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not
+ * @returns {object} result - an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not
  */
 function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue) {  
     const result = {};  
@@ -24,7 +24,7 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
   
         result[key] = allIdentical ? values[0] : multipleValue;  
     });  
-
+    // this function is only called if indexes.length is greater than 1, so the following is correct here.
     result.file = multipleValue;
     result.extension = '';
     

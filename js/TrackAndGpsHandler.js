@@ -33,7 +33,7 @@ function getTrackInfo(NPoints, trackInfo) {
   let dateObjEnd = new Date(dateStrEnd);
   let datumEnd = dateObjEnd.toLocaleDateString(); // z.B. '09.08.2022'
 
-  let endTime = dateObjEnd.setHours(dateObjEnd.getHours() + tZOffsetMs / 1000 / 60 / 60); ;  // z.B. '09:53:41' // // 16:43 für den 2.6.2025
+  let endTime = dateObjEnd.setHours(dateObjEnd.getHours() + tZOffsetMs / 1000 / 60 / 60);  // z.B. '09:53:41' // // 16:43 für den 2.6.2025
   endTime = dateObjEnd.toLocaleString(); // z.B. '09:53:41'
 
   // calc the duration of the track
@@ -192,8 +192,17 @@ function toDMS(value) {
   return [deg, min, sec];
 }
 
+/**
+ * INTERNAL: Converts a given value in Degrees-Minutes-Seconds (DMS) format to decimal degrees.
+ * @param {string} dmsStr - The value to be converted in DMS format (e.g. "10 30 0").
+ * @param {string} ref - The reference direction for the conversion (either "N" or "S" for latitude, or "E" or "W" for longitude).
+ * @returns {number} The value in decimal degrees.
+ * @example
+ * dmsToDecimal("10 30 0", "N") // returns 10.5
+ */
 function dmsToDecimal(dmsStr, ref) {
-    const parts = dmsStr.trim().split(' ').map(parseFloat);
+    let _dmsStr = dmsStr.replace(/  +/g, ' ');
+    const parts = _dmsStr.trim().split(' ').map(parseFloat);
     const [deg, min, sec] = parts;
     let decimal = deg + min / 60 + sec / 3600;
     if (ref === 'S' || ref === 'W') decimal *= -1;
@@ -206,7 +215,8 @@ async function getElevation(lat, lon) {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Elevation API request failed");
         const data = await response.json();
-        return data.results[0].elevation; // Höhe in Metern
+        if ( data && Array.isArray(data.results) && data.results.length > 0 && data.results[0].elevation ) return data.results[0].elevation;
+        else return null;
     } catch (error) {
         console.error("Fehler beim Abrufen der Höhe:", error);
         return null;
@@ -301,4 +311,4 @@ function parseExiftoolGPS(exifOutput) {
 }
 
 
-export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation, getUTCOffsetFromLocation, parseExiftoolGPS, isValidLatLng };
+export { getTrackInfo, toDMS, convertGps, validateAltitude, validateDirection, getElevation, getUTCOffsetFromLocation, parseExiftoolGPS, isValidLatLng, dmsToDecimal };
