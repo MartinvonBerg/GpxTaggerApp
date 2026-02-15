@@ -104,6 +104,11 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
       allMaps[0].removeAllMarkers();
     });
 
+    document.addEventListener('mapmarkerclick', (event) => {
+      console.log('mapmarkerclick detected: ', event.detail);
+      th.setActiveThumb(event.detail.marker);
+    });
+
     return;
 }
 

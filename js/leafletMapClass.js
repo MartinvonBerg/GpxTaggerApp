@@ -530,6 +530,7 @@ class LeafletMap {
                     let source = parseInt( a.originalEvent.currentTarget.id.replace('map', '') );
                                        
                     const changed = new CustomEvent('mapmarkerclick', {
+                        bubbles: true,
                         detail: {
                         name: 'mapmarkerclick',
                         marker: this.options.id,
