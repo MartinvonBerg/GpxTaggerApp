@@ -35,7 +35,7 @@ Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
     Hinweis: Die erstellte Dist ist riesig (ca 1GB), daher wird auch kein Release bereitgestellt. Da ist noch Potential für Optimierung!
 
 ## Start der Anwendung (aus der IDE oder als EXE)
-Nach dem Start öffnet sich das Hauptfenster mit: hier geht es weiter!---------------------
+Nach dem Start öffnet sich das Hauptfenster mit:
 
 
 - linker Sidebar: GPX-Track-Informationen und Geotagging-Controls
@@ -53,7 +53,7 @@ Unterstützte Sprachen je nach Konfiguration im Ordner locales/<sprache>/transla
 Derzeit ist nur eine Übersetzung für DE und EN vorhanden. Fallback-Sprache ist Englisch. 
 
 ### Typischer Workflow
-1. Bildordner auswählen
+1. Bildordner auswählen hier geht es weiter!---------------------
 Menü: Image Folder → Select Folder
 Einen Ordner mit Bildern auswählen (unterstützte Endungen u.a. jpg, webp, avif, heic, tiff, dng, nef, cr3).
 Die App:
