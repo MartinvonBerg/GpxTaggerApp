@@ -15,6 +15,14 @@ export { calculateEquallyDistributedColors };
      * @return {Array<string>} The array of equally distributed colors.
      */
 function calculateEquallyDistributedColors(startHex, numColors) {
+    // check if numColors is valid and an integer value
+    if (typeof numColors !== 'number' || !Number.isInteger(numColors)) {
+      return [];
+    }
+    // check if startHex is a valid hex color value like #RRGGBB
+    if (typeof startHex !== 'string' || !startHex.startsWith('#') || startHex.length !== 7) {
+      return [];
+    }
     // Parse the starting color hex value
     const r = parseInt(startHex.slice(1, 3), 16);
     const g = parseInt(startHex.slice(3, 5), 16);
