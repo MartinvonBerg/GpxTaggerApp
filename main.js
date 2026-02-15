@@ -603,7 +603,7 @@ async function readImagesFromFolder(folderPath, extensions) {
               if (!useExistingThumbnail) {
                 // extract new thumbnail
                 try {
-                  await exiftool.extractThumbnail(filePath, thumbnailPathTmp); // TODO try again with a binary buffer
+                  await exiftool.extractThumbnail(filePath, thumbnailPathTmp);
                 } catch (err) {
                   console.error('Error extracting thumbnail with exiftool for', filePath, err);
                 }

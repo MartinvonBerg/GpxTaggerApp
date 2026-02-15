@@ -14,7 +14,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
 // PRIO TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
-// PRIO TODO: move and activate thumbnail on map marker click + keyboard shortcut
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
 let settings = {};
