@@ -509,7 +509,7 @@ class LeafletMap {
                     selectedIcon = this.myIcon1;
                 }
                 marker.push(new L.Marker(image["coord"], { title: image["title"], icon: selectedIcon, id: j, riseOnHover: true, }));
-
+                
                 if (("srcset" in image) && (Object.keys(image["srcset"]).length)) { // "srcset" in image
                     const key = Object.keys(image.srcset)[0];
                     marker[j].bindPopup('<div>' + image["title"] + '<br><img class="leaf_pup_img" src="' + image.srcset[key] + '"></div>', {
@@ -521,7 +521,7 @@ class LeafletMap {
                         maxWidth: "auto",
                     });
                 }
-
+                
                 marker[j].addTo(this.group1);
 
                 // trigger click on marker: marker.on('click', ....)
@@ -540,12 +540,14 @@ class LeafletMap {
                     classThis.el.dispatchEvent(changed);
                     
                 });
+                /*
                 marker[j].on('mouseover', function (e) {
                     this.openPopup();
                 });
                 marker[j].on('mouseout', function (e) {
                     this.closePopup();
                 });
+                */
                 marker[j].addTo(testgroup);
                 j++;
             }
