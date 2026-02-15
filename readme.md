@@ -35,7 +35,8 @@ Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
     Hinweis: Die erstellte Dist ist riesig (ca 1GB), daher wird auch kein Release bereitgestellt. Da ist noch Potential für Optimierung!
 
 ## Start der Anwendung (aus der IDE oder als EXE)
-Nach dem Start öffnet sich das Hauptfenster mit:
+Nach dem Start öffnet sich das Hauptfenster mit: hier geht es weiter!---------------------
+
 
 - linker Sidebar: GPX-Track-Informationen und Geotagging-Controls
 - mittlerer Bereich: Leaflet-Karte und ggf. ein Track-Chart, falls zuvor ausgewählt.
