@@ -78,5 +78,6 @@
   "trackLogTimeDiffLabel": "Tracklog mit Zeitabweichung",
   "trackLogRunButton": "Tracklog starten",
   "trackLogAbortButton": "Abbrechen",
-  "trackLogRunExiftoolHeader": "Exiftool auf gefilterte Bilder mit Zeitabweichung anwenden"
+  "trackLogRunExiftoolHeader": "Exiftool auf gefilterte Bilder mit Zeitabweichung anwenden",
+  "GeoTagComplete" : "Geotagging abgeschlossen"
 }  

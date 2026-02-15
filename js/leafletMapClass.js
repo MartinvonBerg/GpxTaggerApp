@@ -518,7 +518,7 @@ class LeafletMap {
                 } else {
                     //marker[j].bindPopup(image["title"]);
                     marker[j].bindPopup('<div>'+image['index']+': ' + image["title"] + '<br><img class="leaf_pup_img" src="' + image.thumb + '"></div>', {
-                        maxWidth: "auto",
+                        //maxWidth: "auto",
                     });
                 }
                 
@@ -540,14 +540,14 @@ class LeafletMap {
                     classThis.el.dispatchEvent(changed);
                     
                 });
-                /*
+                
                 marker[j].on('mouseover', function (e) {
                     this.openPopup();
                 });
                 marker[j].on('mouseout', function (e) {
                     this.closePopup();
                 });
-                */
+                
                 marker[j].addTo(testgroup);
                 j++;
             }
@@ -650,6 +650,8 @@ class LeafletMap {
             classMap.removeLayer(classThis.posMarkers[0]);
             classThis.posMarkers = []; // Leere das Array
         }
+        // TODO: This will fail if leaflet changes the class-name!
+        if (e.originalEvent.srcElement.classList[0] === 'leaflet-control') return;
 
         // Prüfe, ob STRG gedrückt war
         const ctrlPressed = e.originalEvent.ctrlKey;

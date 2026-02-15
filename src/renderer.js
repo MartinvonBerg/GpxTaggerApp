@@ -15,9 +15,8 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: show a minimap on the map???
 // PRIO TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
 // PRIO TODO: move and activate thumbnail on map marker click + keyboard shortcut
-// TODO: review the used files in ./js/*.js except subfolder in the order as they are imported above.
-// PRIO TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
-// PRIO TODO: map button for centering is no longer working.
+// TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
+// TODO: remove the marker icon that is added by click and change the colour of it.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -142,7 +141,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     // reset map and thumbnailbar if a folder without images was selected
     if (loadedImages.length === 0) {
       window.myAPI.send('main-reload-data', settings);
-      // TODO: reset the right sidebar
+      // reset the right sidebar
       resetRightSidebar();
       hideLoadingPopup(); 
       return;
@@ -693,7 +692,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
         setTrackLogState('tracklog-state', `Fehler bei ${image.imagePath}:`, err);
       }
     }
-    setTrackLogState('tracklog-state', 'Geotagging abgeschlossen.'); // TODO : i18next
+    setTrackLogState('tracklog-state', i18next.t('GeoTagComplete') ); 
     window.myAPI.send('main-reload-data', settings);
   });
 }
