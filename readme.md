@@ -1,4 +1,4 @@
-# Electron-Panes – Foto-Geotagging und GPX-Viewer
+# GpxTaggerApp – Foto-Geotagging und GPX-Viewer
 
 Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
 
@@ -30,7 +30,9 @@ Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
     ```bash
     npm run package
     ```  
-    Die *.exe befindet sich in Projektordner\dist\GpxTaggerApp-win32-x64
+    Die *.exe befindet sich in Projektordner\dist\GpxTaggerApp-win32-x64. TODO für Linux und maxOS.
+
+    Hinweis: Die erstellte Dist ist riesig (ca 1GB), daher wird auch kein Release bereitgestellt. Da ist noch Potential für Optimierung!
 
 ## Start der Anwendung (aus der IDE oder als EXE)
 Nach dem Start öffnet sich das Hauptfenster mit:
@@ -41,14 +43,15 @@ Nach dem Start öffnet sich das Hauptfenster mit:
 - rechter Sidebar: Metadaten zum aktuell ausgewählten Bild
 - falls keine Bilder und GPX-Track ausgewählt wurde, bleiben die Bereich leer. Die Karte wird in der letzten Ansicht angezeigt.
 
-Die Anwendung merkt sich zuletzt verwendete Fenstergröße, Position, Sprache und Pfade (Einstellungen werden als JSON im Benutzerverzeichnis und
+Die Anwendung merkt sich die zuletzt verwendete Fenstergröße, Position, Sprache und Pfade (Einstellungen werden als JSON im Benutzerverzeichnis und
 nicht im Projektordner gespeichert, damit diese bei einem neuen Build nicht verloren gehen).
 
-Sprache / Lokalisierung
+### Sprache / Lokalisierung
 Die App erkennt die Systemsprache (app.getLocale()).
-Unterstützte Sprachen je nach Konfiguration deiner locales/<sprache>/translation.json.
-Fallback-Sprache ist Englisch.
-Typischer Workflow
+Unterstützte Sprachen je nach Konfiguration im Ordner locales/<sprache>/translation.json.
+Derzeit ist nur eine Übersetzung für DE und EN vorhanden. Fallback-Sprache ist Englisch. 
+
+### Typischer Workflow
 1. Bildordner auswählen
 Menü: Image Folder → Select Folder
 Einen Ordner mit Bildern auswählen (unterstützte Endungen u.a. jpg, webp, avif, heic, tiff, dng, nef, cr3).
