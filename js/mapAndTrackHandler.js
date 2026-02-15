@@ -55,11 +55,17 @@ async function showgpx(allMaps, gpxPath, settings=null) {
             if (gpxPath !== '') {
               // get the number of trackpoints from the gpx file, the start and end time of the track
               let gpxTrack = allMaps[m].track[0];
-              NPoints = gpxTrack.coords.length;
-              gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
-              gpxTrack.gpxTracks._info.startPoint = gpxTrack.coords[0]; // add the start point to the info object
+              if (gpxTrack.coords && gpxTrack.coords.length > 0) {
+                NPoints = gpxTrack.coords.length;
+                gpxTrack.gpxTracks._info.path = gpxPath; // add the path to the info object
+                gpxTrack.gpxTracks._info.startPoint = gpxTrack.coords[0]; // add the start point to the info object
+                trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
+              }
+              else {
+                NPoints = 0;
+              }
 
-              trackInfo = showTrackInfoTranslated(NPoints, gpxTrack.gpxTracks._info, 'track-info-element');
+              // log the track info
               console.log(`Anzahl der Trackpunkte: ${NPoints}`);
               console.log('Datum: ', trackInfo.datumStart === trackInfo.datumEnd ? trackInfo.datumStart : `${trackInfo.datumStart} - ${trackInfo.datumEnd}`);
               console.log(`Startzeit: ${trackInfo.startTime}, Endzeit: ${trackInfo.endTime}`);
@@ -73,12 +79,12 @@ async function showgpx(allMaps, gpxPath, settings=null) {
             }
 
             allMaps[m].initChart();
-            allMaps[m].setTzOffset(trackInfo.tZOffsetMs);
+            if (trackInfo.tZOffsetMs) allMaps[m].setTzOffset(trackInfo.tZOffsetMs);
             allMaps[m].handleEvents();
 
             // dispatch an event on mapview chanbe to update the settings accordingly
             let thisMap = allMaps[m].map;
-            allMaps[m].map.on('baselayerchange moveend zoomend' , (event) => {
+            thisMap.on('baselayerchange moveend zoomend' , (event) => {
               let layerName = '';
               if (event.type === 'baselayerchange') {
                 layerName = event.name;

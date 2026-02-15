@@ -11,7 +11,7 @@
  */
 
 import i18next from "i18next";
-import { showgpx } from './mapAndTrackHandler.js';
+import { showgpx } from '../js/mapAndTrackHandler.js';
 
 
 async function applySettings(loadedSettings) {

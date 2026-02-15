@@ -74,7 +74,8 @@ export class ThumbnailSlider {
 
     this.activeImages = document.getElementsByClassName(this.options.nail_activeClass);
     this.activeClass = this.options.nail_activeClass;
-
+    // Review: All Event listeners added in constructor are never removed, which risks leaks and unexpected behavior over time.
+    // Comment: this is not a Problem because the ThumbnailSlider is shown all the runtime.
     this.ele.addEventListener('mousedown', (event) => this.mouseDownHandler(event), false);
 
     // Status für Mouseover
@@ -322,8 +323,14 @@ export class ThumbnailSlider {
     };
     this.posXOld = e.clientX;
     this.ele.style.cursor = 'ew-resize'; 
-    this.ele.addEventListener('mousemove', (event) => this.mouseMoveHandler(event) );
-    this.ele.addEventListener('mouseup', (event) => this.mouseUpHandler(event) );
+
+    // Store the original function reference
+    this.mouseMoveHandlerOriginal = this.mouseMoveHandler.bind(this);
+    this.mouseUpHandlerOriginal = this.mouseUpHandler.bind(this);
+
+    // Add event listeners
+    this.ele.addEventListener('mousemove', this.mouseMoveHandlerOriginal);
+    this.ele.addEventListener('mouseup', this.mouseUpHandlerOriginal );
   };
 
   /**
@@ -358,8 +365,8 @@ export class ThumbnailSlider {
       //this.setActiveThumb(thnumb)
     }
 
-    document.removeEventListener('mousemove', this.mouseMoveHandler);
-    document.removeEventListener('mouseup', this.mouseUpHandler);
+    this.ele.removeEventListener('mousemove', this.mouseMoveHandlerOriginal);
+    this.ele.removeEventListener('mouseup', this.mouseUpHandlerOriginal);
 
     this.ele.style.cursor = 'pointer';
     this.ele.style.removeProperty('user-select');
@@ -498,6 +505,7 @@ export class ThumbnailSlider {
   updateThumbnailStatus(imageIndex, imageStatus) {
     // get the thumbnail element
     let thumbnail = document.getElementById(`thumb${imageIndex}`);
+    if (!thumbnail) return;
 
     if (imageStatus === 'loaded-with-GPS' || imageStatus === 'geotagged') {
       thumbnail.classList.add('thumb_with_gps');

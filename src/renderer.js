@@ -8,8 +8,8 @@ import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, i
 import { initAutocomplete } from '../js/autocomplete.js'; // review skipped, will be removed, probably.
 import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js'; // review TBD
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js'; // reviewed allready.
-import { showgpx } from '../js/mapAndTrackHandler.js';
-import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
+import { showgpx } from '../js/mapAndTrackHandler.js'; // reviewed allready.
+import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewed allready.
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???

@@ -31,7 +31,9 @@ import { isObjEmpty } from '../js/generalHelpers.js';
  */
 export async function handleThumbnailBar(target, allImages, options = {}, deps = {}) {
     const thumbnailElement = document.getElementById(target);
-    if (!thumbnailElement || !allImages || isObjEmpty(options) || isObjEmpty(deps)) {
+    if (!thumbnailElement) { return; }
+
+    if ( !allImages || isObjEmpty(options) || isObjEmpty(deps)) {
       thumbnailElement.innerHTML = '<div id="thumbnail-bar" style="color:red">Error generating Thumbnail Bar!</div>';
       return;
     }
@@ -57,7 +59,8 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
     metaGPSEventListener();
     handleSaveButton();
     mapPosMarkerEventListener('map0',th); // prio TODO: move this to the map class  ????
-
+    // Review: Event listeners attached to document are never removed, which can lead to leaks.
+    // Comment: This is intentional. There is only one thumbnail bar and one map at runtime.
     document.querySelector('.thumb_wrapper').addEventListener('thumbnailchange', function (event) {
       
       // call the function to show the image metadata in the right sidebar
@@ -71,7 +74,7 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
       event.detail.selectedIndexes.forEach( index => { 
         //allMaps[0].setActiveMarker(index);
         let coords = pageVarsForJs[0].imgdata[index].coord; 
-        if ( coords.every(parseFloat) ) {
+        if ( Array.isArray(coords) && coords.length === 2 && coords.every(v => Number.isFinite(parseFloat(v))) ) {
           allMaps[0].mapFlyTo(pageVarsForJs[0].imgdata[index].coord);
         }
         allMaps[0].mrk.forEach( marker => {
@@ -91,7 +94,8 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
       th.updateThumbnailStatus(event.detail.imageIndex, event.detail.imageStatus);
       console.log('updateThumbnailStatus detected: ', event.detail);
     });
-
+    // Review: In clearThumbnailBar, th is set to null and the DOM is replaced, but the thumbnailchange listener on .thumb_wrapper is never removed. If the thumbnail bar is recreated, those stale listeners will still fire and reference an invalid th/DOM. Please store the handler references created in handleThumbnailBar and explicitly remove them when clearing, or otherwise scope them so they’re tied to the specific wrapper instance and can be garbage-collected when replaced.
+    // Comment: It works and no errors are shown, even if the image folder is changed.
     document.addEventListener('clearThumbnailBar', function (event) {
       event.preventDefault();
       th = null;
