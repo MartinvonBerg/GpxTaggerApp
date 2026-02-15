@@ -5,9 +5,9 @@ import { convertGps, validateAltitude, validateDirection, getElevation, parseExi
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js'; // reviewed allready.
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js'; // reviewed allready.
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js'; // reviewed allready.
-import { initAutocomplete } from '../js/autocomplete.js';
-import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js';
-import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
+import { initAutocomplete } from '../js/autocomplete.js'; // review skipped, will be removed, probably.
+import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js'; // review TBD
+import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js'; // reviewed allready.
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
@@ -17,6 +17,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 // PRIO TODO: move and activate thumbnail on map marker click + keyboard shortcut
 // TODO: review the used files in ./js/*.js except subfolder in the order as they are imported above.
 // PRIO TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
+// PRIO TODO: map button for centering is no longer working.
 let settings = {};
 let filteredImages = [];
 let allImages = [];

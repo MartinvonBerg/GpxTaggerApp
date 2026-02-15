@@ -29,17 +29,20 @@
       document.body.style.cursor = 'ew-resize';  
     
       const mouseMoveHandler = (event) => {  
-        if (!isResizing) return;  
+        if (!isResizing) return;
+
+        const leftBar = document.getElementById('left-sidebar');  
+        const rightBar = document.getElementById('right-sidebar');
     
-        const sidebar = direction === 'left' ? document.getElementById('left-sidebar') : document.getElementById('right-sidebar');  
+        const sidebar = direction === 'left' ? leftBar : rightBar;  
         const newWidth = direction === 'left' ? event.clientX : window.innerWidth - event.clientX;  
     
         if (newWidth > 100 && newWidth < window.innerWidth - 200) {  
           sidebar.style.width = `${newWidth}px`;  
     
           window.myAPI.send('update-sidebar-width', {  
-            leftSidebarWidth: document.getElementById('left-sidebar').offsetWidth,  
-            rightSidebarWidth: document.getElementById('right-sidebar').offsetWidth  
+            leftSidebarWidth: leftBar.offsetWidth,  
+            rightSidebarWidth: rightBar.offsetWidth  
           });  
         }  
       };  
