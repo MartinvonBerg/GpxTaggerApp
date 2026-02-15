@@ -2,7 +2,7 @@ import i18next from 'i18next';
 
 import { setDataForLanguage } from '../js/locales.js';
 import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
-import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js'; // reviewed allready.
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
 import { initAutocomplete } from '../js/autocomplete.js';
@@ -13,9 +13,10 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
-// TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
-// TODO: move and activate thumbnail on map marker click + keyboard shortcut
-// TODO: review the files in ./js/*.js except subfolder.
+// PRIO TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
+// PRIO TODO: move and activate thumbnail on map marker click + keyboard shortcut
+// TODO: review the used files in ./js/*.js except subfolder in the order as they are imported above.
+// PRIO TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 let settings = {};
 let filteredImages = [];
 let allImages = [];

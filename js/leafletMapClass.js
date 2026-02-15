@@ -124,7 +124,7 @@ class LeafletMap {
         this.myIcon5 = this.setIcon(this.pageVariables.imagepath, 'video-active2.png', 'shadow.png');
 
         //change options for maps without gpx-tracks so without elevation.
-        if ( center !== null & zoom !== null) { 
+        if ( center !== null && zoom !== null) { 
             this.opts.map.center = center;
             this.opts.map.zoom = zoom;
         }
@@ -199,7 +199,7 @@ class LeafletMap {
                                     
             if ( ! LeafletMap.isHtaccessOK ) {
                 // local htaccess is not working. Change url for tileserver requests.
-                this.tileserver = this.tileserver + 'tileserver.php/?tile=';
+                this.tileserver += 'tileserver.php/?tile=';
             } 
         }
     }
@@ -612,7 +612,7 @@ class LeafletMap {
         }
 
         // fit map to bounds and set zoom level
-        if ( (newbounds.length !== 0) && (newbounds instanceof L.LatLngBounds) ) {
+        if ( newbounds instanceof L.LatLngBounds && newbounds.isValid() ) {
             this.map.fitBounds(newbounds);
             // set the max zoom level for markers exactly on the same postion
             let curzoom = this.map.getZoom();

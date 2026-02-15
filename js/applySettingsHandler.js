@@ -87,8 +87,6 @@ async function applySettings(loadedSettings) {
       console.warn('showgpx fehlgeschlagen:', e);
     }
   }
-
-  console.log('Settings angewendet:', settings);
 }
 
 export { applySettings };

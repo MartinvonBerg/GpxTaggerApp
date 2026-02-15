@@ -5,13 +5,17 @@
     "main": "main.js",
     "author": "Dr. Martin von Berg",
     "license": "GPL-2.0-only",
+    "jest": {
+        "testEnvironment": "node",
+        "transform": {}
+    },
     "scripts": {
         "start": "electron .",
         "build": "webpack --mode development",
         "webprod": "webpack --mode production",
         "all": "npm run build && npm start",
         "debug": "electron --inspect=9229 .",
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "package": "npm run webprod && npx electron-packager . GpxTaggerApp --platform=win32 --arch=x64 --out=dist --overwrite --no-prune --asar=false"
     },
     "devDependencies": {
@@ -22,6 +26,7 @@
         "css-loader": "^7.1.2",
         "electron": "*",
         "electron-rebuild": "^3.2.9",
+        "jest": "^30.2.0",
         "style-loader": "^4.0.0",
         "webpack": "*",
         "webpack-cli": "^6.0.1"
