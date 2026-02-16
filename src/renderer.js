@@ -16,6 +16,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // PRIO TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
+// TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO)
 let settings = {};
 let filteredImages = [];
 let allImages = [];

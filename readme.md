@@ -14,6 +14,18 @@ Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
 - **ExifTool**: Muss im System installiert und im `PATH` verfügbar sein  
   (d.h. der Befehl `exiftool` muss im Terminal / in der Eingabeaufforderung funktionieren).
 
+## Disclaimer
+
+Dieses Tool ist kein professionelles Tool. Es gibt andere Tools, die denselben Zweck erfüllen:
+
+- PhotoLocator - https://github.com/meesoft/PhotoLocator - OSS, nur für Windows (derzeit mein Favorit)
+- darktable - https://www.darktable.org/ - OSS
+- GeoTagNinja  - https://github.com/nemethviktor/GeoTagNinja - OSS, nur für Windows
+- Lightroom - immer noch das beste, wegen der unverschämten Preispolitik für micht nicht mehr nurtzbar.
+- Es gibt noch viele weitere Tool für Linux, mac und Windows, die mir persönlich aber nicht zusagten, aber das ist Geschmackssache.
+
+Diese App wurde mit starker Verwendung diverser KI-Tools entwickelt: Sourcery, chatGPT, MS Copilot, Windsurf, GitLens und gelegentlich der guten alten Google-Suche.
+
 ## Installation (Entwickler-Setup)
 
 1. Repository klonen oder Quellcode herunterladen.
@@ -52,135 +64,336 @@ Die App erkennt die Systemsprache (app.getLocale()).
 Unterstützte Sprachen je nach Konfiguration im Ordner locales/<sprache>/translation.json.
 Derzeit ist nur eine Übersetzung für DE und EN vorhanden. Fallback-Sprache ist Englisch. 
 
-### Typischer Workflow
-1. Bildordner auswählen hier geht es weiter!---------------------
-Menü: Image Folder → Select Folder
-Einen Ordner mit Bildern auswählen (unterstützte Endungen u.a. jpg, webp, avif, heic, tiff, dng, nef, cr3).
-Die App:
-liest alle Dateien im Ordner
-filtert nach den erlaubten Erweiterungen
-extrahiert EXIF-Metadaten mit exiftool-vendored
-erzeugt (optional) Thumbnails
-sortiert Bilder nach Aufnahmedatum (DateTimeOriginal)
-zeigt eine Thumbnail-Leiste im unteren Bereich
-zeigt Metadaten des ersten Bildes in der rechten Sidebar
-Du siehst in der Konsole (falls DevTools/Terminal offen) die Ladezeiten für:
+### Debug Logging
+Sowohl beimn Start aus der IDE als auch als EXE werden Debugging-Information in die Datei `geotagger.log` geschrieben. 
+Die Pfade sind:
+- Windows: `C:\Users\<USERNAME>\AppData\Roaming\<AppName>\geotagger.log`
+- Linux: `/home/<USERNAME>/.config/<AppName>/geotagger.log`
+- macOS: `/Users/<USERNAME>/Library/Application Support/<AppName>/geotagger.log`
 
-Einlesen der Dateiliste
-EXIF-Extraktion
-Sortierung
-Index-Zuweisung
-2. GPX-Track laden
-Menü: GPX Track → Open GPX File
-Eine .gpx-Datei auswählen.
-Die App:
-lädt den Track und zeigt ihn auf der Karte
-berechnet Trackinformationen:
-Anzahl Trackpunkte
-Datum Start/Ende
-Start-/Endzeit
-Dauer
-Zeitzone und UTC-Offset
-zeigt die Trackinfos in der linken Sidebar
-Du kannst den GPX-Track jederzeit mit GPX Track → Clear GPX File wieder entfernen.
+Das Feature kann derzeit nicht abgeschalten werden.
 
-3. Bilder auf Karte anzeigen
+# Typischer Workflow
+
+## Image Folder auswählen
+
+**Menü:** `Image Folder → Select Folder`
+
+Wähle zu Beginn einen Ordner mit Bildern. Unterstützte Dateiendungen u. a.:
+
+* `jpg`
+* `webp`
+* `avif`
+* `heic`
+* `tiff`
+* `dng`
+* `nef`
+* `cr3`
+
+Die Endungen können in der `user-settings.json` definiert werden. Diese befindet sich im selben Pfad wie die Log-Datei (siehe oben).
+```json
+"extensions": [
+    "jpg",
+    "webp",
+    "avif",
+    "heic",
+    "tiff",
+    "dng",
+    "nef",
+    "cr3"
+  ],
+```
+
+### Ablauf
+
+Die App:
+
+1. liest alle Dateien im Ordner, das mit 'Abort' abgebrochen werden kann. Es kann etwas dauern, v.a. beim ersten Mal, da dabei Thumbnails zur Anzeige erzeugt werden. Es gibt keine Fortschrittsanzeige.
+2. filtert nach gefundenen Erweiterungen und nicht-/vorhandenen GPS-Daten und "innerhalb" des gewählten GPX-Tracks.
+3. extrahiert EXIF-Metadaten mit `exiftool-vendored`
+4. erzeugt Thumbnails-Dateien, falls in den Bilddateien enthalten, sonst nicht.
+5. sortiert Bilder nach `DateTimeOriginal`.
+6. zeigt:
+
+   * eine Thumbnail-Leiste im unteren Bereich
+   * Metadaten des ersten Bildes in der rechten Sidebar. Dort kann GPX, Titel und Beschreibung editiert werden. Anschließend sollte gleich mit dem Button unterhalb gespeichert werden, siehe weiter unten.
+
+**Ordner rücksetzen:** `Image Folder → Reset Folder`
+
+### Performance-Logs (Konsole)
+
+Falls das Browser-DevTools/Terminal geöffnet ist, werden Ladezeiten angezeigt für:
+
+* Einlesen der Dateiliste
+* EXIF-Extraktion
+* Sortierung
+* Index-Zuweisung
+
+---
+
+## GPX-Track laden
+
+**Menü:** `GPX Track → Open GPX File`
+
+Eine `.gpx`-Datei auswählen.
+
+### Die App:
+
+* lädt den Track und zeigt ihn auf der Karte
+* berechnet Trackinformationen:
+
+  * Anzahl Trackpunkte
+  * Start-/Enddatum
+  * Start-/Endzeit
+  * Dauer
+  * Zeitzone und UTC-Offset
+* zeigt Trackinfos in der linken Sidebar und bei Aktivierung die Anzahl der Bilder, die innerhalb des Tracks liegen (Zuordnung über die Zeit).
+
+**Track entfernen:**
+
+`GPX Track → Clear GPX File`
+
+---
+
+## Geotagging über GPX und exiftool
+
+Für Bilder ohne GPS-Daten:
+
+### Voraussetzungen
+
+* Bilder ausgewählt und GPX-Datei geladen, siehe oben.
+
+### Ablauf
+
+1. In linker Sidebar (Tracklog-Bereich):
+
+   * Zeitverschiebung angeben (falls Kamera-Uhrzeit von Tracklog abweicht)
+   * TIPP: Am besten zu Beginn des Tracks ein Foto von dem verwendeten Gerät mit Uhrzeit machen, dann ist die Abweichung dokumentiert.
+   * RESET-Button klicken, um die Verschiebung auf Null zu setzen, wenn keine Zeitabweichung, oder diese nicht mehr rekonstruiert werden kann.
+2. Geotagging mit Klick auf Button starten:
+
+   * Aufruf im Main-Prozess:
+
+     ```
+     geotagImageExiftool(gpxPath, imagePath, options)
+     ```
+3. ExifTool schreibt GPS-Daten unmittelbar anhand Zeitstempel. Exiftool erzeugt auch ein backup, welches bei Fehlern zurückgeschrieben werden kann.
+
+4. Nach Abschluss werden die Bilder neu geladen und auf der Karte angezeigt. Prüfung des Ergebnisses ist daher möglich.
+
+#### Nach erfolgreichem Lauf
+
+* Bildstatus → `geotagged`
+* Thumbnail-Markierung wird angepasst
+* Optional:
+
+  * Metadaten neu laden (`Reload Data`), automatisch ausgelöst.
+
+---
+
+## Geotagging OHNE GPX-Track
+
+### Ablauf
+
+1. Bilder laden. Diese werden in der Thumbnail rot hinterlegt. Links wird die Anzahl der Bilder OHNE GPS-Daten angzeigt. Falls man Bilder mit GPS-Daten geladen hat UND der Haken zur Anzeige aktiv ist, ist die Anzahl Null. Der Haken muss also deaktiviert sein, um vorhandene GPS-Daten zu überschreiben!
+2. Gewünschte Bilder in der Thumbnail aktivieren (einfach oder mehrfach)
+3. Gewünschten Ort auf der Karte auswählen, entweder direkt oder mit Ortssuche.
+4. STRG + Links-Klick weist die GPS-Daten und Höhe den gewählten Bildern zu.
+5. Unmittelbares Speichern der neuen Daten mit dem Button in der RECHTEN Sidebar. Es werden nur die gerade AKTIVEN Bilder gespeichert!
+6. Prüfung es Ergebnisses: Menüpunkt : Metadaten neu laden (`Reload Data`),
+
+---
+
+## Bilder auf der Karte anzeigen
+
 Sobald Bilder mit GPS-Daten vorhanden sind:
 
-Marker werden auf der Karte platziert (Unterscheidung ggf. Bild/Video-Icons).
-Hover über einen Marker öffnet ein Popup mit:
-Bildindex und Titel
-Thumbnail
-Klick auf einen Marker:
-setzt den Marker als aktiv (andere Iconfarbe/-form)
-synchronisiert mit der Thumbnail-Leiste (Thumbnail wird aktiv)
-4. Bilder über Karte oder Thumbnails auswählen
-Über Thumbnails:
+* Marker werden auf der Karte platziert
+  (ggf. unterschiedliche Icons für Bild/Video)
+* Hover über Marker:
 
-Klick auf ein Thumbnail → Bild wird aktiv:
-Metadaten des Bildes erscheinen rechts.
-Karte zoomt/zentriert (abhängig von Konfiguration) auf die Koordinate des Bildes.
-Shift-Klick / Rechtsklick → Mehrfachauswahl:
-mehrere Thumbnails können als aktiv markiert werden.
-Metadaten rechts zeigen gemeinsame/abweichende Werte (z.B. „multiple“).
-Über Karte:
+  * Popup mit Bildindex, Titel und Thumbnail
+* Klick auf Bild-Marker:
 
-Klick auf Marker:
-löst ein mapmarkerclick-Event aus
-setzt das entsprechende Thumbnail aktiv
-aktualisiert Metadaten rechts
-5. Metadaten bearbeiten (rechte Sidebar)
-In der rechten Sidebar kannst du für das/ die ausgewählten Bilder u.a. bearbeiten:
+  * Marker wird aktiv (Icon-Farbe/-Form ändert sich)
+  * entsprechendes Thumbnail wird aktiviert. Evtl. vorhandene Mehrfachauswahl wird rückgesetzt.
 
-GPS-Position (Lat/Lon):
-Eingabeformate wie 48.8588443, 2.2943506 oder andere, die coordinate-parser versteht.
-Enter bestätigt und konvertiert in ein normalisiertes Format.
-Der Status wechselt zu z.B. gps-manually-changed.
-Höhe (Altitude) und Richtung (Direction):
-numerische Eingaben mit Bereichsprüfung.
-Titel und Beschreibung:
-Textfelder, Eingabe mit Enter oder über den Speichern-Button.
-Bei Mehrfachauswahl:
+---
 
-Felder mit unterschiedlichen Werten zeigen multiple.
-Änderungen können auf alle ausgewählten Bilder übernommen werden.
-6. Metadaten speichern
-Nach Anpassung von Metadaten:
+## Bilder auswählen
 
-Button Accept / Speichern in der rechten Sidebar:
-sammelt die geänderten Felder
-validiert Werte (GPS-Format, Höhenbereich, etc.)
-sendet die Daten an den Main-Prozess (save-meta-to-image)
-dort übernimmt exiftool.write das Schreiben in die Bilddateien
-Fortschritt wird ggf. über IPC-Events in der UI angezeigt:
-save-meta-progress mit Status (done, error, skipped).
-Beim Beenden mit offenen Änderungen:
+### mittels Thumbnails
 
-Es erscheint ein Dialog:
-Save → Metadaten werden geschrieben, App beendet danach.
-Discard → Änderungen gehen verloren, App beendet sofort.
-7. Geotagging über GPX
-Für Bilder ohne GPS-Daten kannst du exiftool mit einem GPX-Track verwenden:
+**Einfacher Klick:**
 
-GPX-Datei ist geladen.
-Bilder sind ausgewählt (z.B. via Thumbnail-Leiste).
-In der linken Sidebar im Tracklog-Bereich:
-Zeitdifferenz (tzoffset) angeben, falls Uhrzeit der Kamera nicht exakt passt.
-Button zum Starten von ExifTool-Geotagging:
-geotagImageExiftool(gpxPath, imagePath, options) wird im Main-Prozess aufgerufen.
-ExifTool schreibt GPS-Infos anhand der Zeitstempel in die Bilder.
-Nach erfolgreichem Lauf:
-Bildstatus wird auf geotagged gesetzt.
-Thumbnail-Farbe/Markierung wird angepasst.
-Optional Neu-Laden der Metadaten (z.B. über „Reload data“).
-Menüübersicht
-File
-Reload (Dev/Test): lädt die UI neu.
-Reload Data: liest die Bilddaten aus dem zuletzt genutzten Ordner erneut ein.
-Quit: beendet die Anwendung.
-GPX Track
-Open GPX File: GPX-Datei laden.
-Clear GPX File: GPX-Datei entfernen, Karte bleibt ohne Track.
-Image Folder
-Select Folder: Bildordner wählen und Bilder einlesen.
-Clear Image Folder: aktuellen Bildordner vergessen und UI zurücksetzen.
-Development (nur im Dev-Modus)
-Open DevTools: öffnet die Browser-Entwicklertools (F12).
-Tastatur-/Interaktionshinweise
-Shift + Klick auf Thumbnail: Bereichsauswahl zwischen vorherigem und aktuellem Thumbnail.
-Rechtsklick auf Thumbnail: initialisiert Mehrfachauswahl-Modus.
-Shift + Pfeil links/rechts (bei Fokus auf Thumbnail-Bar):
-verschiebt die aktive Auswahl um ein Bild nach links/rechts.
-Fehlerbehandlung & Logs
-Logs im Main-Prozess werden in eine Datei geschrieben (über logStream), z.B. für:
-EXIF-Ladefehler
-ExifTool-Ausführungsfehler
-Datei-/Pfadprobleme
-Typische Fehlerdialoge:
-GpxFileNotFound: GPX-Datei fehlt.
-ImageFileNotFound: Bilddatei fehlt.
-NoExiftool: ExifTool nicht gefunden.
-Bekannte Einschränkungen
-Bei sehr großen Bildordnern (Hunderte/ Tausende Bilder, HDD/USB3) kann das initiale Einlesen und Erzeugen von Thumbnails einige Sekunden dauern.
-ExifTool muss im System installiert und erreichbar sein; sonst sind Geotagging und Schreiben von Metadaten begrenzt.
-Einige Event-Listener (z.B. Thumbnail-Bar) werden bewusst nicht entfernt, da die UI-Struktur über die Laufzeit stabil bleibt.
+* Bild wird aktiv
+* Metadaten erscheinen rechts und können editiert werden, siehe unten.
+* Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich.
+* Karte zoomt/zentriert (konfigurationsabhängig) auf das aktive Bild.
+
+**Mehrfachauswahl mit Shift-Klick:**
+
+* Shift-Taste + Links-Klick auf erstes und letztes Bild des gewünschten Bereichs: mehrere Thumbnails aktiv markieren
+* Metadaten zeigen und editieren (wie bei Einzelbild):
+
+  * gemeinsame Werte als Wert, wenn diese identisch sind.
+  * oder `multiple` bei unterschiedlichen Werten.
+  * Die Werte können überschrieben werden und sollten anschließend unmittelbar gespeichert werden. Achtung: Die Änderungen werden NUR übernommen, wenn abschließend zu JEDEM Eingabefeld `ENTER` gedrückt wird!
+  * Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich.
+
+---
+
+### Über die Karte
+
+**Klick auf Marker:**
+
+* löst `mapmarkerclick`-Event aus
+* aktiviert entsprechendes Thumbnail
+* aktualisiert Metadaten in der Sidebar
+
+---
+
+## Metadaten bearbeiten (rechte Sidebar)
+
+Bearbeitbare Felder (für ein oder mehrere Bilder):
+
+Achtung: Die Änderungen werden NUR übernommen, wenn abschließend zu JEDEM Eingabefeld `ENTER` gedrückt wird! Das Löschen von Titel und Beschreibung ist derzeit nicht möglich.
+
+### GPS-Position (Lat/Lon)
+
+* Eingabe z. B.:
+  `48.8588443, 2.2943506`
+* unterstützt Formate, die `coordinate-parser` versteht
+* `Enter`:
+
+  * bestätigt
+  * konvertiert in normalisiertes Format
+  * Status z. B. `gps-manually-changed`, welches als andere Farbe in der Thumbnail-bar angezeigt wird.
+
+### Höhe (Altitude) & Richtung (Direction)
+
+* numerische Eingaben, Bereichsprüfung aktiv, sonst wie bei GPS.
+
+### Titel & Beschreibung
+
+* Textfelder
+* Speichern per:
+
+  * `Enter`
+  * Speichern-Button
+
+---
+
+### Verhalten bei Mehrfachauswahl
+
+* Unterschiedliche Werte → Anzeige `multiple`
+* Änderungen können auf alle ausgewählten Bilder angewendet werden
+
+---
+
+## Metadaten speichern
+
+Nach Änderungen:
+
+**Button:** `Accept / Speichern`
+
+### Ablauf
+
+1. Sammeln der geänderten Felder
+2. Validierung:
+
+   * GPS-Format
+   * Höhenbereich
+   * etc.
+3. Senden an Main-Prozess (`save-meta-to-image`)
+4. Schreiben in Datei via `exiftool.write`
+
+### Fortschritt
+
+IPC-Events:
+
+* `save-meta-progress`
+
+  * `done`
+  * `error`
+  * `skipped`
+
+---
+
+### Beenden mit offenen Änderungen
+
+Dialogoptionen:
+
+* **Save**
+
+  * schreibt nicht gespeicherte Metadaten
+  * beendet danach die App
+* **Discard**
+
+  * verwirft Änderungen
+  * beendet sofort
+
+---
+
+## Menü-Übersicht
+
+### File
+
+* `Reload` (Dev/Test) – UI neu laden
+* `Reload Data` – Bilddaten erneut einlesen
+* `Quit` – Anwendung beenden
+
+### GPX Track
+
+* `Open GPX File`
+* `Clear GPX File`
+
+### Image Folder
+
+* `Select Folder`
+* `Clear Image Folder`
+
+### Development (nur Dev-Modus)
+
+* `Open DevTools` (F12)
+
+---
+
+## Tastatur- & Interaktionshinweise
+
+* **Shift + Klick (Thumbnail)**
+  → Bereichsauswahl
+
+* **Rechtsklick (Thumbnail)**
+  → Mehrfachauswahl-Modus
+
+* **Shift + Pfeil links/rechts** (bei Fokus auf Thumbnail-Bar)
+  → aktive Auswahl verschieben
+
+---
+
+## Fehlerbehandlung & Logs
+
+### Log-Datei (Main-Prozess)
+
+Beispielsweise für:
+
+* EXIF-Ladefehler
+* ExifTool-Ausführungsfehler
+* Datei-/Pfadprobleme
+
+### Typische Fehlerdialoge
+
+* `GpxFileNotFound`
+* `ImageFileNotFound`
+* `NoExiftool`
+
+---
+
+## Bekannte Einschränkungen
+* Es war mehr zur Elernung von electron gedacht. Die App ist funktionsfähig hat aber ihre Macken und muss dann neu gestartet werden.
+Abstürze sind nicht zu erwarten. Es gibt auch noch einige TODOs, die in den jeweiligen *.js - Dateien enthalten sind, diese sind aber alle keine "Showstopper".
+* Große Bildordner (Hunderte/Tausende Dateien, HDD/USB3)
+  → Einlesen & Thumbnail-Erzeugung kann mehrere Sekunden dauern
+* ExifTool muss installiert und erreichbar sein
+* Einige Event-Listener (z. B. Thumbnail-Bar) werden bewusst nicht entfernt, da die UI-Struktur stabil bleibt
