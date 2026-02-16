@@ -11,14 +11,16 @@ you to:
 
 ## Requirements
 
--   **Operating System**: Windows10/11, macOS, or Linux
--   **Node.js**: Recommended LTS version (e.g. 20.x)
--   **ExifTool**: Must be installed on the system and available in the
+-   **Operating System**: Windows10/11, macOS, or Linux.
+-   **exiftool-vendored** also includes ExifTool within the node
+    modules which is used for the Windows EXE. So, this is not a Requirement.
+-   for Development only:
+    -   **Node.js**: Recommended LTS version (e.g. 20.x)
+    -   **IDE**: IDE like VS-Code and the usual tools for Electron-App Development.
+    -   **ExifTool**: Must be installed on the system and available in the
     `PATH`\
     (i.e., the command `exiftool` must work in the terminal / command
     prompt).
--   **exiftool-vendored** also includes ExifTool within the node
-    modules.
 
 ## Screenshot
 ![Screenshot](App-Screenshot.png)
@@ -65,7 +67,7 @@ Up to my knowledge there is no free AND useful Signing for Windows Apps. The sam
     `bash     npm run package:linux` (Linux) --> ./dist-linux\
     `bash     npm run package:max` (maxOS) --> ./dist-mac\
     
-    Note: The generated dist folder is about 400 MB and the Releas ~ 220 MB.
+    Note: The generated dist folder is about 471 MB and the Release ~ 230 MB.
 5. Signing / Certificates\
 Up to my knowledge there is no free AND useful Signing for Windows Apps. The same for macOS and for Linux I don't know. As I couldn't test the signed exe or installer on other Systems I prepared the *.exe for Windows only. The Defender will warn you on unzipping.
 

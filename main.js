@@ -6,7 +6,6 @@ const Backend = require('i18next-fs-backend');
 const { exiftool } = require("exiftool-vendored");
 const { exec } = require('child_process');
 const sanitizeHtml = require('sanitize-html');
-const os = require('os');
 
 // sharp availabability check
 let sharpAvailable = false;
@@ -55,7 +54,8 @@ let systemLanguage = 'en';
 let win; // Variable für das Hauptfenster
 let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions as default
-const exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work!
+let exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work!
+if (app.isPackaged) exiftoolPath = path.join(app.getAppPath(), 'resources', 'app', 'node_modules', 'exiftool-vendored.exe', 'bin', 'exiftool');
 let exiftoolAvailable = false;
 
 // Basisverzeichnis der App

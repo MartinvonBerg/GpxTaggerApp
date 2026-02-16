@@ -13,11 +13,9 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 
 // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
 // TODO: show a minimap on the map???
-// PRIO TODO: optimize asar.unpack or asar-file for exiftool-vendored and size.
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
-// TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO)
-// PRIO TODO: verwende Exiftool aus exiftool-vendored.
+// TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO), bzw. nur mit '' oder '_'.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
