@@ -298,7 +298,7 @@ As soon as images with GPS data are available:
         Note: Changes are ONLY applied if `ENTER` is pressed in EACH
         input field at the end!
     -   Note: Deleting title and description is currently not possible.
-        (Or simply enter ''.)
+        (Or simply enter '' or a Space '_'.)
 
 ------------------------------------------------------------------------
 

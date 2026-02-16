@@ -1,0 +1,43 @@
+{
+  SourceFile: 'C:\\Users\\safet\\OneDrive\\Pictures\\touren_2025\\PXL_20250907_072947217.jpg',
+  errors: [],
+  
+  ExifToolVersion: '13.50',
+  FileName: 'PXL_20250907_072947217.jpg',
+  Directory: 'C:/Users/safet/OneDrive/Pictures/touren_2025',
+  FileSize: '4.3 MB',
+  
+  FilePermissions: '-rw-rw-rw-',
+  FileType: 'JPEG',
+  FileTypeExtension: 'jpg',
+  MIMEType: 'image/jpeg',
+  ExifByteOrder: 'Little-endian (Intel, II)',
+  ImageDescription: 'T 1111',
+  
+  ExifVersion: '0232',
+  
+  XPTitle: 'T 1111',
+  Compression: 'JPEG (old-style)',
+  ThumbnailOffset: 1368,
+  ThumbnailLength: 28654,
+  JFIFVersion: 1.02,
+  CurrentIPTCDigest: '8c29634c41dfdf720fb7c789684fe07c',
+  ObjectName: 'T 1111',
+  'Caption-Abstract': 'B 1',
+    
+  XMPToolkit: 'Image::ExifTool 13.35',
+  ContainerDirectory: [ { Item: [Object] }, { Item: [Object] } ],
+  Title: 'T 1111',
+  Version: 1,
+  
+  Description: 'T 1111', <--- This is different!
+  
+  CircleOfConfusion: '0.009 mm',
+  DOF: '3.63 m (1.13 - 4.75 m)',
+  FOV: '73.7 deg',
+  FocalLength35efl: '6.8 mm (35 mm equivalent: 24.0 mm)',
+  HyperfocalDistance: '2.94 m',
+  LightValue: 13.3,
+  LensID: 'Pixel 7 Pro back camera 6.81mm f/1.85',
+  warnings: []
+}

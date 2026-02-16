@@ -238,7 +238,7 @@ Sobald Bilder mit GPS-Daten vorhanden sind:
   * gemeinsame Werte als Wert, wenn diese identisch sind.
   * oder `multiple` bei unterschiedlichen Werten.
   * Die Werte können überschrieben werden und sollten anschließend unmittelbar gespeichert werden. Achtung: Die Änderungen werden NUR übernommen, wenn abschließend zu JEDEM Eingabefeld `ENTER` gedrückt wird!
-  * Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich. (Oder man gibt einfach '' ein.)
+  * Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich. (Oder man gibt einfach '' oder ein Leerzeichen '_'. ein.)
 
 ---
 

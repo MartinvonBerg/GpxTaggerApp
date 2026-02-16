@@ -549,35 +549,7 @@ async function readImagesFromFolder(folderPath, extensions) {
   
         // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {
-          const metadata = await exiftool.read(filePath, { 
-              ignoreMinorErrors: true,
-              tags: [ // das wird nicht benutzt!
-                "DateTimeOriginal",
-                "DateCreated",
-                "DateTimeCreated",
-                "OffsetTimeOriginal",
-                "Model",
-                //"LensModel",
-                "Orientation",
-                //"ImageHeight",
-                //"ImageWidth",
-                "GPSLatitude",
-                "GPSLatitudeRef",
-                "GPSLongitude",
-                "GPSLongitudeRef",
-                "GPSPosition",
-                "GPSAltitude",
-                "GPSImgDirection",
-                "Title",
-                "CaptionAbstract",
-                "Description",
-                "ImageDescription",
-                "XPTitle",
-                "XPSubject",
-                "XPComment",
-                //"ThumbnailImage",
-              ]
-            });
+          const metadata = await exiftool.read(filePath, { ignoreMinorErrors: true });
 
             let thumbnailPath = '';
             const maxAgeDays = 14;
