@@ -8,6 +8,7 @@ you to:
 -   Add GPS information (geotagging) to photos or adjust existing GPS
     data
 -   Write metadata (title, description, GPS) back into the image files
+-   And yes: It is yet another GEO-Tagger (YAGT) amongst dozens of others.
 
 ## Requirements
 
@@ -466,20 +467,20 @@ For example for:
 
 ------------------------------------------------------------------------
 
-## Known Limitations
+## Known Limitations and Take-Aways
 
 -   The app was primarily intended for learning Electron. It is
     functional but has its quirks and may need to be restarted
     occasionally. Crashes are not expected. There are also several TODOs
     in the respective \*.js files, but none are "showstoppers". Main
     takeaway: Without clean architecture, API definitions, and upfront
-    design, you quickly end up with spaghetti code.
+    design, you quickly end up with spaghetti code. Don't do anything without proper Doc-Blocks and Unit-Testing. Don't trust AI-Code from free Tools which is useless in most cases.
 -   Large image folders (hundreds/thousands of files, HDD/USB3) →
-    Reading & thumbnail generation can take several seconds
--   ExifTool must be installed and accessible
+    Reading & thumbnail generation can take several seconds to even minutes.
+-   ExifTool must be installed and accessible for Development but not for the EXE.
 -   Some event listeners (e.g. thumbnail bar) are intentionally not
-    removed because the UI structure remains stable
--   I'm currently using an outdated Version of exiftool-vendored, because I found an Issue with V35.9.0, see https://github.com/photostructure/exiftool-vendored.js/issues/325
+    removed because the UI structure remains stable. 
+-   I'm currently using an outdated Version of exiftool-vendored, because I found an Issue with V35.9.0, see https://github.com/photostructure/exiftool-vendored.js/issues/325 (or I have a misunderstanding in my side.)
 
 ## Changelog
 
