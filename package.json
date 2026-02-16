@@ -1,11 +1,11 @@
 {
-    "name": "gpx-tagger",
+    "name": "gpx-tagger-app",
     "version": "1.0.0",
     "description": "An Electron application to add GPX metadata to image files",
     "main": "main.js",
     "author": "Dr. Martin von Berg",
     "copyright": "Copyright (c) 2026 Dr. Martin von Berg",
-    "license": "GPL-2.0-only",
+    "license": "GPL-2.0",
     "jest": {
         "testEnvironment": "node",
         "transform": {}
@@ -19,7 +19,7 @@
         "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "install-app-deps": "cd app && npm install --omit=dev",
         "prepare-app": "node scripts/prepare-app.js",
-        "package":       "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=win32  --arch=x64 --out=dist --overwrite --asar=false --app-copyright=\"Copyright (c) 2026 Dr. Martin von Berg\" --win32metadata.CompanyName=\"Dr. Martin von Berg\"",
+        "package":       "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=win32  --arch=x64 --out=dist --overwrite --asar=false --app-version=1.0.0 --app-copyright=\"Copyright (c) 2026 Dr. Martin von Berg\" --win32metadata.CompanyName=\"Dr. Martin von Berg\"",
         "package:linux": "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=linux  --arch=x64 --out=dist-linux --overwrite --asar=false",
         "package:mac":   "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=darwin --arch=x64 --out=dist-maxOS --overwrite --asar=false"
     },
