@@ -21,7 +21,7 @@ you to:
     modules.
 
 ## Screenshot
-![Screenshot][App-Screenshot.png]
+![Screenshot](App-Screenshot.png)
 
 ## Disclaimer
 
