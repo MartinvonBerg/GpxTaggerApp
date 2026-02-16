@@ -20,6 +20,9 @@ you to:
 -   **exiftool-vendored** also includes ExifTool within the node
     modules.
 
+## Screenshot
+![Screenshot][App-Screenshot.png]
+
 ## Disclaimer
 
 This tool is not a professional application. There are other tools that
