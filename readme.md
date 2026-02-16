@@ -13,6 +13,7 @@ Electron-Panes ist eine Desktop-Anwendung auf Basis von Electron, mit der du:
 - **Node.js**: Empfohlen LTS-Version (z.B. 20.x)
 - **ExifTool**: Muss im System installiert und im `PATH` verfügbar sein  
   (d.h. der Befehl `exiftool` muss im Terminal / in der Eingabeaufforderung funktionieren).
+- **exiftool-vendored** bringt aber ExifTool in den node-modulen mit. 
 
 ## Disclaimer
 
@@ -75,7 +76,7 @@ Das Feature kann derzeit nicht abgeschalten werden.
 
 # Typischer Workflow
 
-## Image Folder auswählen
+## Bilder auswählen
 
 **Menü:** `Image Folder → Select Folder`
 
@@ -108,7 +109,7 @@ Die Endungen können in der `user-settings.json` definiert werden. Diese befinde
 
 Die App:
 
-1. liest alle Dateien im Ordner, das mit 'Abort' abgebrochen werden kann. Es kann etwas dauern, v.a. beim ersten Mal, da dabei Thumbnails zur Anzeige erzeugt werden. Es gibt keine Fortschrittsanzeige.
+1. liest alle Dateien im Ordner, was mit 'Abort' abgebrochen werden kann. Es kann etwas dauern, v.a. beim ersten Mal, da dabei Thumbnails zur Anzeige erzeugt werden. Es gibt keine Fortschrittsanzeige.
 2. filtert nach gefundenen Erweiterungen und nicht-/vorhandenen GPS-Daten und "innerhalb" des gewählten GPX-Tracks.
 3. extrahiert EXIF-Metadaten mit `exiftool-vendored`
 4. erzeugt Thumbnails-Dateien, falls in den Bilddateien enthalten, sonst nicht.
@@ -177,17 +178,15 @@ Für Bilder ohne GPS-Daten:
      ```
      geotagImageExiftool(gpxPath, imagePath, options)
      ```
-3. ExifTool schreibt GPS-Daten unmittelbar anhand Zeitstempel. Exiftool erzeugt auch ein backup, welches bei Fehlern zurückgeschrieben werden kann.
+3. ExifTool schreibt GPS-Daten unmittelbar anhand Zeitstempel. Exiftool erzeugt auch ein Backup im selben Ordner, welches bei Fehlern zurückgeschrieben werden kann.
 
-4. Nach Abschluss werden die Bilder neu geladen und auf der Karte angezeigt. Prüfung des Ergebnisses ist daher möglich.
+4. Nach Abschluss werden die Bilder neu geladen und auf der Karte angezeigt. DIe Prüfung des Ergebnisses ist damit möglich.
 
 #### Nach erfolgreichem Lauf
 
 * Bildstatus → `geotagged`
 * Thumbnail-Markierung wird angepasst
-* Optional:
-
-  * Metadaten neu laden (`Reload Data`), automatisch ausgelöst.
+* Metadaten neu laden (`Reload Data`), wird automatisch ausgelöst.
 
 ---
 
@@ -196,11 +195,11 @@ Für Bilder ohne GPS-Daten:
 ### Ablauf
 
 1. Bilder laden. Diese werden in der Thumbnail rot hinterlegt. Links wird die Anzahl der Bilder OHNE GPS-Daten angzeigt. Falls man Bilder mit GPS-Daten geladen hat UND der Haken zur Anzeige aktiv ist, ist die Anzahl Null. Der Haken muss also deaktiviert sein, um vorhandene GPS-Daten zu überschreiben!
-2. Gewünschte Bilder in der Thumbnail aktivieren (einfach oder mehrfach)
+2. Gewünschte Bilder in der Thumbnail aktivieren (einfach oder mehrfach Auswahl)
 3. Gewünschten Ort auf der Karte auswählen, entweder direkt oder mit Ortssuche.
 4. STRG + Links-Klick weist die GPS-Daten und Höhe den gewählten Bildern zu.
 5. Unmittelbares Speichern der neuen Daten mit dem Button in der RECHTEN Sidebar. Es werden nur die gerade AKTIVEN Bilder gespeichert!
-6. Prüfung es Ergebnisses: Menüpunkt : Metadaten neu laden (`Reload Data`),
+6. Prüfung des Ergebnisses: Menüpunkt : Metadaten neu laden (`Reload Data`),
 
 ---
 
@@ -239,7 +238,7 @@ Sobald Bilder mit GPS-Daten vorhanden sind:
   * gemeinsame Werte als Wert, wenn diese identisch sind.
   * oder `multiple` bei unterschiedlichen Werten.
   * Die Werte können überschrieben werden und sollten anschließend unmittelbar gespeichert werden. Achtung: Die Änderungen werden NUR übernommen, wenn abschließend zu JEDEM Eingabefeld `ENTER` gedrückt wird!
-  * Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich.
+  * Achtung: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich. (Oder man gibt einfach '' ein.)
 
 ---
 
@@ -391,8 +390,8 @@ Beispielsweise für:
 ---
 
 ## Bekannte Einschränkungen
-* Es war mehr zur Elernung von electron gedacht. Die App ist funktionsfähig hat aber ihre Macken und muss dann neu gestartet werden.
-Abstürze sind nicht zu erwarten. Es gibt auch noch einige TODOs, die in den jeweiligen *.js - Dateien enthalten sind, diese sind aber alle keine "Showstopper".
+* Die App war mehr zur Elernung von electron gedacht. Die App ist funktionsfähig hat aber ihre Macken und muss dann neu gestartet werden.
+Abstürze sind nicht zu erwarten. Es gibt auch noch einige TODOs, die in den jeweiligen *.js - Dateien enthalten sind, diese sind aber alle keine "Showstopper". Haupterkenntnis: Ohne saubere Architektur, API-Definitionen und Vor-Entwicklung wird es eben doch ziemlicher Spaghetti-Code.
 * Große Bildordner (Hunderte/Tausende Dateien, HDD/USB3)
   → Einlesen & Thumbnail-Erzeugung kann mehrere Sekunden dauern
 * ExifTool muss installiert und erreichbar sein
