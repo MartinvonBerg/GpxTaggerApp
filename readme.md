@@ -11,7 +11,7 @@ you to:
 
 ## Requirements
 
--   **Operating System**: Windows, macOS, or Linux
+-   **Operating System**: Windows10/11, macOS, or Linux
 -   **Node.js**: Recommended LTS version (e.g. 20.x)
 -   **ExifTool**: Must be installed on the system and available in the
     `PATH`\
@@ -42,9 +42,14 @@ This app was developed with heavy use of various AI tools: Sourcery,
 chatGPT, MS Copilot, Windsurf, GitLens, and occasionally good old Google
 search.
 
+## Installation (EXE for Windows)
+1. Download the Release, unzip and run the `GpxTaggerApp.exe`. There is no 'real' installer. Unzipping is good enough.
+2. Signing / Certificates
+Up to my knowledge there is no free AND useful Signing for Windows Apps. The same for macOS and for Linux I don't know. As I couldn't test the signed exe or installer on other Systems I prepared the *.exe for Windows only. The Defender will warn you on unzipping.
+
 ## Installation (Developer Setup)
 
-1.  Clone the repository or download the source code.
+1.  Clone the repository or download the source code and unzip to any folder.
 
 2.  Install dependencies in the project folder:
 
@@ -54,14 +59,15 @@ search.
 
 3.  Start development mode: `bash     npm run all`
 
-4.  Build the application (currently only for Windows in package.json)
-    `bash     npm run package`\
-    The \*.exe is located in
-    ProjectFolder`\dist`{=tex}`\GpxTaggerApp`{=tex}-win32-x64. TODO for
-    Linux and macOS.
+4.  Build the application (Build currently only tested for Windows)
 
-    Note: The generated dist folder is huge (approx. 1GB), therefore no
-    release is provided. There is still optimization potential!
+    `bash     npm run package` (Windows) --> ./dist\
+    `bash     npm run package:linux` (Linux) --> ./dist-linux\
+    `bash     npm run package:max` (maxOS) --> ./dist-mac\
+    
+    Note: The generated dist folder is about 400 MB and the Releas ~ 220 MB.
+5. Signing / Certificates\
+Up to my knowledge there is no free AND useful Signing for Windows Apps. The same for macOS and for Linux I don't know. As I couldn't test the signed exe or installer on other Systems I prepared the *.exe for Windows only. The Defender will warn you on unzipping.
 
 ## Starting the Application (from IDE or as EXE)
 
@@ -78,6 +84,9 @@ After startup, the main window opens with:
 The application remembers the last window size, position, language, and
 paths (settings are stored as JSON in the user directory and not in the
 project folder so they are not lost after a new build).
+
+### Resize Panes
+The Panes or Areas of the App are resizable. Do this as you like it. The Set-up will be stored in the user-settings.json and reloaded. Mind that working on different screens the position and size will NOT be correct. This is supposted to be an limitation off Electron.
 
 ### Language / Localization
 
@@ -468,3 +477,8 @@ For example for:
 -   ExifTool must be installed and accessible
 -   Some event listeners (e.g. thumbnail bar) are intentionally not
     removed because the UI structure remains stable
+-   I'm currently using an outdated Version of exiftool-vendored, because I found an Issue with V35.9.0, see https://github.com/photostructure/exiftool-vendored.js/issues/325
+
+## Changelog
+
+V1.0.0.0 : First public Release.

@@ -17,7 +17,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO)
-// PRIO TODO: verwende Exiftool auf exiftool-vendored.
+// PRIO TODO: verwende Exiftool aus exiftool-vendored.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
