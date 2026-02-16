@@ -9,6 +9,7 @@ currently being supported with security updates.
 | ------- | ------------------ |
 | 1.0.0   | :white_check_mark: |
 
+Security Scanning was done by Sourcery for V1.0.0.
 
 ## Reporting a Vulnerability
 
