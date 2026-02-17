@@ -14,7 +14,8 @@
  * @license MIT
  */
 
-const { contextBridge, ipcRenderer } = require('electron');  
+//const { contextBridge, ipcRenderer } = require('electron');
+import { contextBridge, ipcRenderer } from 'electron';
   
 // Expose a limited API to the renderer  
 contextBridge.exposeInMainWorld('myAPI', {  
