@@ -479,8 +479,7 @@ For example for:
     Reading & thumbnail generation can take several seconds to even minutes.
 -   ExifTool must be installed and accessible for Development but not for the EXE.
 -   Some event listeners (e.g. thumbnail bar) are intentionally not
-    removed because the UI structure remains stable. 
--   I'm currently using an outdated Version of exiftool-vendored, because I found an Issue with V35.9.0, see https://github.com/photostructure/exiftool-vendored.js/issues/325 (or I have a misunderstanding in my side.)
+    removed because the UI structure remains stable.
 
 ## Changelog
 V1.1.0 : Update exiftool-vendored to 35.9.0, Fix Tag writing for Title and Description to be compliant with MWG. Add security notes from Review in Code.
