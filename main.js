@@ -555,7 +555,7 @@ async function readImagesFromFolder(folderPath, extensions) {
             const maxAgeDays = 14;
             
             if (metadata.ThumbnailImage && metadata.ThumbnailImage.rawValue) {
-              const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
+              const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`); // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
               let useExistingThumbnail = false;
 
               // check if thumbnail exists and is not older than maxAgeDays. Delete if older and re-extract or keep existing
@@ -619,17 +619,20 @@ async function readImagesFromFolder(folderPath, extensions) {
                 thumbnail: thumbnailPath, // base64 encoded thumbnail or file path
                 status: (metadata.GPSLatitude && metadata.GPSLongitude) ? 'loaded-with-GPS' : 'loaded-no-GPS', // simple status field
                 
+                // ---- TITLE ----
                 Title : metadata.Title || '', // will be used in frontend for entry
-                CaptionAbstract: metadata.CaptionAbstract || '',
-                Description : metadata.Description || '', // will be used in frontend for entry
-                ImageDescription: metadata.ImageDescription || '',
-                XPTitle: metadata.XPTitle || '',
+                XPTitle: metadata.XPTitle || '', // TODO : What about Object Name?
+                // not used: IPTC:ObjectName
+
+                // ---- DESCRIPTION ---- with MWG:Description these entries shall be identical!
+                ImageDescription: metadata.ImageDescription || '', // EXIF: ImageDescription
+                CaptionAbstract: metadata.CaptionAbstract || '', // IPTC: Caption-Abstract
+                Description : metadata.Description || '', // will be used in frontend for entry // XMP-dc: Description
 
                 //XPKeywords : metadata.XPKeywords || '',
                 //keywords: metadata.Keywords || [],
-
-                XPSubject : metadata.XPSubject || '',
-                XPComment : metadata.XPComment || '',
+                //XPSubject : metadata.XPSubject || '',
+                //XPComment : metadata.XPComment || '',
             };
         };
   
@@ -637,7 +640,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         start = performance.now();
         const imagesData = await Promise.all(  
             imageFiles.map(async file => {  
-                const filePath = path.join(folderPath, file);  
+                const filePath = path.join(folderPath, file);  // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
                 return await getExifData(filePath);
             })  
         );  
@@ -754,9 +757,9 @@ async function writeMetadataOneImage(filePath, metadata) {
     console.log("ExifTool Command:", command);
 
     
-    // Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
+    // Comment missing why using the exiftool directly here. Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
     const execResult = await new Promise((resolve) => {
-      exec(command, (error, stdout, stderr) => {
+      exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
         if (error) {
           console.error(`ExifTool-Error: ${stderr || error.message}`);
           return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
@@ -775,16 +778,17 @@ async function writeMetadataOneImage(filePath, metadata) {
   const title = sanitize(metadata.Title);
   if (title !== undefined && title !== null) {
     writeData["XMP-dc:Title"] = title;
+    writeData["XPTitle"] = title; // This is not MWG standard! But Windows Special!
     writeData["IPTC:ObjectName"] = title;
-    writeData["EXIF:ImageDescription"] = title;
-    writeData["XPTitle"] = title;
+    writeData["IPTCDigest"] = ""; // update IPTC digest
   }
 
   // --- DESCRIPTION ---
   const desc = sanitize(metadata.Description);
   if (desc !== undefined && desc !== null) {
-    writeData["XMP-dc:Description"] = desc;
-    writeData["IPTC:Caption-Abstract"] = desc;
+    writeData["MWG:Description"] = desc;
+    writeData["IPTC:Caption-Abstract"] = desc; // must be written after "MWG:Description"! 
+    writeData["IPTCDigest"] = ""; // update IPTC digest
   }
 
   if (Object.keys(writeData).length > 0) {
@@ -849,7 +853,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     command += ` "${imagePath}"`;
     console.log("ExifTool Command:", command);
 
-    exec(command, (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
       if (error) {
         console.error(`ExifTool-Error: ${stderr || error.message}`);
         return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
@@ -896,7 +900,7 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   
   // Mit sharp korrigieren
   let image = sharp(thumbPathTmp);
-  const rotatedThumbPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb_rotated.jpg`);
+  const rotatedThumbPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb_rotated.jpg`);  // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
 
   switch (orientation) {
     case 3:
@@ -954,7 +958,7 @@ const sanitize = (value) => {
  */
 async function checkExiftoolAvailable(exiftoolPath) {
   return new Promise((resolve) => {
-    exec(`${exiftoolPath} -ver`, { shell: true }, (err) => {
+    exec(`${exiftoolPath} -ver`, { shell: true }, (err) => { // Security: Command injection from function argument passed to child_process invocation
       if (err) {
         resolve(false);
       } else {

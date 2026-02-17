@@ -483,5 +483,6 @@ For example for:
 -   I'm currently using an outdated Version of exiftool-vendored, because I found an Issue with V35.9.0, see https://github.com/photostructure/exiftool-vendored.js/issues/325 (or I have a misunderstanding in my side.)
 
 ## Changelog
+V1.1.0 : Update exiftool-vendored to 35.9.0, Fix Tag writing for Title and Description to be compliant with MWG. Add security notes from Review in Code.
 
-V1.0.0.0 : First public Release.
+V1.0.0 : First public Release.

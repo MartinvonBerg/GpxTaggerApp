@@ -11,7 +11,7 @@ function copyRecursive(src, dest) {
   if (stat.isDirectory()) {
     if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src)) {
-      copyRecursive(path.join(src, entry), path.join(dest, entry));
+      copyRecursive(path.join(src, entry), path.join(dest, entry)); // Security Issue ?: But This runs only during development.
     }
   } else {
     fs.copyFileSync(src, dest);

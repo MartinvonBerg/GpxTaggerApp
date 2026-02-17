@@ -16,6 +16,9 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO), bzw. nur mit '' oder '_'.
+// TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
+//          Especially where translated data is loaded from json Files and is not checked.
+// TODO: Abschätzung Aufwand, um alles auf ESM module umzustellen. Ziel: alles wird mit webpack gepackt, node_modules ist nicht mehr notwendig in der App.
 let settings = {};
 let filteredImages = [];
 let allImages = [];

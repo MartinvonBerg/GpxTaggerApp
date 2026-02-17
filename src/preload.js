@@ -10,7 +10,7 @@
  *  This setup is crucial for maintaining security in Electron applications by preventing direct access to Node.js APIs from the renderer process.
  * 
  * @author Martin von Berg
- * @version 1.0.0
+ * @version 1.1.0
  * @license MIT
  */
 
