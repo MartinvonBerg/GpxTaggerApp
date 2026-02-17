@@ -1,17 +1,17 @@
-const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');  
-const path = require('path');
-const fs = require('fs');
-const i18next = require('i18next');
-const Backend = require('i18next-fs-backend');
-const { exiftool } = require("exiftool-vendored");
-const { exec } = require('child_process');
-const sanitizeHtml = require('sanitize-html');
+import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import { exec } from 'child_process';
+import i18next from 'i18next';
+import Backend from 'i18next-fs-backend';
+import { exiftool } from 'exiftool-vendored';
+import sanitizeHtml from 'sanitize-html';
 
 // sharp availabability check
 let sharpAvailable = false;
 let sharp;
 try {
-  sharp = require('sharp');
+  sharp = (await import('sharp')).default;
   sharpAvailable = true;
 } catch (err) {
   console.warn('Sharp not available, skipping thumbnail rotation');

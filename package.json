@@ -2,7 +2,7 @@
   "name": "gpx-tagger-app",
   "version": "1.1.0",
   "description": "An Electron application to add GPX metadata to image files",
-  "main": "main.js",
+  "main": "build/main.bundle.cjs",
   "author": "Dr. Martin von Berg",
   "copyright": "Copyright (c) 2026 Dr. Martin von Berg",
   "license": "GPL-2.0",
@@ -12,15 +12,17 @@
   },
   "scripts": {
     "start": "electron .",
-    "build": "webpack --mode development",
+    "build": "webpack --config webpack.config.js --mode development",
+    "main": "webpack --config webpack.main.cjs",
     "webprod": "webpack --mode production",
-    "all": "npm run build && npm start",
+    "all": "npm run main && npm run build && npm start",
+    "allprod": "npm run main && npm run webprod",
     "debug": "electron --inspect=9229 .",
     "test": "node scripts/jest-runner.js",
     "install-app-deps": "cd app && npm install --omit=dev",
     "prepare-app": "node scripts/prepare-app.js",
     "finalize-app": "node scripts/finalize-app-win.js",
-    "package": "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=win32  --arch=x64 --out=dist --overwrite --app-version=1.1.0 --app-copyright=\"Copyright (c) 2026 Dr. Martin von Berg\" --win32metadata.CompanyName=\"Dr. Martin von Berg\" && npm run finalize-app",
+    "package": "npm run allprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=win32  --arch=x64 --out=dist --overwrite --asar=false --app-version=1.1.0 --app-copyright=\"Copyright (c) 2026 Dr. Martin von Berg\" --win32metadata.CompanyName=\"Dr. Martin von Berg\" && npm run finalize-app",
     "package:linux": "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=linux  --arch=x64 --out=dist-linux --overwrite --asar=false",
     "package:mac": "npm run webprod && npm run prepare-app && npm run install-app-deps && npx electron-packager ./app GpxTaggerApp --platform=darwin --arch=x64 --out=dist-maxOS --overwrite --asar=false"
   },
@@ -39,19 +41,14 @@
     "@turf/helpers": "^7.2.0",
     "ts-loader": "^9.5.4",
     "tslib": "^2.8.1",
-    "geo-tz": "^8.1.4"
-  },
-  "dependencies": {
-    "@photostructure/tz-lookup": "^11.2.1",
-    "coordinate-parser": "^1.0.7",
+    "geo-tz": "^8.1.4",
     "exiftool-vendored": "^35.9.0",
     "i18next": "^25.8.9",
     "i18next-fs-backend": "^2.6.0",
-    "leaflet": "^1.9.4",
-    "leaflet-control-geocoder": "^3.3.1",
-    "leaflet-gpx": "^2.2.0",
-    "leaflet.locatecontrol": "*",
-    "sharp": "^0.34.5",
     "sanitize-html": "^2.17.0"
+  },
+  "dependencies": {
+    "sharp": "^0.34.5",
+    "exiftool-vendored": "^35.9.0"
   }
 }

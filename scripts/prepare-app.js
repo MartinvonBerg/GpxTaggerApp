@@ -26,7 +26,7 @@ fs.mkdirSync(appDir);
 
 // Dateien/Ordner kopieren, die zur Laufzeit benötigt werden
 const filesToCopy = [
-  'main.js',
+  'main.mjs',
   'index.html',
   'package.json',   // optional: ggf. abgespeckte package.json für Runtime
   'LICENSE',
@@ -55,3 +55,26 @@ for (const dir of dirsToCopy) {
 }
 
 console.log('Prepared minimal app directory at', appDir);
+
+// package.json im app-Verzeichnis anpassen: main und dependencies für Runtime setzen
+const appPkgPath = path.join(appDir, 'package.json');
+if (fs.existsSync(appPkgPath)) {
+  const appPkg = JSON.parse(fs.readFileSync(appPkgPath, 'utf8'));
+
+  // Main soll auf das gebündelte Main zeigen
+  appPkg.main = 'build/main.bundle.cjs';
+
+  // Nur Runtime-Dependencies in app/package.json halten
+  appPkg.dependencies = {
+    sharp: appPkg.dependencies?.sharp || '^0.34.5',
+    'exiftool-vendored': appPkg.dependencies?.['exiftool-vendored'] || '^35.9.0',
+  };
+  // DevDependencies im app/ nicht nötig
+  delete appPkg.devDependencies;
+
+  fs.writeFileSync(appPkgPath, JSON.stringify(appPkg, null, 2), 'utf8');
+}
+
+console.log('Prepared minimal app directory at', appDir);
+
+// package.json im app-Verzeichnis anpassen: main und dependencies für Runtime setzen
