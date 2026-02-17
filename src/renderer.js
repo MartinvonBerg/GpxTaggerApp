@@ -789,9 +789,9 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       </div>
     </div>`;
 
-    import (/* webpackChunkName: "awesomplete" */ 'awesomplete').then( () => {
-      initAutocomplete();
-    });
+    //import (/* webpackChunkName: "awesomplete" */ 'awesomplete').then( () => {
+    //  initAutocomplete();
+    //});
 };
 
 /** UPDATES UI IMAGE: Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
