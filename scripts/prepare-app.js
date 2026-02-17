@@ -29,6 +29,8 @@ const filesToCopy = [
   'main.js',
   'index.html',
   'package.json',   // optional: ggf. abgespeckte package.json für Runtime
+  'LICENSE',
+  'README.md'
 ];
 
 const dirsToCopy = [
