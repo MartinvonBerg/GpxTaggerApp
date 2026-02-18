@@ -5,6 +5,7 @@
  */
 
 import { toDMS } from './TrackAndGpsHandler.js';
+import sanitizeHtml from 'sanitize-html';
 
 /** Returns an object with the keys being the property names of the images and the values being the first value if all values are identical, or the multipleValue if not.
  * 
@@ -95,6 +96,22 @@ function sanitizeInput(value) {
   return div.innerHTML; // Rückgabe ist sicherer Text
 }
 
+function sanitize(value) {  
+
+  function sanitizeInput(input) {  
+    return sanitizeHtml(input, {  
+      allowedTags: [],  // does not allow any tags!  
+      allowedAttributes: {}  
+    });  
+  }
+
+  if (typeof value !== "string") return undefined;  
+  let v = value.trim();  
+  v = sanitizeInput(v);  
+  return v;  
+};
+
+
 /**
  * Checks if an object is empty.
  *
@@ -113,4 +130,4 @@ const isNumber = function isNumber(value)
    return typeof value === 'number' && isFinite(value);
 }
 
-export { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber };
+export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber };

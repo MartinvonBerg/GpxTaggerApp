@@ -1,6 +1,6 @@
 // imageHelper.js
 
-import { parseExifDateTime} from './ExifHandler.js';
+import { parseExifDateTime } from './ExifHandler.js';
 
 /**  
  * Sorts the image data by capture time.  

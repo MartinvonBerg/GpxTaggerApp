@@ -5,9 +5,10 @@ import { exec } from 'child_process';
 import i18next from 'i18next';
 import Backend from 'i18next-fs-backend';
 import { exiftool } from 'exiftool-vendored';
-import sanitizeHtml from 'sanitize-html';
 
-import { parseExifDateTime } from './js/ExifHandler.js';
+
+import { sortImagesByCaptureTime } from './js/imageHelper.js';
+import { sanitize } from './js/generalHelpers.js';
 
 // sharp availabability check
 let sharpAvailable = false;
@@ -938,21 +939,6 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   return thumbPathTmp;
 }
 
-const sanitize = (value) => {  
-
-  function sanitizeInput(input) {  
-    return sanitizeHtml(input, {  
-      allowedTags: [],  // does not allow any tags!  
-      allowedAttributes: {}  
-    });  
-  }
-
-  if (typeof value !== "string") return undefined;  
-  let v = value.trim();  
-  v = sanitizeInput(v);  
-  return v;  
-};
-
 /** 
  * check if the system exiftool is available in PATH. (not using exiftool-vendored here).
  * @param {string} exiftoolPath
@@ -967,35 +953,5 @@ async function checkExiftoolAvailable(exiftoolPath) {
         resolve(true);
       }
     });
-  });
-}
-
-/**  
- * Sorts the image data by capture time.  
- *   
- * @param {Object[]} imagesData - Array of image metadata objects.  
- */  
-function sortImagesByCaptureTime(imagesData) { 
-  imagesData.sort((a, b) => {
-    const dateA = a.DateTimeOriginal && a.DateTimeOriginal.rawValue
-      ? parseExifDateTime(a.DateTimeOriginal.rawValue)
-      : null;
-    const dateB = b.DateTimeOriginal && b.DateTimeOriginal.rawValue
-      ? parseExifDateTime(b.DateTimeOriginal.rawValue)
-      : null;
-
-    if (!dateA) {
-      console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
-    }
-    if (!dateB) {
-      console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
-    }
-
-    // Sort images without a date to the end
-    if (!dateA && !dateB) return 0;
-    if (!dateA) return 1;
-    if (!dateB) return -1;
-
-    return dateA - dateB;
   });
 }
