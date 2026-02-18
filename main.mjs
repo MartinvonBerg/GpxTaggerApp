@@ -9,6 +9,7 @@ import { exiftool } from 'exiftool-vendored';
 
 import { sortImagesByCaptureTime } from './js/imageHelper.js';
 import { sanitize } from './js/generalHelpers.js';
+import { loadSettings, saveSettings } from './js/settingsHelper.js';
 
 // sharp availabability check
 let sharpAvailable = false;
@@ -277,7 +278,7 @@ function setupMenu(t) {
  * @returns {void}
  */
 function createWindow() {  
-  settings = loadSettings(settingsFilePath);
+  settings = loadSettings(appRoot, settingsFilePath);
   settings.iconPath = appRoot;
   
   win = new BrowserWindow({  
@@ -427,7 +428,9 @@ function createWindow() {
   });
 }
 
-/* ---- helper functions for the main process ---- */
+// ---- helper functions for the main process ----
+// Mind: The following functions can only be called from the main process and so
+// can't be move to a separate file(s). This is due to restrictions of electron, node.js runtime calls or whatever.
 /**
  * Sends a message to the renderer process with the given channel and arguments.
  * If the renderer is not available (e.g., it has been closed or has not been created yet),
@@ -443,42 +446,6 @@ function sendToRenderer(channel, ...args) {
   } else {
     console.warn('Renderer not available:', channel);
   }
-}
-
-/**
- * Loads user settings from a JSON file.
- * If the file does not exist or cannot be parsed, returns an empty object.
- * 
- * @param {string} settingsFilePath 
- * @global {string} appRoot
- * @global {object} JSON
- * @returns 
- */
-function loadSettings(settingsFilePath) {
-  // check if file exists in settingsFilePath. 
-  // If not copy the default settings file from the project folder to the user folder
-  if (!fs.existsSync(settingsFilePath)) {
-    fs.copyFileSync(path.join(appRoot, 'settings', 'user-settings.json'), settingsFilePath);
-  }
-
-  try {  
-    return JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));  
-  } catch (error) {  
-    return {};  
-  }  
-}
-
-/**
- * saves user settings to a JSON file.
- * 
- * @param {string} settingsFilePath 
- * @param {object} settings 
- * @global {object} fs
- * @global {object} JSON
- */
-function saveSettings(settingsFilePath, settings) {
-  //console.log('Saving settings to', settingsFilePath);
-  fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
 }
 
 /**
@@ -866,6 +833,13 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   });
 }
 
+/**
+ * Reload all image data from the given folder.
+ * This function sends an IPC message to the renderer to start loading data.
+ * Then it reads all images from the given folder and sends the data to the renderer.
+ * If an error occurs, it sends an IPC message with the error message to the renderer.
+ * @param {object} settings - The settings object containing the image path.
+ * @returns {Promise<boolean>} - A promise that resolves with true if the data was reloaded successfully, false otherwise.
 async function reloadImageData(settings) {
   // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
   sendToRenderer('image-loading-started', settings.imagePath);
@@ -880,7 +854,6 @@ async function reloadImageData(settings) {
       return false;
     }
 }
-// ------------ helpers for the helpers ------------
 
 /**
  * Rotate a thumbnail according to the EXIF orientation value.
