@@ -5,7 +5,7 @@ import { convertGps, validateAltitude, validateDirection, getElevation, parseExi
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js'; // reviewed allready.
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js'; // reviewed allready.
 import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js'; // reviewed allready.
-import { initAutocomplete } from '../js/autocomplete.js'; // review skipped, will be removed, probably.
+//import { initAutocomplete } from '../js/autocomplete.js'; // review skipped, will be removed, probably.
 import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js'; // review TBD
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js'; // reviewed allready.
 import { showgpx } from '../js/mapAndTrackHandler.js'; // reviewed allready.
@@ -18,7 +18,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO), bzw. nur mit '' oder '_'.
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
-// TODO: Abschätzung Aufwand, um alles auf ESM module umzustellen. Ziel: alles wird mit webpack gepackt, node_modules ist nicht mehr notwendig in der App.
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -27,7 +26,7 @@ let trackInfo = {};
 function mainRenderer (window, document, customDocument=null, win=null, vars=null) {
   window.pageVarsForJs = []; // Global array to store variables for JS.
   let allMaps = [];
-  // HINT: Die Auslagerung von Left sidebar und right sidebar erfordert eine komplette Umarbeitung der Vewrwendung der folganden globalen Variablen.
+  // HINT: Die Auslagerung von Left sidebar und right sidebar erfordert eine komplette Umarbeitung der Verwendung der folgenden globalen Variablen.
   // zur Vorbereitung werden die globalen Variablen in die Window Variable geschrieben. Damit sind sie global verfügbar.
   window.allMaps = allMaps; // Global array to store allMaps for JS.
   window.settings = settings;
