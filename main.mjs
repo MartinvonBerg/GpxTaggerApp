@@ -842,6 +842,11 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
  * If an error occurs, it sends an IPC message with the error message to the renderer.
  * @param {object} settings - The settings object containing the image path.
  * @returns {Promise<boolean>} - A promise that resolves with true if the data was reloaded successfully, false otherwise.
+ * @global {function} sendToRenderer
+ * @global {function} readImagesFromFolder
+ * @global {array} extensions
+ * 
+ */
 async function reloadImageData(settings) {
   // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
   sendToRenderer('image-loading-started', settings.imagePath);

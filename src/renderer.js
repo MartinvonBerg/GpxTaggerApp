@@ -865,54 +865,65 @@ function metaGPSEventListener() {
       if ( input.tagName === "INPUT" && input.type==="text" && e.key === "Enter") { // this is for type="text" so GPS-coordinates
         e.preventDefault();
         
-        let convertedValue = convertGps(input.value);
-        let index = input.dataset.index; // possible values: "1" or "1, 2, 3, 4" or "4, 5, 6, 9" all in [0 ... allImages.length-1]
-        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+        const rawValue = input.value;
+        const convertedValue = convertGps(rawValue);
+        const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
+        const indexArray = index
+          .split(',')
+          .map(v => v.trim())
+          .map(Number);
 
-        //if (index < 0 || index >= allImages.length || !convertedValue) {
-        if ((!isValidIndex || !convertedValue) && input.value !== '' && input.value !== 'multiple') {
-          // go back to the browser input and show an error message
+        const isValidIndex =
+          indexArray.length > 0 &&
+          indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+
+        // ungültiger Index oder ungültige Koordinaten (aber kein leerer Wert / "multiple")
+        if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes('multiple')) {
           input.value = '';
           input.focus();
           input.select();
-          // show a hint for the user here in the UI
           updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
-        } else if (input.value === 'multiple') {
-          // do nothing, so do not change values or status.
+        }
+
+        // explizit "multiple" eingegeben → nichts übernehmen
+        if (rawValue.includes('multiple')) {
+          input.value = 'multiple';
+          input.focus();
+          input.select();
+          updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
         }
-        else if (input.value === '' && convertedValue === null) {
-          convertedValue = '';
-          // TBD: handle the acceptance and change of status here. Solve the dependency between left and right sidebar contents, status and events.
-          // the value should be empty and the status gps-deleted or so.
-          // change the other input fields accoringly!
-          }
-        else if (convertedValue) {
-            // setze das input field auf den konvertierten wert, um die Übernahme anzuzeigen
-            input.value = convertedValue.pos;
+
+        // leeres Feld → Koordinaten löschen (convertedValue bleibt leerer String)
+        if (rawValue === '' && convertedValue === null) {
+          // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
+        } else if (convertedValue && convertedValue.pos !== allImages[indexArray[0]].pos) {
+          // bei geänderter Position: normalisierten Wert anzeigen
+          input.value = convertedValue.pos;
+        } else {
+          // don't change value and focus the altitude field
+          const nextInput = document.getElementById('altitudeInput');
+          if (nextInput) { nextInput.focus(); }
+          return;
         }
+
+        // leeren String statt null an updateAllImagesGPS übergeben, wenn Feld bewusst geleert wurde
+        const valueForUpdate = (rawValue === '' && convertedValue === null) ? '' : convertedValue;
 
         // schreibe die Daten in allImages und setze den Status entsprechend
-        allImages = updateAllImagesGPS(allImages, index, convertedValue);
-        // update the status of the image in the UI. We only reach this line if convertedValue is not null either for a single or for multiple images.
-        // And we won't reach it if the input.value is empty
+        allImages = updateAllImagesGPS(allImages, index, valueForUpdate);
+
         updateImageStatus('meta-status', 'gps-manually-changed');
-        // update the thumbnail
-        // set the thumbnail status for these images
-        let indexArray = index.split(',').map(t => parseInt(t.replace(' ', '')));
-        indexArray.forEach(index => { 
-            triggerUpdateThumbnailStatus(index, allImages[index].status);
+
+        // update the thumbnail status for these images 
+        indexArray.forEach(i => {
+          triggerUpdateThumbnailStatus(i, allImages[i].status);
         });
 
-
-        // focus the altitude input and set the cursor to the end of the value
-        const nextInput = document.getElementById("altitudeInput");
-        if (nextInput) {
-          nextInput.focus();
-          // note: for number input it is not possible to set the cursor position
-        }
-
+        // Fokus zur Höhe
+        const nextInput = document.getElementById('altitudeInput');
+        if (nextInput) { nextInput.focus(); }
       } 
       // für type="number" also Altitude und Bildrichtung -----------------------
       else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
@@ -941,6 +952,10 @@ function metaGPSEventListener() {
           allImages[index].status = 'gps-manually-changed';
         });
         updateImageStatus('meta-status', 'gps-manually-changed');
+        // update the thumbnail. set the thumbnail status for these images
+        indexArray.forEach(index => { 
+            triggerUpdateThumbnailStatus(index, allImages[index].status);
+        });
 
         // focus the altitude input and set the cursor to the end of the value
         if (input.id === "altitudeInput") {
