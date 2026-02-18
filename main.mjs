@@ -7,6 +7,8 @@ import Backend from 'i18next-fs-backend';
 import { exiftool } from 'exiftool-vendored';
 import sanitizeHtml from 'sanitize-html';
 
+import { parseExifDateTime } from './js/ExifHandler.js';
+
 // sharp availabability check
 let sharpAvailable = false;
 let sharp;
@@ -996,61 +998,4 @@ function sortImagesByCaptureTime(imagesData) {
 
     return dateA - dateB;
   });
-}
-
-/**
- * Safely parses EXIF-style DateTime strings (e.g. "YYYY:MM:DD HH:MM:SS")
- * into a JavaScript Date object.
- *
- * Returns null if the value cannot be parsed into a valid date.
- *
- * @param {string} rawValue
- * @returns {Date|null}
- */
-function parseExifDateTime(rawValue) {
-  if (!rawValue || typeof rawValue !== 'string') {
-    return null;
-  }
-
-  // Typical EXIF format: "YYYY:MM:DD HH:MM:SS"
-  // Some variants may omit the time part.
-  const dateTimeParts = rawValue.trim().split(' ');
-  const datePart = dateTimeParts[0];
-  const timePart = dateTimeParts[1] || '00:00:00';
-
-  const dateSegments = datePart.split(':');
-  if (dateSegments.length < 3) {
-    return null;
-  }
-
-  const [yearStr, monthStr, dayStr] = dateSegments;
-  const [hourStr = '0', minuteStr = '0', secondStr = '0'] = timePart.split(':');
-
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  const hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr, 10);
-  const second = parseInt(secondStr, 10);
-
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute) ||
-    !Number.isFinite(second)
-  ) {
-    return null;
-  }
-
-  // JavaScript Date months are 0-based.
-  const date = new Date(year, month - 1, day, hour, minute, second);
-
-  // Guard against invalid dates (e.g. month 13, day 32, etc.).
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date;
 }

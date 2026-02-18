@@ -4,6 +4,8 @@
  * @requires Date (which is available without import)
  */
 
+import { isNumber } from './generalHelpers.js';
+
 function exifDateToJSLocaleDate(dt) {
 
   // Achtung: Monat ist in JS 0-basiert!
@@ -33,6 +35,15 @@ function exifDateTimeToJSTime(dt) {
   return dateObj.toLocaleTimeString() + ' ' + dt.zoneName;
 }
 
+/**
+ * Calculates the mean and standard deviation of a set of timestamps.
+ * Also returns the date if the max deviation is less than 24h.
+ * @param {Array} imagesSubset - Array of image objects with a DateTimeOriginal property.
+ * @returns {Object} - Object with mean, maxDev, and date properties.
+ * @property {string} mean - Mean of the timestamps in ISO format.
+ * @property {string} maxDev - Maximum deviation in seconds.
+ * @property {string|null} date - Date of the mean if max deviation is less than 24h, otherwise null.
+ */
 function calcTimeMeanAndStdDev(imagesSubset) {
     const toUnixTimestamp = (dateObjOrStr) => {
         if (typeof dateObjOrStr === 'string') {
@@ -132,7 +143,6 @@ function parseTimeDiffToSeconds(timeDiffStr) {
   return sign * (hh * 3600 + mm * 60 + ss);
 }
 
-
 /**
  * Wandelt einen allgemeinen Zeitwert in ein JavaScript-Date-Objekt um.
  * Unterstützt Date-Instanzen und Zeitangaben als String, gibt bei ungültigen Eingaben null zurück.
@@ -152,13 +162,61 @@ function parseTime(input) {
   }
 }
 
-// Source - https://stackoverflow.com/a/20169362
-// Posted by peter.petrov, modified by community. See post 'Timeline' for change history
-// Retrieved 2026-02-15, License - CC BY-SA 4.0
-const isNumber = function isNumber(value) 
-{
-   return typeof value === 'number' && isFinite(value);
+/**
+ * Safely parses EXIF-style DateTime strings (e.g. "YYYY:MM:DD HH:MM:SS")
+ * into a JavaScript Date object.
+ *
+ * Returns null if the value cannot be parsed into a valid date.
+ *
+ * @param {string} rawValue
+ * @returns {Date|null}
+ */
+function parseExifDateTime(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return null;
+  }
+
+  // Typical EXIF format: "YYYY:MM:DD HH:MM:SS"
+  // Some variants may omit the time part.
+  const dateTimeParts = rawValue.trim().split(' ');
+  const datePart = dateTimeParts[0];
+  const timePart = dateTimeParts[1] || '00:00:00';
+
+  const dateSegments = datePart.split(':');
+  if (dateSegments.length < 3) {
+    return null;
+  }
+
+  const [yearStr, monthStr, dayStr] = dateSegments;
+  const [hourStr = '0', minuteStr = '0', secondStr = '0'] = timePart.split(':');
+
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const second = parseInt(secondStr, 10);
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+
+  // JavaScript Date months are 0-based.
+  const date = new Date(year, month - 1, day, hour, minute, second);
+
+  // Guard against invalid dates (e.g. month 13, day 32, etc.).
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 }
 
-
-export { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds};
+export { parseExifDateTime, exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds};

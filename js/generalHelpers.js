@@ -105,4 +105,12 @@ function isObjEmpty (obj) {
   return Object.values(obj).length === 0 && obj.constructor === Object;
 }
 
-export { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty };
+// Source - https://stackoverflow.com/a/20169362
+// Posted by peter.petrov, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-02-15, License - CC BY-SA 4.0
+const isNumber = function isNumber(value) 
+{
+   return typeof value === 'number' && isFinite(value);
+}
+
+export { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber };
