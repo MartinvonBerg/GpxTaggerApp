@@ -31,15 +31,12 @@ you to:
 This tool is not a professional application. There are other tools that
 serve the same purpose:
 
--   PhotoLocator - https://github.com/meesoft/PhotoLocator - OSS,
-    Windows only (currently my favorite)
+-   PhotoLocator - https://github.com/meesoft/PhotoLocator - OSS, Windows only (currently my favorite)
 -   darktable - https://www.darktable.org/ - OSS
--   GeoTagNinja - https://github.com/nemethviktor/GeoTagNinja - OSS,
-    Windows only
--   Lightroom - still the best, but due to the outrageous pricing policy
-    no longer usable for me.
--   There are many other tools for Linux, macOS, and Windows that
-    personally did not appeal to me, but that is a matter of taste.
+-   GeoTagNinja - https://github.com/nemethviktor/GeoTagNinja - OSS, Windows only
+-   ExifToolGui - https://github.com/FrankBijnen/ExifToolGui - OSS, Great Tool!!! Makes this one here quite useless.
+-   Lightroom - still the best, but due to the outrageous pricing policy no longer usable for me.
+-   There are many other tools for Linux, macOS, and Windows that personally did not appeal to me, but that is a matter of taste.
 
 This app was developed with heavy use of various AI tools: Sourcery,
 chatGPT, MS Copilot, Windsurf, GitLens, and occasionally good old Google
