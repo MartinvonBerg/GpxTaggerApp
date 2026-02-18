@@ -47,7 +47,7 @@
         }  
       };  
     
-      const mouseUpHandler = () => {  
+      const mouseUpHandler = () => {  // TODO : doubled code! search for this line
         isResizing = false;  
         document.body.style.cursor = 'default';  
         document.removeEventListener('mousemove', mouseMoveHandler);  

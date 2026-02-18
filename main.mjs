@@ -657,6 +657,7 @@ async function writeMetaData(allmagesData, sender=null) {
 
       // progressObject has the structure: { currentIndex: number, totalImages: number, result: string, imagePath: string}
       try {
+        // TODO: remove this doubled code
         const result = await writeMetadataOneImage(img.imagePath, img);
         if (sender) sender.send('save-meta-progress', {
           currentIndex,
@@ -729,6 +730,7 @@ async function writeMetadataOneImage(filePath, metadata) {
     
     // Comment missing why using the exiftool directly here. Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
     const execResult = await new Promise((resolve) => {
+      // TODO : doubled to 'execDouble'
       exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
         if (error) {
           console.error(`ExifTool-Error: ${stderr || error.message}`);
@@ -822,7 +824,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     }
     command += ` "${imagePath}"`;
     console.log("ExifTool Command:", command);
-
+    // TODO : doubled to 'execDouble'
     exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
       if (error) {
         console.error(`ExifTool-Error: ${stderr || error.message}`);

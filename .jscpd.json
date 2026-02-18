@@ -1,0 +1,37 @@
+{
+  "path": ["."],
+  "pattern": "**/*.{mjs,js}",
+  "format": ["javascript"],
+  "formatsExts": {
+    "javascript": ["js", "mjs", "cjs", "jsx"]
+  },
+
+  "minTokens": 10,
+  "minLines": 5,
+  "maxLines": 1000,
+  "maxSize": "100kb",
+
+  "threshold": 1,
+  "reporters": ["html", "console"],
+
+  "ignore": [
+    "**/js/fullscreen/**",
+    "**/js/leaflet-ui/**",
+    "**/js/leafletChartJs/**",
+    "**/js/libs/Control**",
+    "**/js/libs/extended-ui**",
+    "**/js/libs/leaflet-gesture-handling**",
+    "**/js/libs/leaflet.markercluster**",
+    "**/*.min.js",
+    "**/*.map",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/app/**",
+    "**/tests/**",
+    "**/scripts/**",
+    "**/archive/**",
+    "**/webpack**",
+    "**/report/**"
+  ]
+}

@@ -8,7 +8,7 @@ import { isNumber } from './generalHelpers.js';
 
 function exifDateToJSLocaleDate(dt) {
 
-  // Achtung: Monat ist in JS 0-basiert!
+  // Achtung: Monat ist in JS 0-basiert! Doubled with the following function.
   const dateObj = new Date(
     dt.year,
     dt.month - 1,
