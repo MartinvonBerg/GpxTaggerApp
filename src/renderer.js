@@ -770,7 +770,7 @@ function handleTimePicker(HTMLElementID, timeDiffDefaultValue) {
  * @param {number} index - the index of the image in the allImages array
  * @param {array} selectedIndexes - the indexes of the images that are selected
  * @global {object} document, allImages
- * @global {function} getIdenticalValuesForKeysInImages, exifDateToJSLocaleDate, exifDateTimeToJSTime, convertGps, initAutocomplete, i18next
+ * @global {function} getIdenticalValuesForKeysInImages, exifDateToJSLocaleDate, exifDateTimeToJSTime, convertGps, i18next
  * 
  * @returns void
  */
@@ -838,10 +838,6 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <div id="write-meta-status">Nothing written yet!</div>
       </div>
     </div>`;
-
-    //import (/* webpackChunkName: "awesomplete" */ 'awesomplete').then( () => {
-    //  initAutocomplete();
-    //});
 };
 
 /** UPDATES UI IMAGE: Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
@@ -900,13 +896,20 @@ function metaTextEventListener() {
   });
 }
 
-/** UPDATES UI IMAGE: Listens for Enter key press in text input fields for GPS coordinates and altitude in right sidebar.
+/** UPDATES UI IMAGE: Listens for Enter key press in text input fields for GPS coordinates, altitude and direction in right sidebar.
  * 
  * On Enter key press, the input value is sanitized and validated.
- * If the index is valid and the sanitized value is not empty, the value is saved in allImages.
+ * If the index is valid and the sanitized value is valid including empty, the value is saved in allImages.
  * Additionally, the status of the image is set to 'gps-manually-changed'.
- * @global {object} allImages
- * @returns {void} void in case of index out of range of allImages.
+ * 
+ * @global {object} allImages is in window
+ * @global {object} rightBarFormDef is in window
+ * @global {object} updateImageStatus (func which might be in closure)
+ * @global {object} updateAllImagesGPS (func which might be in closure)
+ * @global {object} rightFocusNext (func which might be in closure)
+ * @global {object} triggerUpdateThumbnailStatus (func which might be in closure)
+ * 
+ * @returns {void} void in all cases.
  */
 function metaGPSEventListener() {
   
@@ -982,7 +985,6 @@ function metaGPSEventListener() {
         e.preventDefault();
         
         const rawValue = input.value;
-        //const convertedValue = input.className.includes('meta-altitd') ? validateAltitude(rawValue) : validateDirection(rawValue); // DIFF TODO replace by switch. DIFF. NUll for Pos, False for alt and Direction.
         const convertedValue = rightBarFormDef[input.id].converter(rawValue);
         const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
         const indexArray = index
@@ -1052,14 +1054,14 @@ function metaGPSEventListener() {
 
 function rightFocusNext(input) {
   if ( input.nextInput !== 'none') {
-          const nextInput = document.getElementById(input.nextInput);
-          if (nextInput) {
-            nextInput.focus(); // note: for number input it is not possible to set the cursor position
-          }
-          if ( input.type === 'text' ) {
-            nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-          }
-        }
+    const nextInput = document.getElementById(input.nextInput);
+    if (nextInput) {
+      nextInput.focus(); // note: for number input it is not possible to set the cursor position
+    }
+    if ( input.type === 'text' ) {
+      nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+    }
+  }
 }
 
 function updateImageStatus(htmlID, status) {
@@ -1071,10 +1073,18 @@ function updateImageStatus(htmlID, status) {
  * get and validate all input fields for the metadata of the current image(s)
  * 
  * @global {object} allImages
+ * @global {object} convertGps
+ * @global {object} updateAllImagesGPS
+ * @global {object} validateAltitude
+ * @global {object} validateDirection
+ * @global {object} sanitizeInput
+ * @global {object} triggerUpdateThumbnailStatus
+ * @global {object} updateImageStatus
  * @returns {void} void in case of index out of range of allImages.
  */
 function handleSaveButton() {
-  // Hole den Button mit der Klasse 'meta-button meta-accept'  
+  // Hole den Button mit der Klasse 'meta-button meta-accept'
+  // TODO : reload data after save like on the left side.
   const button = document.querySelector('.meta-button.meta-accept');
   if (!button) return;
     
