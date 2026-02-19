@@ -32,6 +32,10 @@ function copyRecursive(src, dest) {
     fs.copyFileSync(src, dest);
   }
 }
+// TODO
+// Kopiere auch die libvips..dll aus diesem Ordner C:\Users\safet\Projekte-Software\electron-panes\node_modules\@img\sharp-win32-x64\lib
+// nach
+// C:\Users\safet\Projekte-Software\electron-panes\dist\GpxTaggerApp-win32-x64\resources\app.asar.unpacked\node_modules\@img\sharp-win32-x64\lib
 
 (function main() {
   const root = path.join(__dirname, '..');
@@ -43,7 +47,7 @@ function copyRecursive(src, dest) {
   const destModuleDir = path.join(
     root,
     'dist',
-    'GpxTaggerApp-win32-x64', // TODO das stimmt nur für Windows!
+    'GpxTaggerApp-win32-x64', // TODO: nur für Windows-Builds
     'resources',
     'app.asar.unpacked',
     'node_modules',
@@ -65,5 +69,42 @@ function copyRecursive(src, dest) {
     console.log('[finalize-app] Ordner exiftool-vendored.exe erfolgreich kopiert nach:', destModuleDir);
   } catch (err) {
     console.error('[finalize-app] Fehler beim Kopieren des Ordners exiftool-vendored.exe:', err);
+  }
+
+  // --- libvips für sharp kopieren -----------------------------------------
+  const sharpSrcLibDir = path.join(
+    root,
+    'node_modules',
+    '@img',
+    'sharp-win32-x64',
+    'lib'
+  );
+
+  const sharpDestLibDir = path.join(
+    root,
+    'dist',
+    'GpxTaggerApp-win32-x64', // TODO: nur für Windows-Builds
+    'resources',
+    'app.asar.unpacked',
+    'node_modules',
+    '@img',
+    'sharp-win32-x64',
+    'lib'
+  );
+
+  if (!fs.existsSync(sharpSrcLibDir) || !fs.statSync(sharpSrcLibDir).isDirectory()) {
+    console.warn(
+      '[finalize-app] Sharp lib-Ordner wurde nicht gefunden oder ist kein Verzeichnis:',
+      sharpSrcLibDir,
+      '\nBitte prüfen, ob sharp korrekt installiert ist (inkl. @img/sharp-win32-x64).'
+    );
+    return;
+  }
+
+  try {
+    copyRecursive(sharpSrcLibDir, sharpDestLibDir);
+    console.log('[finalize-app] Ordner @img/sharp-win32-x64/lib erfolgreich kopiert nach:', sharpDestLibDir);
+  } catch (err) {
+    console.error('[finalize-app] Fehler beim Kopieren von @img/sharp-win32-x64/lib:', err);
   }
 })();
