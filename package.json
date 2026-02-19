@@ -1,5 +1,5 @@
 {
-  "name": "gpx-tagger-app",
+  "name": "gpx-tagger",
   "version": "1.3.0",
   "description": "An Electron application to add GPX metadata to image files",
   "main": "build/main.bundle.cjs",

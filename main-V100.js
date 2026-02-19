@@ -1,70 +1,61 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
-import path from 'path';
-import fs from 'fs';
-import { exec } from 'child_process';
-import i18next from 'i18next';
-import Backend from 'i18next-fs-backend';
-import { exiftool } from 'exiftool-vendored';
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');  
+const path = require('path');
+const fs = require('fs');
+const i18next = require('i18next');
+const Backend = require('i18next-fs-backend');
+const { exiftool } = require("exiftool-vendored");
+const { exec } = require('child_process');
+const sanitizeHtml = require('sanitize-html');
 
-import { sortImagesByCaptureTime } from './js/imageHelper.js';
-import { sanitize } from './js/generalHelpers.js';
-import { loadSettings, saveSettings } from './js/settingsHelper.js';
+// sharp availabability check
+let sharpAvailable = false;
+let sharp;
+try {
+  sharp = require('sharp');
+  sharpAvailable = true;
+} catch (err) {
+  console.warn('Sharp not available, skipping thumbnail rotation');
+}
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
 if (!isDev) {
   const logFilePath = path.join(app.getPath('userData'), 'geotagger.log');
-  let logStream;
+  const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
-  try {
-    logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
-  } catch (err) {
+  // handle stream errors once
+  logStream.on('error', (err) => {
+    // Optional: minimal stderr-Fallback ohne die Console-Methoden zu verwenden.
     try {
-      process.stderr.write(
-        `[LOG-INIT ERROR] ${new Date().toISOString()} Failed to create log file at "${logFilePath}": ${String(err)}\n`
-      );
-    } catch {}
-    logStream = null;
-  }
-  
-  if (logStream) {
-    
-    // Minimal: direkten Override testen
-    const origLog = console.log;
-    console.log = (...args) => {
-      try {
-        logStream.write('[LOG] ' + args.join(' ') + '\n');
-      } catch (e) {
-        try {
-          process.stderr.write(
-            `[LOG-WRITE ERROR] ${new Date().toISOString()} ${String(e)}\n`
-          );
-        } catch {}
-        try { origLog(...args); } catch {}
-      }
-    };
+      process.stderr.write(`[LOG-STREAM ERROR] ${new Date().toISOString()} ${String(err)}\n`);
+    } catch { /* schlucken, um Rekursion zu vermeiden */ }
+  });
 
-    app.on('will-quit', () => {
-      try { logStream.end(); } catch {}
-    });
-  }
+  // helper: safe stringify of any argument
+  const safe = (a) => {
+    if (typeof a === 'string') return a;
+    try { return JSON.stringify(a); }
+    catch { return String(a); }
+  };
+
+  ['log', 'warn', 'error'].forEach((method) => {
+    console[method] = (...args) => {
+      const line = args.map(safe).join(' ');
+      logStream.write(`[${method.toUpperCase()}] ${new Date().toISOString()} ${line}\n`);
+    };
+  });
+
+  app.on('will-quit', () => {
+    try { logStream.end(); } catch {}
+  });
 }
 
 let systemLanguage = 'en';
 let win; // Variable für das Hauptfenster
 let settings = {}; // Variable zum Speichern der Einstellungen
 let extensions = ['jpg', 'webp', 'avif', 'heic', 'tiff', 'dng', 'nef', 'cr3']; // supported image extensions as default
-let exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work! (only for development!)
-if (app.isPackaged) {
-  exiftoolPath = path.join(
-    process.resourcesPath,
-    'app.asar.unpacked',
-    'node_modules',
-    'exiftool-vendored.exe',
-    'bin',
-    process.platform === 'win32' ? 'exiftool.exe' : 'exiftool'
-  );
-}
+let exiftoolPath = 'exiftool'; // system exiftool must be in PATH for this to work!
+if (app.isPackaged) exiftoolPath = path.join(app.getAppPath(), 'resources', 'app', 'node_modules', 'exiftool-vendored.exe', 'bin', 'exiftool');
 let exiftoolAvailable = false;
 
 // Basisverzeichnis der App
@@ -77,33 +68,19 @@ try {
   if (fs.existsSync(settingsFilePath)) {
     settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
     if (settings.extensions && Array.isArray(settings.extensions)) extensions = settings.extensions;
-    console.log('Settings loaded from:', settingsFilePath);
   }
 } catch (err) {
   console.error('Failed to load settings:', err);
-}
-
-// sharp availabability check
-let sharpAvailable = false;
-let sharp;
-try {
-  sharp = (await import('sharp')).default;
-  sharpAvailable = true;
-} catch (err) {
-  // das logging funktioniert hier nicht
-  console.log('[WARN] Sharp not available, skipping thumbnail rotation: ', err);
 }
 
 /** Hauptstart */
 app.whenReady().then(async () => {
 
   try {
-
     exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
-    console.log(`Exiftool available: ${exiftoolAvailable} from path: ${exiftoolPath}`); 
+    console.log(`Exiftool available: ${exiftoolAvailable}`); 
   } catch (err) {
     console.error('Failed to check exiftool availability:', err);
-    console.error(`Using exiftool path: ${exiftoolPath}`);
   }
   
   // i18next initialisieren
@@ -297,19 +274,18 @@ function setupMenu(t) {
  * @returns {void}
  */
 function createWindow() {  
-  settings = loadSettings(appRoot, settingsFilePath);
+  settings = loadSettings(settingsFilePath);
   settings.iconPath = appRoot;
   
   win = new BrowserWindow({  
     width: settings.width || 800,  
     height: settings.height || 600,  
     webPreferences: {  
-      preload: path.join(appRoot, './build/preload.bundle.js'), 
+      preload: path.join(appRoot, './src/preload.js'),  
       nodeIntegration: false,  
       contextIsolation: true,
       webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
-      //sandbox: true,
-      //enableRemoteModule: false
+        // CORS, Content-Security-Policy, Same-Origin-Policy. Verhindert aber nicht den Zugriff auf lokale Ressourcen, wie z.B. lokale Dateien
     }  
   });  
   
@@ -448,9 +424,7 @@ function createWindow() {
   });
 }
 
-// ---- helper functions for the main process ----
-// Mind: The following functions can only be called from the main process and so
-// can't be move to a separate file(s). This is due to restrictions of electron, node.js runtime calls or whatever.
+/* ---- helper functions for the main process ---- */
 /**
  * Sends a message to the renderer process with the given channel and arguments.
  * If the renderer is not available (e.g., it has been closed or has not been created yet),
@@ -466,6 +440,42 @@ function sendToRenderer(channel, ...args) {
   } else {
     console.warn('Renderer not available:', channel);
   }
+}
+
+/**
+ * Loads user settings from a JSON file.
+ * If the file does not exist or cannot be parsed, returns an empty object.
+ * 
+ * @param {string} settingsFilePath 
+ * @global {string} appRoot
+ * @global {object} JSON
+ * @returns 
+ */
+function loadSettings(settingsFilePath) {
+  // check if file exists in settingsFilePath. 
+  // If not copy the default settings file from the project folder to the user folder
+  if (!fs.existsSync(settingsFilePath)) {
+    fs.copyFileSync(path.join(appRoot, 'settings', 'user-settings.json'), settingsFilePath);
+  }
+
+  try {  
+    return JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));  
+  } catch (error) {  
+    return {};  
+  }  
+}
+
+/**
+ * saves user settings to a JSON file.
+ * 
+ * @param {string} settingsFilePath 
+ * @param {object} settings 
+ * @global {object} fs
+ * @global {object} JSON
+ */
+function saveSettings(settingsFilePath, settings) {
+  //console.log('Saving settings to', settingsFilePath);
+  fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
 }
 
 /**
@@ -545,7 +555,7 @@ async function readImagesFromFolder(folderPath, extensions) {
             const maxAgeDays = 14;
             
             if (metadata.ThumbnailImage && metadata.ThumbnailImage.rawValue) {
-              const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`); // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
+              const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`);
               let useExistingThumbnail = false;
 
               // check if thumbnail exists and is not older than maxAgeDays. Delete if older and re-extract or keep existing
@@ -609,20 +619,17 @@ async function readImagesFromFolder(folderPath, extensions) {
                 thumbnail: thumbnailPath, // base64 encoded thumbnail or file path
                 status: (metadata.GPSLatitude && metadata.GPSLongitude) ? 'loaded-with-GPS' : 'loaded-no-GPS', // simple status field
                 
-                // ---- TITLE ----
                 Title : metadata.Title || '', // will be used in frontend for entry
-                XPTitle: metadata.XPTitle || '', // TODO : What about Object Name?
-                // not used: IPTC:ObjectName
-
-                // ---- DESCRIPTION ---- with MWG:Description these entries shall be identical!
-                ImageDescription: metadata.ImageDescription || '', // EXIF: ImageDescription
-                CaptionAbstract: metadata.CaptionAbstract || '', // IPTC: Caption-Abstract
-                Description : metadata.Description || '', // will be used in frontend for entry // XMP-dc: Description
+                CaptionAbstract: metadata.CaptionAbstract || '',
+                Description : metadata.Description || '', // will be used in frontend for entry
+                ImageDescription: metadata.ImageDescription || '',
+                XPTitle: metadata.XPTitle || '',
 
                 //XPKeywords : metadata.XPKeywords || '',
                 //keywords: metadata.Keywords || [],
-                //XPSubject : metadata.XPSubject || '',
-                //XPComment : metadata.XPComment || '',
+
+                XPSubject : metadata.XPSubject || '',
+                XPComment : metadata.XPComment || '',
             };
         };
   
@@ -630,7 +637,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         start = performance.now();
         const imagesData = await Promise.all(  
             imageFiles.map(async file => {  
-                const filePath = path.join(folderPath, file);  // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
+                const filePath = path.join(folderPath, file);  
                 return await getExifData(filePath);
             })  
         );  
@@ -677,7 +684,6 @@ async function writeMetaData(allmagesData, sender=null) {
 
       // progressObject has the structure: { currentIndex: number, totalImages: number, result: string, imagePath: string}
       try {
-        // TODO: remove this doubled code
         const result = await writeMetadataOneImage(img.imagePath, img);
         if (sender) sender.send('save-meta-progress', {
           currentIndex,
@@ -748,10 +754,9 @@ async function writeMetadataOneImage(filePath, metadata) {
     console.log("ExifTool Command:", command);
 
     
-    // Comment missing why using the exiftool directly here. Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
+    // Warten auf exec, aber nur im Fehlerfall abbrechen mit return resolve....
     const execResult = await new Promise((resolve) => {
-      // TODO : doubled to 'execDouble'
-      exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
+      exec(command, (error, stdout, stderr) => {
         if (error) {
           console.error(`ExifTool-Error: ${stderr || error.message}`);
           return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
@@ -770,17 +775,16 @@ async function writeMetadataOneImage(filePath, metadata) {
   const title = sanitize(metadata.Title);
   if (title !== undefined && title !== null) {
     writeData["XMP-dc:Title"] = title;
-    writeData["XPTitle"] = title; // This is not MWG standard! But Windows Special!
     writeData["IPTC:ObjectName"] = title;
-    writeData["IPTCDigest"] = ""; // update IPTC digest
+    writeData["EXIF:ImageDescription"] = title;
+    writeData["XPTitle"] = title;
   }
 
   // --- DESCRIPTION ---
   const desc = sanitize(metadata.Description);
   if (desc !== undefined && desc !== null) {
-    writeData["MWG:Description"] = desc;
-    writeData["IPTC:Caption-Abstract"] = desc; // must be written after "MWG:Description"! 
-    writeData["IPTCDigest"] = ""; // update IPTC digest
+    writeData["XMP-dc:Description"] = desc;
+    writeData["IPTC:Caption-Abstract"] = desc;
   }
 
   if (Object.keys(writeData).length > 0) {
@@ -844,8 +848,8 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     }
     command += ` "${imagePath}"`;
     console.log("ExifTool Command:", command);
-    // TODO : doubled to 'execDouble'
-    exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
+
+    exec(command, (error, stdout, stderr) => {
       if (error) {
         console.error(`ExifTool-Error: ${stderr || error.message}`);
         return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
@@ -855,18 +859,6 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   });
 }
 
-/**
- * Reload all image data from the given folder.
- * This function sends an IPC message to the renderer to start loading data.
- * Then it reads all images from the given folder and sends the data to the renderer.
- * If an error occurs, it sends an IPC message with the error message to the renderer.
- * @param {object} settings - The settings object containing the image path.
- * @returns {Promise<boolean>} - A promise that resolves with true if the data was reloaded successfully, false otherwise.
- * @global {function} sendToRenderer
- * @global {function} readImagesFromFolder
- * @global {array} extensions
- * 
- */
 async function reloadImageData(settings) {
   // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
   sendToRenderer('image-loading-started', settings.imagePath);
@@ -881,6 +873,7 @@ async function reloadImageData(settings) {
       return false;
     }
 }
+// ------------ helpers for the helpers ------------
 
 /**
  * Rotate a thumbnail according to the EXIF orientation value.
@@ -903,7 +896,7 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   
   // Mit sharp korrigieren
   let image = sharp(thumbPathTmp);
-  const rotatedThumbPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb_rotated.jpg`);  // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
+  const rotatedThumbPath = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb_rotated.jpg`);
 
   switch (orientation) {
     case 3:
@@ -939,6 +932,21 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   return thumbPathTmp;
 }
 
+const sanitize = (value) => {  
+
+  function sanitizeInput(input) {  
+    return sanitizeHtml(input, {  
+      allowedTags: [],  // does not allow any tags!  
+      allowedAttributes: {}  
+    });  
+  }
+
+  if (typeof value !== "string") return undefined;  
+  let v = value.trim();  
+  v = sanitizeInput(v);  
+  return v;  
+};
+
 /** 
  * check if the system exiftool is available in PATH. (not using exiftool-vendored here).
  * @param {string} exiftoolPath
@@ -946,7 +954,7 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
  */
 async function checkExiftoolAvailable(exiftoolPath) {
   return new Promise((resolve) => {
-    exec(`${exiftoolPath} -ver`, { shell: true }, (err) => { // Security: Command injection from function argument passed to child_process invocation
+    exec(`${exiftoolPath} -ver`, { shell: true }, (err) => {
       if (err) {
         resolve(false);
       } else {
@@ -954,4 +962,91 @@ async function checkExiftoolAvailable(exiftoolPath) {
       }
     });
   });
+}
+
+/**  
+ * Sorts the image data by capture time.  
+ *   
+ * @param {Object[]} imagesData - Array of image metadata objects.  
+ */  
+function sortImagesByCaptureTime(imagesData) { 
+  imagesData.sort((a, b) => {
+    const dateA = a.DateTimeOriginal && a.DateTimeOriginal.rawValue
+      ? parseExifDateTime(a.DateTimeOriginal.rawValue)
+      : null;
+    const dateB = b.DateTimeOriginal && b.DateTimeOriginal.rawValue
+      ? parseExifDateTime(b.DateTimeOriginal.rawValue)
+      : null;
+
+    if (!dateA) {
+      console.warn('Missing or invalid DateTimeOriginal for:', a.imagePath, a.DateTimeOriginal);
+    }
+    if (!dateB) {
+      console.warn('Missing or invalid DateTimeOriginal for:', b.imagePath, b.DateTimeOriginal);
+    }
+
+    // Sort images without a date to the end
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    return dateA - dateB;
+  });
+}
+
+/**
+ * Safely parses EXIF-style DateTime strings (e.g. "YYYY:MM:DD HH:MM:SS")
+ * into a JavaScript Date object.
+ *
+ * Returns null if the value cannot be parsed into a valid date.
+ *
+ * @param {string} rawValue
+ * @returns {Date|null}
+ */
+function parseExifDateTime(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return null;
+  }
+
+  // Typical EXIF format: "YYYY:MM:DD HH:MM:SS"
+  // Some variants may omit the time part.
+  const dateTimeParts = rawValue.trim().split(' ');
+  const datePart = dateTimeParts[0];
+  const timePart = dateTimeParts[1] || '00:00:00';
+
+  const dateSegments = datePart.split(':');
+  if (dateSegments.length < 3) {
+    return null;
+  }
+
+  const [yearStr, monthStr, dayStr] = dateSegments;
+  const [hourStr = '0', minuteStr = '0', secondStr = '0'] = timePart.split(':');
+
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const second = parseInt(secondStr, 10);
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+
+  // JavaScript Date months are 0-based.
+  const date = new Date(year, month - 1, day, hour, minute, second);
+
+  // Guard against invalid dates (e.g. month 13, day 32, etc.).
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 }
