@@ -145,8 +145,9 @@ function convertGps(input) {
  * @param {string|number} inputValue - The value to be validated.
  * @returns {boolean} True if the value is a valid altitude, false otherwise.
  * @example
- * validateDirection(10.5) // returns true
- * validateDirection(-361) // returns false
+ * validateAltitude(1056) // returns true
+ * validateAltitude(-1001) // returns false
+ * validateAltitude(9000) // returns false
  */
 function validateAltitude(inputValue) {  
   const inputAsNumber = parseFloat(inputValue)

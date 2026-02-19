@@ -36,6 +36,56 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
   window.trackInfo = trackInfo;
   window.thumbnailBarHTMLID = 'thumbnail-bar';
   
+  window.rightBarFormDef = {  
+    "gpsInput": {
+      "type": "text",
+      "label": "GPS-Pos (Lat / Lon):",
+      "classList" : "meta-input meta-gps meta-pos",
+      "multiValue": "multiple",
+      "id": "gpsInput",
+      "converter": convertGps,
+      "nextInput": "altitudeInput",
+      "allImageValue": "pos"
+    },
+    "altitudeInput": {
+      "type": "number",
+      "label" : "Altitude",
+      "classList" : "meta-input meta-altitude",
+      "multiValue": "-8888",
+      "id": "altitudeInput",
+      "converter": validateAltitude,
+      "nextInput": "directionInput",
+      "allImageValue": "GPSAltitude"
+    },
+    "directionInput": {
+      "type": "number",
+      "label" : "Direction",
+      "classList" : "meta-input meta-direction",
+      "multiValue": "-8888",
+      "id": "directionInput",
+      "converter": validateDirection,
+      "nextInput": "titleInput",
+      "allImageValue": "GPSImgDirection"
+    },
+    "titleInput": {
+      "type": "text",
+      "label" : "Title",
+      "classList" : "meta-input meta-title",
+      "multiValue": "multiple",
+      "id": "titleInput",
+      "nextInput": "descriptionInput",
+      "allImageValue": "Title"
+    },
+    "descriptionInput": {
+      "type": "text",
+      "label" : "Description",
+      "classList" : "meta-input meta-description",
+      "multiValue": "multiple",
+      "id": "descriptionInput",
+      "allImageValue": "Description",
+      "nextInput": "none"
+    }
+  }  
 
   document.addEventListener('DOMContentLoaded', () => {  
     setupResizablePane(document.getElementById('left-resizer'), 'left');  
@@ -311,7 +361,6 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     window.myAPI.send('update-map-settings', settings);
   });
 
-
 }
 
 // ----------- LEFT SIDEBAR -----------
@@ -520,6 +569,8 @@ function mapPosMarkerEventListener(mapId, thumbsClass) {
         // get the index of the active thumbs which is ['thumb2', 'thumb3', 'thumb4'] or ['thumb2']
         let indexArray = activeThumbs.map(t => parseInt(t.replace('thumb', '')));
         let index = indexArray.join(',');
+        // return if the indexArray is empty. This is probably due to not removed event listeners
+        if (indexArray.length === 0) { return; }
         
         // change the value in the HTML input field and for the active images only if the CTRL key is pressed
         if (event.detail.ctrlKeyPressed) {
@@ -774,11 +825,11 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       </form>  
       <hr>
       <div class="meta-section meta-text" data-index="${img.index}">
-        <label>${i18next.t('title')}:</label>
-        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
+        <label>${i18next.t('Title')}:</label>
+        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äßÄÖÜäöü .,:;!?()_+-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
         
-        <label>${i18next.t('description')}:</label>
-        <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äöüÄÖÜß\s.,;:'\"!?@#$%^&*()_+={}\[\]\\-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
+        <label>${i18next.t('Description')}:</label>
+        <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äßÄÖÜäöü .,:;!?()_+-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
       </div>
       <hr>
       <div class="meta-section">
@@ -895,10 +946,11 @@ function metaGPSEventListener() {
           return;
         }
 
+        const oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
         // leeres Feld → Koordinaten löschen (convertedValue bleibt leerer String)
         if (rawValue === '' && convertedValue === null) {
           // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
-        } else if (convertedValue && convertedValue.pos !== allImages[indexArray[0]].pos) {
+        } else if (convertedValue && convertedValue.pos !== oldValue) {
           // bei geänderter Position: normalisierten Wert anzeigen
           input.value = convertedValue.pos;
         } else {
@@ -926,56 +978,88 @@ function metaGPSEventListener() {
         if (nextInput) { nextInput.focus(); }
       } 
       // für type="number" also Altitude und Bildrichtung -----------------------
-      else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-coordinates
+      else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-altitude and direction
         e.preventDefault();
         
-        const convertedValue = input.className.includes('meta-altitd') ? validateAltitude(input.value) : validateDirection(input.value);
-        let index = input.dataset.index;
-        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+        const rawValue = input.value;
+        //const convertedValue = input.className.includes('meta-altitd') ? validateAltitude(rawValue) : validateDirection(rawValue); // DIFF TODO replace by switch. DIFF. NUll for Pos, False for alt and Direction.
+        const convertedValue = rightBarFormDef[input.id].converter(rawValue);
+        const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
+        const indexArray = index
+          .split(',')
+          .map(v => v.trim())
+          .map(Number);
 
-        if ( (!isValidIndex || !convertedValue) && input.value !== '' ) {
-          // go back to the browser input and show an error message
+        const isValidIndex =
+          indexArray.length > 0 &&
+          indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+
+        const multVal = rightBarFormDef[input.id].multiValue;
+        // ungültiger Index oder ungültiger Werte (aber keine mehrfachauswahl / "-8888")
+        if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes(multVal)) { // DIFF for convertedValue
           input.value = '';
           input.focus();
           input.select();
-          // TODO how to show a hint for the user here?
+          updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
         }
 
-        // schreibe die Daten in allImages für alle indexes
-        let indices = index;
-        const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));  
-  
-        indexArray.forEach(index => {
-          input.className.includes('meta-altitd') ? allImages[index].GPSAltitude = input.value : void 0;
-          input.className.includes('meta-imgdir') ? allImages[index].GPSImgDirection = input.value : void 0;
-          allImages[index].status = 'gps-manually-changed';
-        });
+        // explizit mehrfachauswahl / "-8888" → nichts übernehmen
+        if (rawValue.includes(multVal)) {
+          input.value = multVal;
+          input.focus();
+          input.select();
+          updateImageStatus('meta-status', 'wrong input: not accepted');
+          return;
+        }
+
+        let oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
+        if ( rightBarFormDef[input.id].type === 'number' ) {
+          oldValue = oldValue.toString();
+        }
+        // leeres Feld → Wert löschen (rawValue bleibt false)
+        if (rawValue === '' && convertedValue === false) { // DIFF
+          // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
+        } else if (rawValue !== oldValue ) { // DIFF
+          // bei geändertem Wert: normalisierten Wert anzeigen
+          input.value = rawValue; // DIFF
+        } else {
+          // don't change value and focus the next field
+          // focus the next input
+          rightFocusNext(rightBarFormDef[input.id]);
+          return;
+        }
+
+        // leeren String statt null an updateAllImagesGPS übergeben, wenn Feld bewusst geleert wurde
+        const valueForUpdate = (rawValue === '' && convertedValue === false) ? '' : rawValue; // DIFF
+
+        // schreibe die Daten in allImages und setze den Status entsprechend
+        allImages = updateAllImagesGPS(allImages, index, valueForUpdate);
+
         updateImageStatus('meta-status', 'gps-manually-changed');
-        // update the thumbnail. set the thumbnail status for these images
-        indexArray.forEach(index => { 
-            triggerUpdateThumbnailStatus(index, allImages[index].status);
+
+        // update the thumbnail status for these images 
+        indexArray.forEach(i => {
+          triggerUpdateThumbnailStatus(i, allImages[i].status);
         });
 
-        // focus the altitude input and set the cursor to the end of the value
-        if (input.id === "altitudeInput") {
-          const nextInput = document.getElementById("directionInput");
-          if (nextInput) {
-            nextInput.focus();
-            // note: for number input it is not possible to set the cursor position
-          }
-        } else if (input.id === "directionInput") {
-          const nextInput = document.getElementById("titleInput");
-          if (nextInput) {
-            nextInput.focus();
-            // set the cursor to the end of the title input
-            nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-          }
-        }
-  
+        // focus the next input
+        rightFocusNext(rightBarFormDef[input.id]);
       }
     });
   });
+}
+
+function rightFocusNext(input) {
+  if ( input.nextInput !== 'none') {
+          const nextInput = document.getElementById(input.nextInput);
+          if (nextInput) {
+            nextInput.focus(); // note: for number input it is not possible to set the cursor position
+          }
+          if ( input.type === 'text' ) {
+            nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+          }
+        }
 }
 
 function updateImageStatus(htmlID, status) {
