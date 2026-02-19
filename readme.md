@@ -479,6 +479,9 @@ For example for:
     removed because the UI structure remains stable.
 
 ## Changelog
+
+V1.3.0 : Update and standardize Right Sidebar Input, Bug Fixes in main.js, Improve Security (and do some simple XSS pentests)
+
 V1.2.0 : Refactor complete code to ESM and add / change projects defs to reduce Distribution size (shrinked from 922 MB to 422 MB unpacked)
 
 V1.1.0 : Update exiftool-vendored to 35.9.0, Fix Tag writing for Title and Description to be compliant with MWG. Add security notes from Review in Code.
