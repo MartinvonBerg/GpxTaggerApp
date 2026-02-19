@@ -288,8 +288,9 @@ function createWindow() {
       preload: path.join(appRoot, './build/preload.bundle.js'), 
       nodeIntegration: false,  
       contextIsolation: true,
-      webSecurity: true // aktiviert Standard-Sicherheitsrichtlinien: 
-        // CORS, Content-Security-Policy, Same-Origin-Policy. Verhindert aber nicht den Zugriff auf lokale Ressourcen, wie z.B. lokale Dateien
+      webSecurity: true, // aktiviert Standard-Sicherheitsrichtlinien: 
+      sandbox: true,
+      enableRemoteModule: false
     }  
   });  
   

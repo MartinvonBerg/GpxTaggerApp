@@ -15,7 +15,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: show a minimap on the map???
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
-// TODO: Das Löschen von Titel und Beschreibung ist derzeit nicht möglich (TODO), bzw. nur mit '' oder '_'.
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
 let settings = {};
@@ -73,15 +72,17 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       "classList" : "meta-input meta-title",
       "multiValue": "multiple",
       "id": "titleInput",
-      "nextInput": "descriptionInput",
+      "converter": sanitizeInput,
+      "nextInput": "descInput",
       "allImageValue": "Title"
     },
-    "descriptionInput": {
+    "descInput": {
       "type": "text",
       "label" : "Description",
       "classList" : "meta-input meta-description",
       "multiValue": "multiple",
-      "id": "descriptionInput",
+      "id": "descInput",
+      "converter": sanitizeInput,
       "allImageValue": "Description",
       "nextInput": "none"
     }
@@ -826,10 +827,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       <hr>
       <div class="meta-section meta-text" data-index="${img.index}">
         <label>${i18next.t('Title')}:</label>
-        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" pattern="^[a-zA-Z0-9äßÄÖÜäöü .,:;!?()_+-]+$" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
+        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
         
         <label>${i18next.t('Description')}:</label>
-        <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" pattern="^[a-zA-Z0-9äßÄÖÜäöü .,:;!?()_+-]+$" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
+        <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
       </div>
       <hr>
       <div class="meta-section">
@@ -856,41 +857,66 @@ function metaTextEventListener() {
       if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
         e.preventDefault();
 
-        const sanitizedValue = sanitizeInput(input.value);
-        let index = input.dataset.index;
-        let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+        const rawValue = input.value;
+        const convertedValue = rightBarFormDef[input.id].converter(rawValue);
+        const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
+        const indexArray = index
+          .split(',')
+          .map(v => v.trim())
+          .map(Number);
 
-        if ( !isValidIndex || !sanitizedValue ) { 
+        const isValidIndex =
+          indexArray.length > 0 &&
+          indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+
+          const multVal = rightBarFormDef[input.id].multiValue;
+        // ungültiger Index oder ungültige Koordinaten (aber kein leerer Wert / "multiple")
+        if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes(multVal)) {
+          input.value = '';
+          input.focus();
+          input.select();
+          updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
         }
 
-        // get the other value in 'meta-text' to save in case user has forgotten to press enter after change
-        let indices = index;
-        const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+        // explizit "multiple" eingegeben → nichts übernehmen
+        if (rawValue.includes(multVal)) {
+          input.value = multVal;
+          input.focus();
+          input.select();
+          updateImageStatus('meta-status', 'wrong input: not accepted');
+          return;
+        }
 
-        indexArray.forEach(index => {
-          if (input.tagName === "INPUT") { // prüfen, ob bei enter in input field auch noch die description aktualisiert werden soll
-            let otherValue = document.querySelector(".meta-description").value
-            if (allImages[index].Description !== otherValue) {
-              allImages[index].Description = otherValue;
-            }
-            // focus the textarea and set the cursor to the end of the text
-            document.querySelector(".meta-description").focus();
-            document.querySelector(".meta-description").setSelectionRange(document.querySelector(".meta-description").value.length, document.querySelector(".meta-description").value.length);
-          } else { // prüfen, ob bei enter in textarea field auch noch der text aktualisiert werden soll
-            let otherValue = document.querySelector(".meta-title").value
-            if (allImages[index].Title !== otherValue) {
-              allImages[index].Title = otherValue;
-            }
-          }
-          
-          // schreibe die Daten in allImages
-          input.tagName === "INPUT" ? allImages[index].Title = sanitizedValue : void 0;
-          input.tagName === "TEXTAREA" ? allImages[index].Description = sanitizedValue : void 0;
-          allImages[index].status = 'meta-manually-changed';
-          updateImageStatus('meta-status', 'meta-manually-changed');
-          triggerUpdateThumbnailStatus(index, 'meta-manually-changed'); // coords unchanged here.
+        const oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
+        // leeres Feld → Koordinaten löschen (convertedValue bleibt leerer String)
+        if (rawValue === '' && convertedValue === null) {
+          // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
+        } else if (convertedValue !== oldValue) { // DIFF
+          // bei geänderter Position: normalisierten Wert anzeigen
+          input.value = convertedValue;
+        } else {
+          // don't change value and focus the altitude field
+          // focus the next input
+          rightFocusNext(rightBarFormDef[input.id]);
+          return;
+        }
+
+        // leeren String statt null an updateAllImagesGPS übergeben, wenn Feld bewusst geleert wurde
+        const valueForUpdate = (rawValue === '' && convertedValue === null) ? '' : convertedValue; // DIFF
+
+        // schreibe die Daten in allImages und setze den Status entsprechend
+        allImages = updateAllImagesGPS(allImages, index, valueForUpdate);
+
+        updateImageStatus('meta-status', 'meta-manually-changed');
+
+        // update the thumbnail status for these images 
+        indexArray.forEach(i => {
+          triggerUpdateThumbnailStatus(i, allImages[i].status);
         });
+
+        // focus the next input
+        rightFocusNext(rightBarFormDef[input.id]);
       }
     });
   });
@@ -920,7 +946,7 @@ function metaGPSEventListener() {
         e.preventDefault();
         
         const rawValue = input.value;
-        const convertedValue = convertGps(rawValue);
+        const convertedValue = rightBarFormDef[input.id].converter(rawValue);
         const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
         const indexArray = index
           .split(',')
@@ -931,8 +957,9 @@ function metaGPSEventListener() {
           indexArray.length > 0 &&
           indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
 
+          const multVal = rightBarFormDef[input.id].multiValue;
         // ungültiger Index oder ungültige Koordinaten (aber kein leerer Wert / "multiple")
-        if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes('multiple')) {
+        if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes(multVal)) {
           input.value = '';
           input.focus();
           input.select();
@@ -941,8 +968,8 @@ function metaGPSEventListener() {
         }
 
         // explizit "multiple" eingegeben → nichts übernehmen
-        if (rawValue.includes('multiple')) {
-          input.value = 'multiple';
+        if (rawValue.includes(multVal)) {
+          input.value = multVal;
           input.focus();
           input.select();
           updateImageStatus('meta-status', 'wrong input: not accepted');
@@ -951,20 +978,20 @@ function metaGPSEventListener() {
 
         const oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
         // leeres Feld → Koordinaten löschen (convertedValue bleibt leerer String)
-        if (rawValue === '' && convertedValue === null) {
+        if (rawValue === '' && rawValue !== oldValue && convertedValue === null) {
           // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
-        } else if (convertedValue && convertedValue.pos !== oldValue) {
+        } else if (convertedValue && convertedValue.pos !== oldValue) { // DIFF
           // bei geänderter Position: normalisierten Wert anzeigen
           input.value = convertedValue.pos;
         } else {
           // don't change value and focus the altitude field
-          const nextInput = document.getElementById('altitudeInput');
-          if (nextInput) { nextInput.focus(); }
+          // focus the next input
+          rightFocusNext(rightBarFormDef[input.id]);
           return;
         }
 
         // leeren String statt null an updateAllImagesGPS übergeben, wenn Feld bewusst geleert wurde
-        const valueForUpdate = (rawValue === '' && convertedValue === null) ? '' : convertedValue;
+        const valueForUpdate = (rawValue === '' && convertedValue === null) ? '' : convertedValue; // DIFF
 
         // schreibe die Daten in allImages und setze den Status entsprechend
         allImages = updateAllImagesGPS(allImages, index, valueForUpdate);
@@ -976,9 +1003,8 @@ function metaGPSEventListener() {
           triggerUpdateThumbnailStatus(i, allImages[i].status);
         });
 
-        // Fokus zur Höhe
-        const nextInput = document.getElementById('altitudeInput');
-        if (nextInput) { nextInput.focus(); }
+        // focus the next input
+        rightFocusNext(rightBarFormDef[input.id]);
       } 
       // für type="number" also Altitude und Bildrichtung -----------------------
       else if (input.tagName === "INPUT" && input.type==="number" && e.key === "Enter") { // this is for type="number" so GPS-altitude and direction
@@ -1020,7 +1046,7 @@ function metaGPSEventListener() {
           oldValue = oldValue.toString();
         }
         // leeres Feld → Wert löschen (rawValue bleibt false)
-        if (rawValue === '' && convertedValue === false) { // DIFF
+        if (rawValue === '' && rawValue !== oldValue && convertedValue === false) { // DIFF
           // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
         } else if (rawValue !== oldValue ) { // DIFF
           // bei geändertem Wert: normalisierten Wert anzeigen
@@ -1058,9 +1084,9 @@ function rightFocusNext(input) {
     if (nextInput) {
       nextInput.focus(); // note: for number input it is not possible to set the cursor position
     }
-    if ( input.type === 'text' ) {
-      nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-    }
+    //if ( input.type === 'text' ) {
+    //  nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+    //}
   }
 }
 
@@ -1084,7 +1110,6 @@ function updateImageStatus(htmlID, status) {
  */
 function handleSaveButton() {
   // Hole den Button mit der Klasse 'meta-button meta-accept'
-  // TODO : reload data after save like on the left side.
   const button = document.querySelector('.meta-button.meta-accept');
   if (!button) return;
     
@@ -1258,6 +1283,7 @@ function handleSaveButton() {
       });
 
       updateImageStatus('meta-status', newStatusAfterSave);
+      window.myAPI.send('main-reload-data', settings);
     }
   }); 
 }
