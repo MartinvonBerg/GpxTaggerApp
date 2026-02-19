@@ -480,7 +480,7 @@ For example for:
 
 ## Changelog
 
-V1.3.0 : Update and standardize Right Sidebar Input, Bug Fixes in main.js, Improve Security (and do some simple XSS pentests)
+V1.3.0 : Update and standardize Right Sidebar Input, Bug Fixes in main.js, Improve Security (and do some simple XSS pentests). Fix logging in Distri, checking sharp non-availability (still not solved)
 
 V1.2.0 : Refactor complete code to ESM and add / change projects defs to reduce Distribution size (shrinked from 922 MB to 422 MB unpacked)
 
