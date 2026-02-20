@@ -480,6 +480,8 @@ For example for:
 
 ## Changelog
 
+V1.4.0 : Bug-Fix in Left Sidebar and its Handling, Clean-up Build Config and process, Add Config to debug main.mjs.
+
 V1.3.0 : Update and standardize Right Sidebar Input, Bug Fixes in main.js. Fix logging in Distri, checking sharp non-availability (still not solved)
 
 V1.2.0 : Refactor complete code to ESM and add / change projects defs to reduce Distribution size (shrinked from 922 MB to 422 MB unpacked)
