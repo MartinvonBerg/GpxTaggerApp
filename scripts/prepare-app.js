@@ -1,9 +1,18 @@
 // scripts/prepare-app.js
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const root = __dirname + '/..';
 const appDir = path.join(root, 'app');
+
+// get target platform and stop this script and npm if not build for windows
+const platform = os.platform();
+
+if ( !platform.includes('win')) {
+  console.log('This script is only for Windows.');
+  process.exit(0);
+}
 
 function copyRecursive(src, dest) {
   if (!fs.existsSync(src)) return;
@@ -28,9 +37,7 @@ fs.mkdirSync(appDir);
 const filesToCopy = [
   'main.mjs',
   'index.html',
-  'package.json',   // optional: ggf. abgespeckte package.json für Runtime
-  'LICENSE',
-  'README.md'
+  'package.json'   // optional: ggf. abgespeckte package.json für Runtime
 ];
 
 const dirsToCopy = [
@@ -54,7 +61,6 @@ for (const dir of dirsToCopy) {
   copyRecursive(path.join(root, dir), path.join(appDir, dir));
 }
 
-console.log('Prepared minimal app directory at', appDir);
 
 // package.json im app-Verzeichnis anpassen: main und dependencies für Runtime setzen
 const appPkgPath = path.join(appDir, 'package.json');

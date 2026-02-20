@@ -17,7 +17,7 @@ const commonRules = [
     exclude: /node_modules/,
   },
   {
-    test: /\.js$/,
+    test: /\.m?js$/,
     exclude: /node_modules/,
     use: {
       loader: 'babel-loader',
@@ -38,6 +38,9 @@ const rendererConfig = {
   //externals: {
   //  sharp: 'commonjs sharp',
   //},
+  resolve: {
+    extensions: ['.js', '.mjs'],
+  },
   module: {
     rules: commonRules,
   },
@@ -56,6 +59,9 @@ const preloadConfig = {
   externals: {
     // nicht in das Bundle packen, sondern zur Laufzeit von Electron bereitstellen
     electron: 'commonjs2 electron',
+  },
+  resolve: {
+    extensions: ['.js', '.mjs'],
   },
   module: {
     rules: commonRules,

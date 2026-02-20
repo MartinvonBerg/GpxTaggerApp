@@ -1,8 +1,8 @@
-// webpack.main.cjs
+// webpack.main.cjs to bundle main.mjs
 const path = require('path');
 
 module.exports = {
-  mode: 'production',
+  //mode: 'production',
   target: 'electron-main',
   entry: {
     main: './main.mjs',
