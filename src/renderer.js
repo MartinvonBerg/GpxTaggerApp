@@ -419,10 +419,16 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate, settings
 
   // Date-Filter (Checkbox)
   const dateFilterChecked = settings.ignoreGPXDate === 'true' ? 'checked' : '';
+  let translatedLabel = '';
+  if ( settings.gpxPath !== '' ) { 
+    translatedLabel = i18next.t('filterByGPXDate');
+  } else {
+    translatedLabel = i18next.t('filterByNoTrack');
+  }
   const dateFilter = `
     <label>
       <input type="checkbox" id="date-filter" ${dateFilterChecked}> 
-      ${i18next.t('filterByGPXDate')} (${minDate} - ${maxDate})
+      ${translatedLabel} (${minDate} - ${maxDate})
     </label>
   `; // TODO: disable the checkbox if no GPX file is loaded? Or just leave as is?
 

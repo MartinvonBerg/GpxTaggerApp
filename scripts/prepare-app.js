@@ -35,7 +35,6 @@ fs.mkdirSync(appDir);
 
 // Dateien/Ordner kopieren, die zur Laufzeit benötigt werden
 const filesToCopy = [
-  'main.mjs',
   'index.html',
   'package.json'   // optional: ggf. abgespeckte package.json für Runtime
 ];
@@ -44,7 +43,6 @@ const dirsToCopy = [
   'build',
   'locales',
   'settings',
-  'src',
   'style',
   'images'
 ];

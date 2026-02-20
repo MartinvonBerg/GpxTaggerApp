@@ -36,6 +36,7 @@
   "second": "s",
   "imageFilters" : "Bilder-Filter",
   "filterByGPXDate": "GPX-Track-Datum verwenden. Bilder sind von bis: ",
+  "filterByNoTrack" : "Kein GPX-Track geladen. Bilder sind von bis: ",
   "skipImagesWithGPS": "Bilder mit GPS-Daten überspringen",
   "imageType": "Bildtypen",
   "cameraModel": "Kameramodelle",

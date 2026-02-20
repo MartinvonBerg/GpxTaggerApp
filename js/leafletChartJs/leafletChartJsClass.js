@@ -84,8 +84,13 @@ class LeafletChartJs extends LeafletMap {
       if ( this.preload ) {
         let track_x = `track_${trackNumber}`;  // where x is 0, 1, 2, etc.
         let path = this.pageVariables.tracks[track_x].url;
-        let newFile = await fetch(path).then(response => response.text());
-        this.pageVariables.tracks[track_x].url = newFile;
+        try {
+          let newFile = await fetch(path).then(response => response.text());
+          this.pageVariables.tracks[track_x].url = newFile;
+        } catch (error) {
+          console.log('Error in LeafletChartJs: ' + error);
+          this.pageVariables.tracks[track_x].url = '';
+        }
       }
 
       return new gpxTrackClass(number, this, this.pageVariables.tracks, trackNumber, this.trackColours[trackNumber]);
