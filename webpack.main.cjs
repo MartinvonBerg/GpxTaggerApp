@@ -8,6 +8,7 @@ module.exports = {
     main: './main.mjs',
   },
   output: {
+    clean: true,
     filename: 'main.bundle.cjs',
     path: path.resolve(__dirname, 'build'),
   },
