@@ -1,6 +1,8 @@
 node_modules*
 dist*
 transfer/*
+archive*
+manuals*
 *.log
 build*
 anleitung.txt
