@@ -619,10 +619,8 @@ async function readImagesFromFolder(folderPath, extensions) {
                 CaptionAbstract: metadata.CaptionAbstract || '', // IPTC: Caption-Abstract
                 Description : metadata.Description || '', // will be used in frontend for entry // XMP-dc: Description
 
-                //XPKeywords : metadata.XPKeywords || '',
-                //keywords: metadata.Keywords || [],
-                //XPSubject : metadata.XPSubject || '',
-                //XPComment : metadata.XPComment || '',
+                // ---- TAGS ----
+                keywords: metadata.Keywords || [], // andere Felder enthalten die Keywords nicht.
             };
         };
   
@@ -782,6 +780,17 @@ async function writeMetadataOneImage(filePath, metadata) {
     writeData["IPTC:Caption-Abstract"] = desc; // must be written after "MWG:Description"! 
     writeData["IPTCDigest"] = ""; // update IPTC digest
   }
+
+  // --- KEYWORDS = TAGS ---
+  let tags = sanitize(metadata.Keywords);
+  tags = tags.split(',');
+  tags = [...new Set(
+    tags.map(v => v.trim()).filter(v => v.length > 0)
+  )]
+  if (tags !== undefined && tags !== null) {
+    writeData["MWG:Keywords"] = tags; // writes to "XMP-dc:Subject" and IPTC:Keywords but not IPTC:hierarchical Subject (written by LR). "XMP-dc:Subject" and IPTC:Keywords contain a flat List only.
+    writeData["XMP-lr:HierarchicalSubject"] = []; // remove the old "XMP-lr:HierarchicalSubject" which was written by LR unless the App implements an hierarchical list as well.
+  } 
 
   if (Object.keys(writeData).length > 0) {
     await exiftool.write(filePath, writeData);

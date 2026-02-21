@@ -80,5 +80,6 @@
   "trackLogRunButton": "Start Tracklog",
   "trackLogAbortButton": "Abort",
   "trackLogRunExiftoolHeader": "Run Exiftool for filtered Images and with Time-Diff",
-  "GeoTagComplete" : "Geotagging completed"
+  "GeoTagComplete" : "Geotagging completed",
+  "Tags": "Tags"
 }

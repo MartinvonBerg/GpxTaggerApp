@@ -18,6 +18,9 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: change from electron-packager to electron-builder (Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
+// TODO: TB decided : Add geo information form nominatim as hierarchical geo information?
+// TODO: TB decided : What to do with hierarchical tags?
+// TODO: TB decided : Use phototag.ai for tagging, title, description?
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -85,7 +88,17 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       "id": "descInput",
       "converter": sanitizeInput,
       "allImageValue": "Description",
-      "nextInput": "none"
+      "nextInput": "tagsInput"
+    },
+    "tagsInput": {
+      "type": "text",
+      "label" : "Tags",
+      "classList" : "meta-input meta-tags",
+      "multiValue": "multiple",
+      "id": "tagsInput",
+      "converter": sanitizeInput,
+      "allImageValue": "keywords",
+      "nextInput": "meta-accept-button"
     }
   }  
 
@@ -430,7 +443,7 @@ function showImageFilters(includedExts, cameraModels, minDate, maxDate, settings
       <input type="checkbox" id="date-filter" ${dateFilterChecked}> 
       ${translatedLabel} (${minDate} - ${maxDate})
     </label>
-  `; // TODO: disable the checkbox if no GPX file is loaded? Or just leave as is?
+  `;
 
   // GPS-Filter (Checkbox)
   const gpsFilterChecked = settings.skipImagesWithGPS === 'true' ? 'checked' : '';
@@ -802,6 +815,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
   let testPos = convertGps(img.pos);
   if (testPos) img.pos = testPos.pos;
+
+  // convert img.keywords to comma separated list
+  let keywords = '';
+  if (img.keywords) keywords = img.keywords.join(', ');
   
   // show some metadata of the image in the right sidebar like it is done in LR 6.14
   el.innerHTML = `
@@ -838,11 +855,14 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         
         <label>${i18next.t('Description')}:</label>
         <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
+
+        <label>${i18next.t('Tags')}:</label>
+        <textarea id="tagsInput" class="meta-input meta-tags" maxlength="256" data-index="${img.index}" title="Define Tags separated by comma" rows="3">${keywords || ''}</textarea>
       </div>
       <hr>
       <div class="meta-section">
         <!-- show a button to accept, validate and save the metadata in the right sidebar -->
-        <button type="button" class="meta-button meta-accept" data-index="${img.index}">${i18next.t('accept')}</button>
+        <button id="meta-accept-button" type="button" class="meta-button meta-accept" data-index="${img.index}">${i18next.t('accept')}</button>
         <div id="write-meta-status">Nothing written yet!</div>
       </div>
     </div>`;
@@ -858,7 +878,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
  * @returns {void} void in case of index out of range of allImages.
  */
 function metaTextEventListener() {
-  document.querySelectorAll(".meta-title, .meta-description").forEach(input => {
+  document.querySelectorAll(".meta-title, .meta-description, .meta-tags").forEach(input => {
     input.addEventListener("keydown", e => {
       // Nur bei Input-Feld, nicht bei Textarea Enter abfangen
       if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
@@ -1222,6 +1242,22 @@ function handleSaveButton() {
     input = document.querySelector('.meta-description');
     sanitizedValue = sanitizeInput(input.value);
     key = 'Description';
+
+    if (sanitizedValue && input.value !== 'multiple') {
+      input.value = sanitizedValue;
+      indexArray.forEach(index => { imagesToSave[index][key] = sanitizedValue; });
+    }
+    if ( input.value === '') {
+      indexArray.forEach(index => { imagesToSave[index][key] = ''; });
+    }
+    if ( input.value === 'multiple') {
+      indexArray.forEach(index => { imagesToSave[index][key] = null; });
+    }
+
+    // --------------- KEYWORDS -----------------------------
+    input = document.querySelector('.meta-tags');
+    sanitizedValue = sanitizeInput(input.value);
+    key = 'Keywords';
 
     if (sanitizedValue && input.value !== 'multiple') {
       input.value = sanitizedValue;
