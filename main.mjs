@@ -94,16 +94,25 @@ try {
   console.log('[WARN] Sharp not available, skipping thumbnail rotation: ', err);
 }
 
+// AI Tagging with Ollama: check availability at startup
+let ollamaAvailable = { status: false, model: '' };
+
 /** Hauptstart */
 app.whenReady().then(async () => {
 
   try {
-
     exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
     console.log(`Exiftool available: ${exiftoolAvailable} from path: ${exiftoolPath}`); 
   } catch (err) {
     console.error('Failed to check exiftool availability:', err);
     console.error(`Using exiftool path: ${exiftoolPath}`);
+  }
+
+  try {
+    ollamaAvailable = await checkOllamaAvailable();
+    console.log(`Ollama available: ${ollamaAvailable}`);
+  } catch (err) {
+    console.error('Failed to check Ollama availability:', err);
   }
   
   // i18next initialisieren
@@ -446,6 +455,45 @@ function createWindow() {
   ipcMain.on('main-reload-data', (event, settings) => {
     reloadImageData(settings);
   });
+
+  ipcMain.handle('ai-tagging-status', async (event) => {
+    return { ollamaAvailable };
+  });
+
+  ipcMain.handle('ai-tagging-start', async (event, data) => {
+    const { imagePath, captureDate, coords, location } = data;
+    
+    if (!fs.existsSync(imagePath)) {
+      dialog.showErrorBox(i18next.t('ImageFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
+      return { success: false, error: i18next.t('ImageFileNotFound') };
+    }
+    let geoLocationInfo = '';
+    if ( coords && location === 'unknown') {
+      // do reverse geocoding with Nominatim API to get the location name from the coordinates and pass it to the AI model as well. This can improve the AI tagging results, especially for location-based tags.
+      // and write the result to the metadata as well, so that it can be used in the frontend and also for future reference. Security: Validate and sanitize the coordinates before using them in the API request to prevent injection attacks. Also, consider rate limits and error handling for the API requests.
+      geoLocationInfo = 'No Location yet known for: ' + coords; // TODO : replace this with the actual location name from the reverse geocoding result.
+    } else {
+      geoLocationInfo = location;
+    }
+
+    if (ollamaAvailable.status) {
+      await new Promise(r => setTimeout(r, 1000));
+      return { 
+        'success': true,
+        'imagePath': imagePath, 
+        'location': geoLocationInfo,
+        'Title': 'AI Tagging Result', 
+        'Description': 'AI tagging completed successfully.',
+        'Keywords': "Tag1, Tag2, Tag3" // this is just a placeholder, replace it with the actual tags returned by the AI model
+       }; // TODO : implement the actual AI tagging with Ollama, e.g. by running a command like "ollama run model --prompt 'tag this image with the following metadata: captureDate, coords, location and any other relevant info' --image-path imagePath" and parsing the output to get the tags. Security: Command injection from function arguments passed to child_process invocation. Validate and sanitize all inputs, and consider using a library or API for interacting with Ollama instead of direct command execution.
+      
+       //return await geotagImageExiftool(imagePath, captureDate, coords, location);
+    } else {
+      dialog.showErrorBox(i18next.t('NoAITool'), i18next.t('AIToolNotFound') );
+      console.error('AI-Tool (Ollama) is not available.');
+      return { success: false, error: i18next.t('AIToolNotAvailable') };
+    }
+  });
 }
 
 // ---- helper functions for the main process ----
@@ -620,7 +668,11 @@ async function readImagesFromFolder(folderPath, extensions) {
                 Description : metadata.Description || '', // will be used in frontend for entry // XMP-dc: Description
 
                 // ---- TAGS ----
-                keywords: metadata.Keywords || [], // andere Felder enthalten die Keywords nicht.
+                Keywords: metadata.Keywords || [], // andere Felder enthalten die Keywords nicht.
+
+                // ---- GeoLocationInfo ----
+                // TODO : get the geo location info from exif, xmp whatever
+                Geolocation: metadata.GeoLocationInfo || 'unknown' // this is a placeholder, replace it with the actual location info from the metadata
             };
         };
   
@@ -963,4 +1015,11 @@ async function checkExiftoolAvailable(exiftoolPath) {
       }
     });
   });
+}
+
+async function checkOllamaAvailable() {
+  let model = 'gemma3:12b'; // TODO : make this configurable in the settings and pass it as an argument to the function. Security: Validate and sanitize the model name to prevent command injection.
+  // get with http://localhost:11434/api/tags
+  let available = true;
+  return {'status': available, 'model': model}; // TODO : implement check for ollama availability, e.g. by running "ollama version" command and checking the output or error. Security: Command injection from function argument passed to child_process invocation
 }

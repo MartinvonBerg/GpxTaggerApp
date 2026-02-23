@@ -149,3 +149,16 @@ body, html {
   background-color: #e62020; /* Hintergrundfarbe beim Hover-Effekt */  
 }
 
+.meta-get-ai {
+  background-color: #007bff; /* Standardfarbe für KI-Button */
+  color: white; /* Textfarbe */
+  margin-left: 10px; 
+  width: fit-content;
+}
+
+#meta-get-ai-button:disabled {
+  background-color: #cccccc; /* Graue Farbe, wenn deaktiviert */
+  color: #666666; /* Dunkelgraue Textfarbe, wenn deaktiviert */
+  cursor: not-allowed; /* Zeigt an, dass der Button nicht klickbar ist */
+}
+

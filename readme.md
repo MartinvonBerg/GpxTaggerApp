@@ -51,21 +51,17 @@ Up to my knowledge there is no free AND useful Signing for Windows Apps. The sam
 
 1.  Clone the repository or download the source code and unzip to any folder.
 
-2.  Install dependencies in the project folder:
+2.  Install dependencies in the project folder: `npm install`
 
-    ``` bash
-    npm install
-    ```
-
-3.  Start development mode: `bash     npm run all`
+3.  Start development mode: `npm run devrun` (check in package.json for changes and updates of this script command)
 
 4.  Build the application (Build currently only tested for Windows)
 
-    `bash     npm run package` (Windows) --> ./dist\
-    `bash     npm run package:linux` (Linux) --> ./dist-linux\
-    `bash     npm run package:max` (maxOS) --> ./dist-mac\
+    `npm run package` (Windows) --> ./dist\
+    `npm run package:linux` (Linux) --> ./dist-linux\
+    `npm run package:max` (maxOS) --> ./dist-mac\
     
-    Note: The generated dist folder is about 471 MB and the Release ~ 230 MB.
+    Note: The generated dist folder is about 451 MB and the Release ~ 170 MB.
 5. Signing / Certificates\
 Up to my knowledge there is no free AND useful Signing for Windows Apps. The same for macOS and for Linux I don't know. As I couldn't test the signed exe or installer on other Systems I prepared the *.exe for Windows only. The Defender will warn you on unzipping.
 

@@ -18,9 +18,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: change from electron-packager to electron-builder (Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
-// TODO: TB decided : Add geo information form nominatim as hierarchical geo information?
-// TODO: TB decided : What to do with hierarchical tags?
-// TODO: TB decided : Use phototag.ai for tagging, title, description?
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -818,7 +815,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
   // convert img.keywords to comma separated list
   let keywords = '';
-  if (img.keywords) keywords = img.keywords.join(', ');
+  if (img.Keywords) keywords = img.Keywords.join(', ');
   
   // show some metadata of the image in the right sidebar like it is done in LR 6.14
   el.innerHTML = `
@@ -850,6 +847,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
       </form>  
       <hr>
       <div class="meta-section meta-text" data-index="${img.index}">
+        
+        <button id="meta-get-ai-button" type="button" class="meta-button meta-get-ai" data-index="${img.index}">${i18next.t('Gen AI')}</button>
+        <div id ="meta-ai-status">Ollama not checked!</div>
+
         <label>${i18next.t('Title')}:</label>
         <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
         
@@ -866,6 +867,21 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <div id="write-meta-status">Nothing written yet!</div>
       </div>
     </div>`;
+
+  let metaGetAIButton = document.getElementById('meta-get-ai-button');
+  if (metaGetAIButton) {
+    //metaGetAIButton.disabled = true; // disable the button until we know that Ollama is available
+    window.myAPI.invoke('ai-tagging-status').then(status => {
+      if ( !status.ollamaAvailable.status ) {
+        document.getElementById('meta-ai-status').textContent = 'Ollama is not available!'; 
+        metaGetAIButton.disabled = true;
+      } else {
+        document.getElementById('meta-ai-status').textContent = 'Ollama is available! Model: ' + status.ollamaAvailable.model; 
+        metaGetAIButton.disabled = false;
+        genAIButtonListener(metaGetAIButton);
+      } 
+    });
+  };  
 };
 
 /** UPDATES UI IMAGE: Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
@@ -1340,6 +1356,64 @@ function resetRightSidebar() {
   <div id="metadata-button-element" class="rightbar-Section">
   </div>`;
 }
+
+function genAIButtonListener(element) {
+  if (!element) return;
+
+  element.addEventListener('click', async function(event) {
+    const index = event.target.dataset.index;  
+    let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+    if (!isValidIndex) { return; } 
+
+    let indices = index; // just to avoid confusion in the next line
+    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+    //let imagesToSave = indexArray.map(index => allImages[index]);
+    let imagesToSave = structuredClone(allImages); // deep clone of allImages. Filter the indexArray at the end of this function
+
+    for (const index of indexArray) {
+      const image = imagesToSave[index];
+      if (!image) continue;
+
+      const params = {
+        imagePath: image.imagePath,
+        captureDate: image.DateTimeOriginal.rawValue,
+        coords: image.pos ?? null,
+        location: image.Geolocation // placeholder for reverse geocoding result
+      };
+
+      try {
+        setTrackLogState('write-meta-status', `Generating AI metadata for ${image.imagePath}...`);
+        const result = await window.myAPI.invoke('ai-tagging-start', params);
+        
+        // If the IPC call returned a non-success result, throw to reach the catch block
+        if (!result || !result.success) {
+          const errMsg = (result && (result.error || result.message)) || 'ai tagging failed';
+          throw new Error(errMsg);
+        }
+
+        image.Title = result.Title || '';
+        image.Description = result.Description || '';
+        image.Keywords = result.Keywords || [];
+        image.status = 'ai-tagged';
+        image.Geolocation = result.location || null;
+        triggerUpdateThumbnailStatus(image.index, image.status); 
+      } catch (err) {
+        console.log(`Error generating AI metadata for ${image.imagePath}:`, err);
+        image.status = 'ai-tagging-failed';
+        setTrackLogState('write-meta-status', `Error generating AI metadata for ${image.imagePath}: ${err && err.message ? err.message : err}`);
+      }
+    }
+    // save the AI generated metadata to the images and update the UI
+    const selectedImages = indexArray.map(index => imagesToSave[index]);
+    const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
+    console.log('saving AI generated metadata with result:', result);
+    setTrackLogState('write-meta-status', result === 'done' ? 'AI metadata saved to images!' : 'Failed to save AI metadata to images!');
+
+    // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
+    window.myAPI.send('main-reload-data', settings);
+
+  });
+};
 
 // Exporte oder Nutzung im Backend
 export { mainRenderer };
