@@ -3,11 +3,14 @@ import fs from 'fs';
 import path from 'path';
 
 class OllamaClient {
+
     constructor(appRoot, configfile, promptfile) {
         this.configfile = configfile;
         this.promptTemplate = promptfile;
 
-        // build absolute path to config file and prompt template in the users app directory, which is writable and can be used to store user-specific settings and custom prompts. This allows users to modify the config and prompt without changing the packaged app files, which may be read-only. The app directory is determined by the location of this module (__dirname) and the relative path to the config and prompt files within the app's folder structure.
+        // build absolute path to config file and prompt template in the users app directory, 
+        // which is writable and can be used to store user-specific settings and custom prompts. 
+        // This allows users to modify the config and prompt without changing the packaged app files, which may be read-only. 
         const configPath = path.join(app.getPath('userData'), configfile);
         const promptPath = path.join(app.getPath('userData'), promptfile);
 
@@ -57,6 +60,25 @@ class OllamaClient {
         } else {
             console.log('Could not find default ai-settings file from', defaultSettingsPath);
             return false;
+        }
+    }
+
+    loadJsonConfig(filePath) {
+        try {
+            const data = fs.readFileSync(filePath, 'utf-8');
+            return JSON.parse(data);
+        } catch (e) {
+            console.log(`Error loading config file ${filePath}: ${e}`);
+            return null;
+        }
+    }
+
+    loadPrompt(filePath) {
+        try {
+            return fs.readFileSync(filePath, 'utf-8');
+        } catch (e) {
+            console.log(`Error loading prompt file: ${e}`);
+            return null;
         }
     }
 
@@ -125,25 +147,6 @@ class OllamaClient {
         const status = await this.checkOllamaStatus();
         this.ollamaAvailable = status;
         return { available: this.ollamaAvailable, model: this.model };
-    }
-
-    loadJsonConfig(filePath) {
-        try {
-            const data = fs.readFileSync(filePath, 'utf-8');
-            return JSON.parse(data);
-        } catch (e) {
-            console.log(`Error loading config file ${filePath}: ${e}`);
-            return null;
-        }
-    }
-
-    loadPrompt(filePath) {
-        try {
-            return fs.readFileSync(filePath, 'utf-8');
-        } catch (e) {
-            console.log(`Error loading prompt file: ${e}`);
-            return null;
-        }
     }
 
     async generate(prompt, imagePath) {

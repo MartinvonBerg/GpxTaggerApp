@@ -32,7 +32,6 @@ function copyRecursive(src, dest) {
     fs.copyFileSync(src, dest);
   }
 }
-// TODO
 // Kopiere auch die libvips..dll aus diesem Ordner C:\Users\safet\Projekte-Software\electron-panes\node_modules\@img\sharp-win32-x64\lib
 // nach
 // C:\Users\safet\Projekte-Software\electron-panes\dist\GpxTaggerApp-win32-x64\resources\app.asar.unpacked\node_modules\@img\sharp-win32-x64\lib

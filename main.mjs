@@ -1033,12 +1033,9 @@ async function checkExiftoolAvailable(exiftoolPath) {
 }
 
 async function checkOllamaAvailable(configfile, promptfile) {
-  //let model = 'gemma3:12b'; // TODO : make this configurable in the settings and pass it as an argument to the function. Security: Validate and sanitize the model name to prevent command injection.
-  // get with http://localhost:11434/api/tags
-  //let available = true;
-  
+    
   ollamaClient = new OllamaClient(appRoot, configfile, promptfile);
   const status = await ollamaClient.getOllamaClientStatus();
   
-  return {'status': status.available, 'model': status.model}; // TODO : implement check for ollama availability, e.g. by running "ollama version" command and checking the output or error. Security: Command injection from function argument passed to child_process invocation
+  return {'status': status.available, 'model': status.model};
 }

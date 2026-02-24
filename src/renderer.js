@@ -15,7 +15,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: show a minimap on the map???
 // TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
 // TODO: remove the marker icon that is added by click and change the colour of it.
-// TODO: change from electron-packager to electron-builder (Anleitung.txt)
+// TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
 let settings = {};
