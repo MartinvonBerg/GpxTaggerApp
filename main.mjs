@@ -502,7 +502,7 @@ function createWindow() {
         'Title': aiResult.data.Title,
         'Description': aiResult.data.Description,
         'Keywords': aiResult.data.Keywords // Tags must be a comma-separated string for exiftool to write them correctly to the metadata. The AI model should generate the tags in this format as well, so that no further processing is required here. Security: Be cautious when writing AI-generated content to image metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the AI output before writing it to the metadata to prevent potential security issues or injection attacks.
-       }; // TODO : implement the actual AI tagging with Ollama, e.g. by running a command like "ollama run model --prompt 'tag this image with the following metadata: captureDate, coords, location and any other relevant info' --image-path imagePath" and parsing the output to get the tags. Security: Command injection from function arguments passed to child_process invocation. Validate and sanitize all inputs, and consider using a library or API for interacting with Ollama instead of direct command execution.
+       };
       
        //return await geotagImageExiftool(imagePath, captureDate, coords, location);
     } else {
