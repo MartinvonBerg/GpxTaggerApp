@@ -1376,7 +1376,7 @@ function genAIButtonListener(element) {
 
       const params = {
         imagePath: image.imagePath,
-        captureDate: image.DateTimeOriginal.rawValue,
+        captureDate: exifDateToJSLocaleDate(image.DateTimeOriginal) + ' ' + exifDateTimeToJSTime(image.DateTimeOriginal), // includes the Timezone offset, e.g. "2024-01-01 12:00:00"  which should not be a problem for the AI model because it can learn to interpret this format. The capture date is needed for the AI model to understand the context of the image and to generate more accurate metadata. For example, if the image was taken at night, the AI model might generate different keywords than if the image was taken during the day.
         coords: image.pos ?? null,
         location: image.Geolocation // placeholder for reverse geocoding result
       };

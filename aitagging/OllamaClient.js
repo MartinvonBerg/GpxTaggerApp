@@ -149,7 +149,19 @@ class OllamaClient {
         return { available: this.ollamaAvailable, model: this.model };
     }
 
-    async generate(prompt, imagePath) {
+    async generate(imagePath, captureDate, coords, geoLocationInfo) {
+
+    // update the prompt template with the actual values for date and location
+    let prompt = this.prompt;
+    if (captureDate) {
+        prompt = prompt.replace('DATEREPLACE', captureDate);
+    }
+    if (!geoLocationInfo.includes('No Location')) {
+        prompt = prompt.replace('LOCATIONREPLACE', geoLocationInfo);
+    } else { // delete the complete line with the location placeholder if no location info is available.
+        prompt = prompt.replace(/.*LOCATIONREPLACE.*(\r?\n)?/g, '');
+    }
+
     const url = `${this.baseUrl}/api/generate`;
 
     let encodedImage;

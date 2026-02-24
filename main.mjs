@@ -475,13 +475,14 @@ function createWindow() {
     if ( coords && location === 'unknown') {
       // do reverse geocoding with Nominatim API to get the location name from the coordinates and pass it to the AI model as well. This can improve the AI tagging results, especially for location-based tags.
       // and write the result to the metadata as well, so that it can be used in the frontend and also for future reference. Security: Validate and sanitize the coordinates before using them in the API request to prevent injection attacks. Also, consider rate limits and error handling for the API requests.
-      geoLocationInfo = 'No Location yet known for: ' + coords; // TODO : replace this with the actual location name from the reverse geocoding result.
+      geoLocationInfo = 'No Location: ' + coords; // TODO : replace this with the actual location name from the reverse geocoding result.
     } else {
       geoLocationInfo = location;
     }
 
     if (ollamaAvailable.status) {
-      await new Promise(r => setTimeout(r, 100));
+      await ollamaClient.generate(imagePath, captureDate, coords, geoLocationInfo);
+
       return { 
         'success': true,
         'imagePath': imagePath, 

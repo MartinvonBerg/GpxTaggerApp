@@ -6,11 +6,9 @@ Erstelle für das folgende Bild:
 2. Eine sachlich-neutrale Beschreibung (2–3 Sätze, keine Interpretation)
 3. 15 relevante Schlagwörter, kommagetrennt
 
-###START###
 Zusatzinformationen zum Bild:
- - Aufnahmedatum/-uhrzeit : DATE
- - Ort: LOCATION 
-###END###
+ - Aufnahmedatum/-uhrzeit : DATEREPLACE
+ - Ort: LOCATIONREPLACE 
 
 Vorgaben:
 - Sprache: ausschließlich Deutsch (de-DE)
