@@ -10,6 +10,7 @@ import { sortImagesByCaptureTime } from './js/imageHelper.js';
 import { sanitize } from './js/generalHelpers.js';
 import { loadSettings, saveSettings } from './js/settingsHelper.js';
 import { isValidLocation } from './js/ExifHandler.js';
+import { OllamaClient } from './aitagging/OllamaClient.js';
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -97,6 +98,7 @@ try {
 
 // AI Tagging with Ollama: check availability at startup
 let ollamaAvailable = { status: false, model: '' };
+let ollamaClient;
 
 /** Hauptstart */
 app.whenReady().then(async () => {
@@ -110,8 +112,8 @@ app.whenReady().then(async () => {
   }
 
   try {
-    ollamaAvailable = await checkOllamaAvailable();
-    console.log(`Ollama available: ${ollamaAvailable}`);
+    ollamaAvailable = await checkOllamaAvailable('ollama_config.json', 'prompt.txt');
+    //console.log(`Ollama available: ${ollamaAvailable.status} with model: ${ollamaAvailable.model}`);
   } catch (err) {
     console.error('Failed to check Ollama availability:', err);
   }
@@ -341,7 +343,7 @@ function createWindow() {
       
       // Vor dem Aufruf von readImagesFromFolder
       const startTime = Date.now();
-      console.log('Start reading images from folder at then:', new Date(startTime).toLocaleString());
+      console.log('Start reading images from folder at:', new Date(startTime).toLocaleString());
       readImagesFromFolder(settings.imagePath, extensions).then(allImages => {
         sendToRenderer('set-image-path', settings.imagePath, allImages);
         const endTime = Date.now();
@@ -1030,9 +1032,13 @@ async function checkExiftoolAvailable(exiftoolPath) {
   });
 }
 
-async function checkOllamaAvailable() {
-  let model = 'gemma3:12b'; // TODO : make this configurable in the settings and pass it as an argument to the function. Security: Validate and sanitize the model name to prevent command injection.
+async function checkOllamaAvailable(configfile, promptfile) {
+  //let model = 'gemma3:12b'; // TODO : make this configurable in the settings and pass it as an argument to the function. Security: Validate and sanitize the model name to prevent command injection.
   // get with http://localhost:11434/api/tags
-  let available = true;
-  return {'status': available, 'model': model}; // TODO : implement check for ollama availability, e.g. by running "ollama version" command and checking the output or error. Security: Command injection from function argument passed to child_process invocation
+  //let available = true;
+  
+  ollamaClient = new OllamaClient(appRoot, configfile, promptfile);
+  const status = await ollamaClient.getOllamaClientStatus();
+  
+  return {'status': status.available, 'model': status.model}; // TODO : implement check for ollama availability, e.g. by running "ollama version" command and checking the output or error. Security: Command injection from function argument passed to child_process invocation
 }

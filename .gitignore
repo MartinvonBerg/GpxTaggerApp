@@ -13,5 +13,6 @@ Screenshot*
 app*
 *Review*.txt
 *.txt
+!prompt*.txt
 report/*
 stichwörter*

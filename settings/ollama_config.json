@@ -1,0 +1,18 @@
+{
+  "ollama": {
+    "base_url": "http://localhost:11434",
+    "model": "gemma3:12b",
+    "timeout": 120
+  },
+  "generation": {
+    "temperature": 0.1,
+    "top_p": 0.8,
+    "seed": 42,
+    "top_k": 1,
+    "repeat_penalty": 1.0,
+    "stream": false
+  },
+  "output": {
+    "print_raw_response": false
+  }
+}

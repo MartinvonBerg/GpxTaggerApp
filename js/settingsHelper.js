@@ -1,6 +1,7 @@
 // settingsHelper.js
 
 import fs from 'fs';
+import path from 'path';
 
 /**
  * Loads user settings from a JSON file.
@@ -14,8 +15,12 @@ import fs from 'fs';
 export function loadSettings(appRoot, settingsFilePath) {
   // check if file exists in settingsFilePath. 
   // If not copy the default settings file from the project folder to the user folder
-  if (!fs.existsSync(settingsFilePath)) {
-    fs.copyFileSync(path.join(appRoot, 'settings', 'user-settings.json'), settingsFilePath);
+  const defaultSettingsPath = path.join(appRoot, 'settings', 'user-settings.json');
+
+  if (!fs.existsSync(settingsFilePath) && fs.existsSync(defaultSettingsPath)) {
+    fs.copyFileSync( defaultSettingsPath, settingsFilePath);
+  } else if ( !fs.existsSync(defaultSettingsPath)) {
+    console.log('Could not find default settings file from', defaultSettingsPath);
   }
 
   try {  
