@@ -470,6 +470,7 @@ function createWindow() {
       dialog.showErrorBox(i18next.t('ImageFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
       return { success: false, error: i18next.t('ImageFileNotFound') };
     }
+
     let geoLocationInfo = '';
     if ( coords && location === 'unknown') {
       // do reverse geocoding with Nominatim API to get the location name from the coordinates and pass it to the AI model as well. This can improve the AI tagging results, especially for location-based tags.
@@ -480,20 +481,20 @@ function createWindow() {
     }
 
     if (ollamaAvailable.status) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 100));
       return { 
         'success': true,
         'imagePath': imagePath, 
         'location': geoLocationInfo,
-        'Title': 'AI Tagging Result', 
-        'Description': 'AI tagging completed successfully.',
-        'Keywords': "Tag1, Tag2, Tag3" // this is just a placeholder, replace it with the actual tags returned by the AI model
+        'Title': 'AI Tagging Title', 
+        'Description': 'AI Tagging Description',
+        'Keywords': "AI-Tag1, Tag2, Tag3" // this is just a placeholder, replace it with the actual tags returned by the AI model
        }; // TODO : implement the actual AI tagging with Ollama, e.g. by running a command like "ollama run model --prompt 'tag this image with the following metadata: captureDate, coords, location and any other relevant info' --image-path imagePath" and parsing the output to get the tags. Security: Command injection from function arguments passed to child_process invocation. Validate and sanitize all inputs, and consider using a library or API for interacting with Ollama instead of direct command execution.
       
        //return await geotagImageExiftool(imagePath, captureDate, coords, location);
     } else {
-      dialog.showErrorBox(i18next.t('NoAITool'), i18next.t('AIToolNotFound') );
-      console.error('AI-Tool (Ollama) is not available.');
+        dialog.showErrorBox(i18next.t('NoAITool'), i18next.t('AIToolNotFound') );
+        console.error('AI-Tool (Ollama) is not available.');
       return { success: false, error: i18next.t('AIToolNotAvailable') };
     }
   });

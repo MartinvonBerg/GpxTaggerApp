@@ -1391,9 +1391,9 @@ function genAIButtonListener(element) {
           throw new Error(errMsg);
         }
 
-        image.Title = result.Title || '';
-        image.Description = result.Description || '';
-        image.Keywords = result.Keywords || [];
+        image.Title += image.Title? ' AI: ' + (result.Title || '') : (result.Title || '');
+        image.Description += image.Description? ' AI: ' + (result.Description || '') : (result.Description || '');
+        image.Keywords += image.Keywords? ' AI: ' + (result.Keywords || '') : (result.Keywords || '');
         image.status = 'ai-tagged';
         image.Geolocation = result.location || null;
         triggerUpdateThumbnailStatus(image.index, image.status); 
