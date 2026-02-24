@@ -27,9 +27,11 @@ Vorgaben:
 - Vermeide alternative Umschreibungen.
 
 Gib ausschließlich gültiges JSON im nachfolgenden Format zurück. Keine Markdown-Codeblöcke. Keine Backticks. Kein zusätzlicher Text.
+Die JSON-Schlüssel müssen exakt wie folgt lauten und dürfen nicht übersetzt werden:
+"Title", "Description", "Keywords"
 {
-    "Titel" : "...",
-    "Beschreibung" : "...",
-    "Schlagworte" : "..."
+    "Title" : "...",
+    "Description" : "...",
+    "Keywords" : "..."
 }
     

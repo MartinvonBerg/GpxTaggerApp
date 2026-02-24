@@ -177,10 +177,13 @@ class OllamaClient {
         model: this.model,
         prompt: prompt,
         images: [encodedImage],
-        stream: this.generation.stream ?? false,
+        format: 'json',
+        stream: this.config.generation.stream ?? false,
         options: {
-            temperature: this.generation.temperature ?? 0.3,
-            top_p: this.generation.top_p ?? 0.9
+            temperature: this.config.generation.temperature ?? 0.1,
+            top_p: this.config.generation.top_p ?? 0.8,
+            seed: this.config.generation.seed ?? 42,
+            top_k: this.config.generation.top_k ?? 1
         }
     };
 
@@ -196,15 +199,15 @@ class OllamaClient {
         const data = await response.json();
 
         if (data.response) {
-            return data.response;
+            return { data: data.response, success: true };
         } else {
             console.log("Unerwartetes Antwortformat von Ollama:");
             console.log(data);
-            process.exit(1);
+            return { success: false, error: "Unexpected response format from Ollama" };
         }
     } catch (e) {
         console.log(`Fehler bei der Anfrage an Ollama: ${e}`);
-        process.exit(1);
+        return { success: false, error: e && e.message ? e.message : e };
     }
 }
 }

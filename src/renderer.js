@@ -1393,7 +1393,7 @@ function genAIButtonListener(element) {
 
         image.Title += image.Title? ' AI: ' + (result.Title || '') : (result.Title || '');
         image.Description += image.Description? ' AI: ' + (result.Description || '') : (result.Description || '');
-        image.Keywords += image.Keywords? ' AI: ' + (result.Keywords || '') : (result.Keywords || '');
+        image.Keywords += image.Keywords.length > 0 ? ' AI: ' + (result.Keywords || '') : (result.Keywords || '');
         image.status = 'ai-tagged';
         image.Geolocation = result.location || null;
         triggerUpdateThumbnailStatus(image.index, image.status); 
