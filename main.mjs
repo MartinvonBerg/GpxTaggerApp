@@ -9,6 +9,7 @@ import { exiftool } from 'exiftool-vendored';
 import { sortImagesByCaptureTime } from './js/imageHelper.js';
 import { sanitize } from './js/generalHelpers.js';
 import { loadSettings, saveSettings } from './js/settingsHelper.js';
+import { isValidLocation } from './js/ExifHandler.js';
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -588,7 +589,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {
           const metadata = await exiftool.read(filePath, { ignoreMinorErrors: true });
-
+          // metadata["Province-State"], metadata.City, metadata.Country
             let thumbnailPath = '';
             const maxAgeDays = 14;
             
@@ -628,6 +629,14 @@ async function readImagesFromFolder(folderPath, extensions) {
             } else {
               thumbnailPath = filePath; // fallback to the file path if no thumbnail is available
             }
+
+            // merge the geo location info to a single field for easier handling in the frontend and also for the AI tagging. Security: Be cautious when merging and displaying location information to prevent potential privacy issues. Consider allowing users to opt-out of sharing or displaying detailed location data.
+            if ( isValidLocation(metadata) ) {
+              metadata.Geolocation = `${metadata.City}, ${metadata['Province-State']}, ${metadata.Country}`;
+            } else {
+              metadata.Geolocation = 'unknown';
+            }
+
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
                 DateCreated: metadata.DateCreated || '',
@@ -671,9 +680,13 @@ async function readImagesFromFolder(folderPath, extensions) {
                 Keywords: metadata.Keywords || [], // andere Felder enthalten die Keywords nicht.
 
                 // ---- GeoLocationInfo ----
-                // TODO : get the geo location info from exif, xmp whatever
-                Geolocation: metadata.GeoLocationInfo || 'unknown' // this is a placeholder, replace it with the actual location info from the metadata
-            };
+                // get the geo location info from xmp
+                City: metadata.City || '',
+                Country: metadata.Country || '',
+                ProvinceState: metadata['Province-State'] || '',
+                // merge the above fields to a location info string like "City, ProvinceState, Country" and use it in the frontend for display and also for the AI tagging. Security: Be cautious when merging and displaying location information to prevent potential privacy issues. Consider allowing users to opt-out of sharing or displaying detailed location data.
+                Geolocation: metadata.Geolocation
+            }
         };
   
         // Extract EXIF data for each image and sort by capture time

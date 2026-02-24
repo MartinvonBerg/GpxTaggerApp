@@ -219,4 +219,15 @@ function parseExifDateTime(rawValue) {
   return date;
 }
 
-export { parseExifDateTime, exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds};
+function isValidLocation(metadata) {
+  return (
+    typeof metadata.City === 'string' &&
+    typeof metadata['Province-State'] === 'string' &&
+    typeof metadata.Country === 'string' &&
+    metadata.City.length > 0 &&
+    metadata['Province-State'].length > 0 &&
+    metadata.Country.length > 0
+  );
+}
+
+export { parseExifDateTime, exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds, isValidLocation};
