@@ -11,16 +11,15 @@ import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPan
 import { showgpx } from '../js/mapAndTrackHandler.js'; // reviewed allready.
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewed allready.
 
-// TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
-// TODO: show a minimap on the map???
-// TODO: generate thumbnail from image file if no thumbnail exists in jpeg.
+    // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
+    // TODO: show a minimap on the map???
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
 // TODO: add Buttons: 'Clear All', 'Copy' 'Paste' for the metadata in the right sidebar. This allows the user to copy the metadata from one image and paste it to another image, which can be a big time saver when many images have similar metadata. Security: Be cautious when implementing copy-paste functionality for metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the copied data before allowing it to be pasted to prevent potential security issues or injection attacks.
-// TODO sanitize ollama output, open config files from menu, use title, descr, key entries as hint for ollama prompt
-// add a geolocate setting in left sidebar, write jest test for ollama. add keepalive to ollama.
+// TODO use title, descr, key entries as hint for ollama prompt. open config files from menu, 
+// add a geolocate setting in left sidebar, write jest test for ollama. add keepalive setting to ollama.
 let settings = {};
 let filteredImages = [];
 let allImages = [];

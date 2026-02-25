@@ -124,7 +124,7 @@ class OllamaClient {
         // Normalize `localhost` -> `127.0.0.1` to avoid IPv6 resolution issues
         const base = (this.baseUrl || 'http://127.0.0.1:11434').replace(/\/$/, '');
         const normalizedBase = base.replace('localhost', '127.0.0.1');
-        const url = `${normalizedBase}/api/tags`;
+        let url = `${normalizedBase}/api/tags`;
 
         const timeoutMs = (this.timeout ?? 120) * 1000;
         const controller = new AbortController();
@@ -152,6 +152,19 @@ class OllamaClient {
                         console.log(`Ollama model "${this.model}" is available.`);
                         this.model = modelInfo.name; // update to actual model name from response, which may include version or other details
                         modelFound = true;
+                        // load the model and set keepalive to -1 to keep it in memory.
+                        // but this slows down the app start!
+                        url = `${normalizedBase}/api/generate`;
+                        await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                model: this.model,
+                                prompt: '',
+                                keep_alive: -1
+                            })
+                        });
+                        
                         break;
                     }
                 }
@@ -188,17 +201,14 @@ class OllamaClient {
 
         // if not running try to start it once with exec, but only if ollama is configured to be used and the model is specified. This allows to automatically start ollama when the user tries to use it without starting it manually first.
         if (!status && this.model) {
-            const { exec } = await import('child_process');
-            
-            exec('ollama run ' + this.model, (error, stdout, stderr) => {
-                if (error) {
-                    console.log(`Error starting Ollama: ${error.message}`);
-                } else if (stderr) {
-                    console.log(`Ollama stderr: ${stderr}`);
-                } else {
-                    console.log(`Ollama stdout: ${stdout}`);
-                }
+            const { spawn } = await import('child_process');
+            this.ollamaProcess = spawn('ollama', ['serve'], {
+                detached: true,
+                stdio: 'ignore'
             });
+
+            this.ollamaProcess.unref();
+            
             // try again to check the status after trying to start it, wait a few seconds to give it time to start up
             await new Promise(resolve => setTimeout(resolve, 2000));
             status = await this.checkOllamaStatus();
@@ -254,6 +264,7 @@ class OllamaClient {
     const payload = {
         model: this.model,
         prompt: prompt,
+        keepalive: -1, // this does not work here. Reason is unknown.
         images: [encodedImage],
         format: 'json',
         stream: this.config.generation.stream ?? false,
