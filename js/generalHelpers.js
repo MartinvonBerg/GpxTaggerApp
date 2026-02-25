@@ -223,7 +223,8 @@ function extractJsonFromResponse(responseText) {
 }
 
 /**
- * Sanitizes string for safe XMP metadata usage
+ * Sanitizes string for safe XMP metadata usage and removes control characters, HTML tags, collapses whitespace, and enforces length limits.
+ * Length limits: Title: 200 chars, Description: 2000 chars, Keywords: 500 chars.
  */
 function sanitizeString(str, fieldName) {
   const limits = {
@@ -236,8 +237,16 @@ function sanitizeString(str, fieldName) {
 
   return str
     .normalize("NFC")
-    .replace(/[\x00-\x1F\x7F]/g, "")      // remove control chars
-    .replace(/\s+/g, " ")                // collapse whitespace
+
+    // Remove control characters
+    .replace(/[\x00-\x1F\x7F]/g, "")
+
+    // Remove all HTML/XML tags
+    .replace(/<[^>]*>/g, "")
+
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+
     .trim()
     .slice(0, maxLength);
 }
