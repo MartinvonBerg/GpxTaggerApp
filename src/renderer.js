@@ -13,13 +13,16 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 
     // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
     // TODO: show a minimap on the map???
+    // TODO open config files from menu,
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
 //          Especially where translated data is loaded from json Files and is not checked.
+
 // TODO: add Buttons: 'Clear All', 'Copy' 'Paste' for the metadata in the right sidebar. This allows the user to copy the metadata from one image and paste it to another image, which can be a big time saver when many images have similar metadata. Security: Be cautious when implementing copy-paste functionality for metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the copied data before allowing it to be pasted to prevent potential security issues or injection attacks.
-// TODO use title, descr, key entries as hint for ollama prompt. open config files from menu, 
-// add a geolocate setting in left sidebar, write jest test for ollama. add keepalive setting to ollama.
+// TODO: add a geolocate setting and add a geolocate button and geolocate in left sidebar, 
+// TODO: write jest test for ollama.
+
 let settings = {};
 let filteredImages = [];
 let allImages = [];
@@ -1382,7 +1385,7 @@ function genAIButtonListener(element) {
       const params = {
         imagePath: image.imagePath,
         captureDate: exifDateToJSLocaleDate(image.DateTimeOriginal) + ' ' + exifDateTimeToJSTime(image.DateTimeOriginal), // includes the Timezone offset, e.g. "2024-01-01 12:00:00"  which should not be a problem for the AI model because it can learn to interpret this format. The capture date is needed for the AI model to understand the context of the image and to generate more accurate metadata. For example, if the image was taken at night, the AI model might generate different keywords than if the image was taken during the day.
-        coords: image.pos ?? null,
+        imageMeta: image,
         location: image.Geolocation // placeholder for reverse geocoding result
       };
 

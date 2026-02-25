@@ -225,6 +225,58 @@ class OllamaClient {
         }
     }
 
+    preparePrompt(promptTemplate, captureDate, imageMeta, geoLocationInfo) {
+        
+        // update the prompt template with the actual values for date and location
+        let prompt = promptTemplate;
+
+        if (captureDate) {
+            prompt = prompt.replace('DATEREPLACE', captureDate);
+        } else {
+            // delete the complete line with the date placeholder if no capture date is available.
+            prompt = prompt.replace(/.*DATEREPLACE.*(\r?\n)?/g, '');
+        }
+
+        if (!geoLocationInfo.includes('No Location')) {
+            prompt = prompt.replace('LOCATIONREPLACE', geoLocationInfo);
+        } else { // delete the complete line with the location placeholder if no location info is available.
+            prompt = prompt.replace(/.*LOCATIONREPLACE.*(\r?\n)?/g, '');
+        }
+
+        if (imageMeta.Title.length === 0 && imageMeta.Description.length === 0 && imageMeta.Keywords.length === 0) {
+            // remove the alle lines between #HINTSTART and #HINTEND.
+            prompt = prompt.replace(/#HINTSTART[\s\S]*?#HINTEND/g, '');
+        } else {
+
+            if (imageMeta.Title.length > 0) {
+                prompt = prompt.replace('TITLEEXISTING', imageMeta.Title);
+            } else {
+                // remove the complete line with the title placeholder if no title is available.
+                prompt = prompt.replace(/.*TITLEEXISTING.*(\r?\n)?/g, '');
+            }
+
+            if (imageMeta.Description.length > 0) {
+                prompt = prompt.replace('DESCREXISTING', imageMeta.Description);
+            } else {
+                // remove the complete line with the description placeholder if no description is available.
+                prompt = prompt.replace(/.*DESCREXISTING.*(\r?\n)?/g, '');
+            }
+
+            if (imageMeta.Keywords.length > 0) {
+                // join the keywords with comma and space.
+                prompt = prompt.replace('KEYWORDSEXISTING', imageMeta.Keywords.join(', '));
+            } else {
+                // remove the complete line with the keywords placeholder if no keywords are available.
+                prompt = prompt.replace(/.*KEYWORDSEXISTING.*(\r?\n)?/g, '');
+            }
+            // remove the hint lines between #HINTSTART and #HINTEND.
+            prompt = prompt.replace(/.*#HINTSTART.*(\r?\n)?/g, '');
+            prompt = prompt.replace(/.*#HINTEND.*(\r?\n)?/g, '');
+        }
+
+        return prompt;
+    }
+
     /**
      * Generates tags for an image using the Ollama AI model.
      * The generate function takes an image path, a capture date, coordinates, and a geo location info string as parameters.
@@ -237,70 +289,60 @@ class OllamaClient {
      * @param {string} geoLocationInfo - A string containing information about the location where the image was captured.
      * @returns {success, data, error} - An object with a success flag, the sanitized response data, and an error message if the request fails.
      */
-    async generate(imagePath, captureDate, coords, geoLocationInfo) {
+    async generate(imagePath, captureDate, imageMeta, geoLocationInfo) {
 
-    // update the prompt template with the actual values for date and location
-    let prompt = this.prompt;
-    if (captureDate) {
-        prompt = prompt.replace('DATEREPLACE', captureDate);
-    }
-    if (!geoLocationInfo.includes('No Location')) {
-        prompt = prompt.replace('LOCATIONREPLACE', geoLocationInfo);
-    } else { // delete the complete line with the location placeholder if no location info is available.
-        prompt = prompt.replace(/.*LOCATIONREPLACE.*(\r?\n)?/g, '');
-    }
+        const prompt = this.preparePrompt(this.prompt, captureDate, imageMeta, geoLocationInfo);  
+        const url = `${this.baseUrl}/api/generate`;
 
-    const url = `${this.baseUrl}/api/generate`;
-
-    let encodedImage;
-    try {
-        const imageBuffer = fs.readFileSync(imagePath);
-        encodedImage = imageBuffer.toString('base64');
-    } catch (e) {
-        console.log(`Fehler beim Laden des Bildes: ${e}`);
-        process.exit(1);
-    }
-
-    const payload = {
-        model: this.model,
-        prompt: prompt,
-        keepalive: -1, // this does not work here. Reason is unknown.
-        images: [encodedImage],
-        format: 'json',
-        stream: this.config.generation.stream ?? false,
-        options: {
-            temperature: this.config.generation.temperature ?? 0.1,
-            top_p: this.config.generation.top_p ?? 0.8,
-            seed: this.config.generation.seed ?? 42,
-            top_k: this.config.generation.top_k ?? 1
+        let encodedImage;
+        try {
+            const imageBuffer = fs.readFileSync(imagePath);
+            encodedImage = imageBuffer.toString('base64');
+        } catch (e) {
+            console.log(`Fehler beim Laden des Bildes: ${e}`);
+            process.exit(1);
         }
-    };
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            timeout: this.timeout
-        });
+        const payload = {
+            model: this.model,
+            prompt: prompt,
+            keepalive: -1, // this does not work here. Reason is unknown.
+            images: [encodedImage],
+            format: 'json',
+            stream: this.config.generation.stream ?? false,
+            options: {
+                temperature: this.config.generation.temperature ?? 0.1,
+                top_p: this.config.generation.top_p ?? 0.8,
+                seed: this.config.generation.seed ?? 42,
+                top_k: this.config.generation.top_k ?? 1
+            }
+        };
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                timeout: this.timeout
+            });
 
-        if (data.response) {
-            // sanitize the response data to a valid JSON.
-            const sanitizedData = validateAndSanitizeMetadataJSON(data.response);
-            return { data: sanitizedData, success: true };
-        } else {
-            console.log("Unerwartetes Antwortformat von Ollama:");
-            console.log(data);
-            return { success: false, error: "Unexpected response format from Ollama" };
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+
+            if (data.response) {
+                // sanitize the response data to a valid JSON.
+                const sanitizedData = validateAndSanitizeMetadataJSON(data.response);
+                return { data: sanitizedData, success: true };
+            } else {
+                console.log("Unerwartetes Antwortformat von Ollama:");
+                console.log(data);
+                return { success: false, error: "Unexpected response format from Ollama" };
+            }
+        } catch (e) {
+            console.log(`Fehler bei der Anfrage an Ollama: ${e}`);
+            return { success: false, error: e && e.message ? e.message : e };
         }
-    } catch (e) {
-        console.log(`Fehler bei der Anfrage an Ollama: ${e}`);
-        return { success: false, error: e && e.message ? e.message : e };
     }
-}
 }
 
 export { OllamaClient };

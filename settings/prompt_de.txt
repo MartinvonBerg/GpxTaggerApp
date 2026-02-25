@@ -6,11 +6,21 @@ Erstelle für das folgende Bild:
 2. Eine sachlich-neutrale Beschreibung (2–3 Sätze, keine Interpretation)
 3. 15 relevante Schlagwörter, kommagetrennt
 
-###START###
 Zusatzinformationen zum Bild:
- - Aufnahmedatum/-uhrzeit : DATE
- - Ort: LOCATION 
-###END###
+ - Aufnahmedatum/-uhrzeit : DATEREPLACE
+ - Ort: LOCATIONREPLACE 
+
+#HINTSTART
+Bestehende Metadaten (nur als Kontext, nicht als verbindliche Beschreibung verwenden):
+- Vorhandener Titel: TITLEEXISTING
+- Vorhandener Beschreibung: DESCREXISTING
+- Vorhandene Schlagwörter: KEYWORDSEXISTING
+
+Wichtig:
+- Verwende die bestehenden Metadaten nur, wenn sie visuell eindeutig im Bild erkennbar sind.
+- Übernimm keine Handlungen oder Interpretationen, die nicht sichtbar sind.
+- Priorisiere die visuelle Bildanalyse gegenüber vorhandenen Metadaten.
+#HINTEND
 
 Vorgaben:
 - Sprache: ausschließlich Deutsch (de-DE)
@@ -29,9 +39,11 @@ Vorgaben:
 - Vermeide alternative Umschreibungen.
 
 Gib ausschließlich gültiges JSON im nachfolgenden Format zurück. Keine Markdown-Codeblöcke. Keine Backticks. Kein zusätzlicher Text.
+Die JSON-Schlüssel müssen exakt wie folgt lauten und dürfen nicht übersetzt werden:
+"Title", "Description", "Keywords"
 {
-    "Titel" : "...",
-    "Beschreibung" : "...",
-    "Schlagworte" : "..."
+    "Title" : "...",
+    "Description" : "...",
+    "Keywords" : "..."
 }
     

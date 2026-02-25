@@ -10,6 +10,18 @@ Zusatzinformationen zum Bild:
  - Aufnahmedatum/-uhrzeit : DATEREPLACE
  - Ort: LOCATIONREPLACE 
 
+#HINTSTART
+Bestehende Metadaten (nur als Kontext, nicht als verbindliche Beschreibung verwenden):
+- Vorhandener Titel: TITLEEXISTING
+- Vorhandener Beschreibung: DESCREXISTING
+- Vorhandene Schlagwörter: KEYWORDSEXISTING
+
+Wichtig:
+- Verwende die bestehenden Metadaten nur, wenn sie visuell eindeutig im Bild erkennbar sind.
+- Übernimm keine Handlungen oder Interpretationen, die nicht sichtbar sind.
+- Priorisiere die visuelle Bildanalyse gegenüber vorhandenen Metadaten.
+#HINTEND
+
 Vorgaben:
 - Sprache: ausschließlich Deutsch (de-DE)
 - Stil: sachlich, neutral, präzise
