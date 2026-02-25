@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
-import { validateAndSanitizeMetadataJSON } from './generalHelpers.js';
+import { validateAndSanitizeMetadataJSON } from '../js/generalHelpers.js';
 
 class OllamaClient {
 
