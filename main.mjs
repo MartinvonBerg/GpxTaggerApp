@@ -82,7 +82,7 @@ try {
     console.log('Settings loaded from:', settingsFilePath);
   }
 } catch (err) {
-  console.error('Failed to load settings:', err);
+  console.log('Failed to load settings:', err);
 }
 
 // sharp availabability check
@@ -107,15 +107,15 @@ app.whenReady().then(async () => {
     exiftoolAvailable = await checkExiftoolAvailable(exiftoolPath);
     console.log(`Exiftool available: ${exiftoolAvailable} from path: ${exiftoolPath}`); 
   } catch (err) {
-    console.error('Failed to check exiftool availability:', err);
-    console.error(`Using exiftool path: ${exiftoolPath}`);
+    console.log('Failed to check exiftool availability:', err);
+    console.log(`Using exiftool path: ${exiftoolPath}`);
   }
 
   try {
     ollamaAvailable = await checkOllamaAvailable('ollama_config.json', 'prompt.txt');
     //console.log(`Ollama available: ${ollamaAvailable.status} with model: ${ollamaAvailable.model}`);
   } catch (err) {
-    console.error('Failed to check Ollama availability:', err);
+    console.log('Failed to check Ollama availability:', err);
   }
   
   // i18next initialisieren
@@ -127,13 +127,13 @@ app.whenReady().then(async () => {
       backend: { loadPath: path.join(localesPath, '{{lng}}', 'translation.json') },
     });
   } catch (err) {
-    console.error('Error initializing i18next:', err);
+    console.log('Error initializing i18next:', err);
 
     // Fallback auf Englisch
     try {
       await i18next.init({ lng: 'en', fallbackLng: 'en' });
     } catch (err2) {
-      console.error('Fallback i18next init failed:', err2);
+      console.log('Fallback i18next init failed:', err2);
     }
   }
 
@@ -450,7 +450,7 @@ function createWindow() {
       return await geotagImageExiftool(gpxPath, imagePath, options);
     } else {
       dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound') );
-      console.error('Exiftool is not installed or not in PATH.');
+      console.log('Exiftool is not installed or not in PATH.');
       return { success: false, error: i18next.t('exiftoolNotAvailable') };
     }
   });
@@ -482,33 +482,24 @@ function createWindow() {
 
     if (ollamaAvailable.status) {
       let aiResult = await ollamaClient.generate(imagePath, captureDate, coords, geoLocationInfo);
-      // parse JSON in aiResult.data and extract the relevant fields for the metadata (e.g. Title, Description, Keywords) and return them to the renderer process to show them in the UI and also to write them to the metadata of the image. Security: Be cautious when parsing and using AI-generated content. Implement validation and sanitization of the AI output before using it in the application or writing it to metadata to prevent potential security issues or injection attacks.
-      if (aiResult && aiResult.success && aiResult.data && typeof aiResult.data === 'string') {
-        try {
-          aiResult.data = JSON.parse(aiResult.data);
-        } catch (e) {
-          console.error('Error parsing AI result data:', e);
-          return { success: false, error: 'Failed to parse AI result data' };
-        }
-      } else {        console.log("Unexpected AI result format:");  
-        console.log(aiResult);
+      
+      if (aiResult && aiResult.success && aiResult.data.Title && aiResult.data.Description && aiResult.data.Keywords) {
+        return { 
+          'success': aiResult.success,
+          'imagePath': imagePath, 
+          'location': geoLocationInfo,
+          'Title': aiResult.data.Title,
+          'Description': aiResult.data.Description,
+          'Keywords': aiResult.data.Keywords // Tags must be a comma-separated string for exiftool to write them correctly to the metadata. The AI model should generate the tags in this format as well, so that no further processing is required here. Security: Be cautious when writing AI-generated content to image metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the AI output before writing it to the metadata to prevent potential security issues or injection attacks.
+        };
+      } else {  
+        console.log("Unexpected AI result format: ", aiResult);  
         return { success: false, error: 'Unexpected AI result format' };
       }
-
-      return { 
-        'success': aiResult.success,
-        'imagePath': imagePath, 
-        'location': geoLocationInfo,
-        'Title': aiResult.data.Title,
-        'Description': aiResult.data.Description,
-        'Keywords': aiResult.data.Keywords // Tags must be a comma-separated string for exiftool to write them correctly to the metadata. The AI model should generate the tags in this format as well, so that no further processing is required here. Security: Be cautious when writing AI-generated content to image metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the AI output before writing it to the metadata to prevent potential security issues or injection attacks.
-       };
-      
-       //return await geotagImageExiftool(imagePath, captureDate, coords, location);
     } else {
         dialog.showErrorBox(i18next.t('NoAITool'), i18next.t('AIToolNotFound') );
-        console.error('AI-Tool (Ollama) is not available.');
-      return { success: false, error: i18next.t('AIToolNotAvailable') };
+        console.log('AI-Tool (Ollama) is not available.');
+        return { success: false, error: i18next.t('AIToolNotAvailable') };
     }
   });
 }
@@ -632,13 +623,13 @@ async function readImagesFromFolder(folderPath, extensions) {
                 try {
                   await exiftool.extractThumbnail(filePath, thumbnailPathTmp);
                 } catch (err) {
-                  console.error('Error extracting thumbnail with exiftool for', filePath, err);
+                  console.log('Error extracting thumbnail with exiftool for', filePath, err);
                 }
                 // rotate thumbnail
                 try {
                   thumbnailPath = await rotateThumbnail(metadata, filePath, thumbnailPathTmp);
                 } catch (err) {
-                  console.error('Error rotating thumbnail with sharp for', filePath, err);
+                  console.log('Error rotating thumbnail with sharp for', filePath, err);
                 }
               }
               
@@ -732,7 +723,7 @@ async function readImagesFromFolder(folderPath, extensions) {
 
         return imagesData;  
     } catch (error) {  
-        console.error('Error reading images from folder:', error);  
+        console.log('Error reading images from folder:', error);  
     }
 }
 
@@ -832,7 +823,7 @@ async function writeMetadataOneImage(filePath, metadata) {
       // TODO : doubled to 'execDouble'
       exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
         if (error) {
-          console.error(`ExifTool-Error: ${stderr || error.message}`);
+          console.log(`ExifTool-Error: ${stderr || error.message}`);
           return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
         }
         resolve({ success: true, output: stdout });
@@ -840,7 +831,7 @@ async function writeMetadataOneImage(filePath, metadata) {
     });
 
   } else if (!exiftoolAvailable) {
-    console.error("exiftool is not available!");
+    console.log("exiftool is not available!");
     dialog.showErrorBox(i18next.t('NoExiftool'), i18next.t('exiftoolNotFound'));
     return { success: false, error: 'Exiftool is not installed or not in PATH.' };
   }
@@ -937,7 +928,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     // TODO : doubled to 'execDouble'
     exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
       if (error) {
-        console.error(`ExifTool-Error: ${stderr || error.message}`);
+        console.log(`ExifTool-Error: ${stderr || error.message}`);
         return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
       }
       resolve({ success: true, output: stdout });
@@ -966,7 +957,7 @@ async function reloadImageData(settings) {
       sendToRenderer('reload-data', settings.imagePath, allImages);
       return true;
     } catch (e) {
-      console.error('Error reloading data:', e);
+      console.log('Error reloading data:', e);
       sendToRenderer('image-loading-failed', settings.imagePath, String(e?.message || e));
       return false;
     }

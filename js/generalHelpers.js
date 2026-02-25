@@ -111,7 +111,6 @@ function sanitize(value) {
   return v;  
 };
 
-
 /**
  * Checks if an object is empty.
  *
@@ -130,4 +129,117 @@ const isNumber = function isNumber(value)
    return typeof value === 'number' && isFinite(value);
 }
 
-export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber };
+/**
+ * Validates and sanitizes a JSON string response object for XMP metadata storage purposes.
+ * Expected format:
+ * {
+ *   "Title": "...",
+ *   "Description": "...",
+ *   "Keywords": "..."
+ * }
+ *
+ * @param {string} input
+ * @returns {{Title: string, Description: string, Keywords: string} | null}
+ */
+function validateAndSanitizeMetadataJSON(input) {
+  if (typeof input !== "string") {
+    return null;
+  }
+  input = extractJsonFromResponse(input);
+
+  // 1. Strict JSON Parse
+  let parsed;
+  try {
+    parsed = JSON.parse(input);
+  } catch {
+    return null;
+  }
+
+  // 2. Basic structural validation
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    return null;
+  }
+
+  // 3. Prototype Pollution Protection
+  // Ensure plain object
+  if (Object.getPrototypeOf(parsed) !== Object.prototype) {
+    return null;
+  }
+
+  const allowedKeys = ["Title", "Description", "Keywords"];
+
+  const keys = Object.keys(parsed);
+
+  // 4. No additional or missing properties
+  if (keys.length !== allowedKeys.length) {
+    return null;
+  }
+
+  for (const key of keys) {
+    if (!allowedKeys.includes(key)) {
+      return null;
+    }
+  }
+
+  // 5. Type checking + sanitization
+  const sanitized = Object.create(null);
+
+  for (const key of allowedKeys) {
+    const value = parsed[key];
+
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    sanitized[key] = sanitizeString(value, key);
+  }
+
+  return sanitized;
+}
+
+/**
+ * Extrahiert JSON aus einer LLM-Antwort, entfernt Markdown-Code-Fences
+ * und parsed das Ergebnis sicher.
+ */
+function extractJsonFromResponse(responseText) {
+    // 1. Entferne ```json ... ``` oder ``` ... ```
+    let cleaned = responseText.replace(/```json\s*/g, "");
+    cleaned = cleaned.replace(/```/g, "");
+    cleaned = cleaned.trim();
+    
+    // 2. Falls noch Text vor/nach dem JSON steht → nur {...} extrahieren
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) {
+        throw new Error("Kein gültiges JSON-Objekt gefunden.");
+    }
+    
+    const jsonStr = match[0];
+    
+    return jsonStr;
+}
+
+/**
+ * Sanitizes string for safe XMP metadata usage
+ */
+function sanitizeString(str, fieldName) {
+  const limits = {
+    Title: 200,
+    Description: 2000,
+    Keywords: 500
+  };
+
+  const maxLength = limits[fieldName] || 1000;
+
+  return str
+    .normalize("NFC")
+    .replace(/[\x00-\x1F\x7F]/g, "")      // remove control chars
+    .replace(/\s+/g, " ")                // collapse whitespace
+    .trim()
+    .slice(0, maxLength);
+}
+
+export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, validateAndSanitizeMetadataJSON };

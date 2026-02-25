@@ -1,9 +1,21 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { validateAndSanitizeMetadataJSON } from './generalHelpers.js';
 
 class OllamaClient {
 
+    /**
+     * Initializes the OllamaClient with the given app root, config file path, and prompt template file path.
+     * 
+     * @param {string} appRoot - The path to the application's root directory.
+     * @param {string} configfile - The path to the config file (relative to the app root).
+     * @param {string} promptfile - The path to the prompt template file (relative to the app root).
+     * 
+     * The OllamaClient will check if the config file and prompt template exist in the app root and copy them to the user's app directory if they do not exist.
+     * The OllamaClient will then load the config and prompt from the user's app directory.
+     * If the config or prompt is invalid, the OllamaClient will set `ollamaAvailable` to false and `model` to null.
+     */
     constructor(appRoot, configfile, promptfile) {
         this.configfile = configfile;
         this.promptTemplate = promptfile;
@@ -63,6 +75,12 @@ class OllamaClient {
         }
     }
 
+    /**
+     * Loads a JSON configuration file from the given path.
+     * Returns the parsed JSON object or null if an error occurs.
+     * @param {string} filePath - The path to the JSON configuration file to load.
+     * @returns {object|null} The parsed JSON object or null if an error occurs.
+     */
     loadJsonConfig(filePath) {
         try {
             const data = fs.readFileSync(filePath, 'utf-8');
@@ -73,6 +91,12 @@ class OllamaClient {
         }
     }
 
+    /**
+     * Loads a prompt template from a text file.
+     * Returns the contents of the file as a string, or null if an error occurs.
+     * @param {string} filePath - The path to the text file containing the prompt template.
+     * @returns {string|null} The loaded prompt template or null if an error occurs.
+     */
     loadPrompt(filePath) {
         try {
             return fs.readFileSync(filePath, 'utf-8');
@@ -82,8 +106,15 @@ class OllamaClient {
         }
     }
 
+    /**
+     * Checks if the Ollama model is available by performing a robust HTTP GET.
+     * Does not check whether Ollama was started already.
+     * If the Ollama HTTP API responds, consider it available.
+     * Further validation can inspect the response for expected fields.
+     * @returns {Promise<boolean>} True if the Ollama model is available, false otherwise.
+     */
     async checkOllamaStatus() {
-        // check if setting were loaded correctly
+        // check if setting were loaded correctly. This does not check wether Ollama was started already.
         if ( !this.ollamaAvailable || !this.model ) {
             console.log("Ollama config files not properly loaded. Check config file and prompt file in user app folder.");
             return false;
@@ -143,12 +174,59 @@ class OllamaClient {
         }
     }
 
+    /**
+     * Checks whether Ollama is available and running with the specified model.
+     * If not running, tries to start it once with exec, but only if ollama is configured to be used and the model is specified.
+     * Returns an object with two properties: available (boolean) and model (string or null).
+     * If available is true, model is the name of the model that is currently running.
+     * If available is false, model is null.
+     * 
+     * @returns {available, model} - Object with availability and model name that was loaded.
+    */
     async getOllamaClientStatus() {
-        const status = await this.checkOllamaStatus();
-        this.ollamaAvailable = status;
-        return { available: this.ollamaAvailable, model: this.model };
+        let status = await this.checkOllamaStatus();
+
+        // if not running try to start it once with exec, but only if ollama is configured to be used and the model is specified. This allows to automatically start ollama when the user tries to use it without starting it manually first.
+        if (!status && this.model) {
+            const { exec } = await import('child_process');
+            
+            exec('ollama run ' + this.model, (error, stdout, stderr) => {
+                if (error) {
+                    console.log(`Error starting Ollama: ${error.message}`);
+                } else if (stderr) {
+                    console.log(`Ollama stderr: ${stderr}`);
+                } else {
+                    console.log(`Ollama stdout: ${stdout}`);
+                }
+            });
+            // try again to check the status after trying to start it, wait a few seconds to give it time to start up
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            status = await this.checkOllamaStatus();
+            return { available: this.ollamaAvailable, model: this.model };
+
+        } else if (status && this.model) {
+            console.log("Ollama is already running.");
+            this.ollamaAvailable = status;
+            return { available: this.ollamaAvailable, model: this.model };
+        } else {
+            console.log("Ollama model not defined in config files. Check config file and prompt file in user app folder.");
+            this.ollamaAvailable = false;
+            return { available: this.ollamaAvailable, model: null };
+        }
     }
 
+    /**
+     * Generates tags for an image using the Ollama AI model.
+     * The generate function takes an image path, a capture date, coordinates, and a geo location info string as parameters.
+     * It updates the prompt template with the actual values for date and location, and then sends a POST request to the Ollama API with the updated prompt and the image.
+     * If the request is successful, it returns an object with the sanitized response data and a success flag set to true.
+     * If the request fails, it returns an object with an error message and a success flag set to false.
+     * @param {string} imagepath - The path to the image file that should be tagged.
+     * @param {string} captureDate - The date the image was captured.
+     * @param {string} coords - The coordinates of the location where the image was captured.
+     * @param {string} geoLocationInfo - A string containing information about the location where the image was captured.
+     * @returns {success, data, error} - An object with a success flag, the sanitized response data, and an error message if the request fails.
+     */
     async generate(imagePath, captureDate, coords, geoLocationInfo) {
 
     // update the prompt template with the actual values for date and location
@@ -199,7 +277,9 @@ class OllamaClient {
         const data = await response.json();
 
         if (data.response) {
-            return { data: data.response, success: true };
+            // sanitize the response data to a valid JSON.
+            const sanitizedData = validateAndSanitizeMetadataJSON(data.response);
+            return { data: sanitizedData, success: true };
         } else {
             console.log("Unerwartetes Antwortformat von Ollama:");
             console.log(data);

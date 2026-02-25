@@ -472,3 +472,92 @@ function ensureUserAitaggingFiles() {
   configFile = path.join(userAitaggingDir, 'config.json');
   promptFile = path.join(userAitaggingDir, 'prompt_de.txt');
 }
+
+/**
+     * Sanitize response data from Ollama.
+     * - Accepts a JSON string or object.
+     * - Strips dangerous keys (`__proto__`, `constructor`, `prototype`).
+     * - Limits object keys to `maxKeys` (default 5).
+     * - Limits recursion depth to `maxDepth` (default 5).
+     * - Removes functions/symbols; in `strict` mode returns an error object on unsupported types.
+     * - Returns a plain object (no prototype) or an error object: { error: 'reason', ... }
+     *
+     * @param {any} response
+     * @param {object} options
+     */
+    sanitizeResponseData(response, options = {}) {
+        const opts = Object.assign({ mode: 'strict', maxDepth: 5, maxKeys: 5, maxSizeBytes: 10000 }, options);
+        const dangerousKeys = new Set(['__proto__', 'constructor', 'prototype']);
+        const seen = new WeakSet();
+
+        let parsed = response;
+        if (typeof response === 'string') {
+            try {
+                parsed = JSON.parse(response);
+            } catch (e) {
+                return { error: 'parse_error', message: e && e.message ? e.message : String(e) };
+            }
+        }
+
+        function sanitize(node, depth) {
+            if (depth > opts.maxDepth) return '[max_depth]';
+            if (node === null) return null;
+            const t = typeof node;
+            if (t === 'function' || t === 'symbol') {
+                if (opts.mode === 'strict') return { error: 'unsupported_type', type: t };
+                return '[removed]';
+            }
+            if (t !== 'object') {
+                if (t === 'bigint') return String(node);
+                return node;
+            }
+
+            if (seen.has(node)) return '[circular]';
+            seen.add(node);
+
+            if (Array.isArray(node)) {
+                const arr = [];
+                for (const item of node) {
+                    arr.push(sanitize(item, depth + 1));
+                }
+                return arr;
+            }
+
+            // Plain object: create with no prototype
+            const out = Object.create(null);
+            const keys = Object.keys(node).filter(k => !dangerousKeys.has(k)).slice(0, opts.maxKeys);
+
+            for (const k of keys) {
+                const v = node[k];
+                const vt = typeof v;
+                if (vt === 'function' || vt === 'symbol') {
+                    if (opts.mode === 'strict') return { error: 'unsupported_type_in_object', key: k, type: vt };
+                    out[k] = '[removed]';
+                    continue;
+                }
+                out[k] = sanitize(v, depth + 1);
+            }
+
+            return out;
+        }
+
+        const sanitized = sanitize(parsed, 0);
+
+        // If sanitizer produced an error object at root, return it
+        if (sanitized && typeof sanitized === 'object' && sanitized.error) return sanitized;
+
+        try {
+            const size = Buffer.byteLength(JSON.stringify(sanitized), 'utf8');
+            if (size > opts.maxSizeBytes) return { error: 'size_exceeded', size };
+        } catch (e) {
+            return { error: 'stringify_error', message: e && e.message ? e.message : String(e) };
+        }
+        // convert sanitized object to a plain JSON object with no prototype to prevent potential prototype pollution issues in the rest of the app. This also ensures that any malicious content that tries to exploit prototype chains is neutralized.
+        // TODO : simplify this back and forth JSON generation.
+        const plainObject = Object.create(null);
+        for (const key in sanitized) {
+                plainObject[key] = sanitized[key];
+        }
+        let jsonString = JSON.stringify(plainObject);
+        return jsonString;
+    }
