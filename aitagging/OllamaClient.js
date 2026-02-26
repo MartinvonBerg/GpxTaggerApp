@@ -293,7 +293,7 @@ class OllamaClient {
         if (typeof input !== "string") {
             return null;
         }
-        input = extractJsonFromResponse(input);
+        input = this.extractJsonFromResponse(input);
 
         // 1. Strict JSON Parse
         let parsed;
@@ -424,7 +424,7 @@ class OllamaClient {
 
             if (data.response) {
                 // sanitize the response data to a valid JSON.
-                const sanitizedData = validateAndSanitizeMetadataJSON(data.response);
+                const sanitizedData = this.validateAndSanitizeMetadataJSON(data.response);
                 return { data: sanitizedData, success: true };
             } else {
                 console.log("Unerwartetes Antwortformat von Ollama:");
