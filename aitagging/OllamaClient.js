@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
-import { validateAndSanitizeMetadataJSON } from '../js/generalHelpers.js';
+import { sanitizeString } from '../js/generalHelpers.js';
 
 class OllamaClient {
 
@@ -275,6 +275,99 @@ class OllamaClient {
         }
 
         return prompt;
+    }
+
+    /**
+     * Validates and sanitizes a JSON string response object for XMP metadata storage purposes.
+     * Expected format:
+     * {
+     *   "Title": "...",
+     *   "Description": "...",
+     *   "Keywords": "..."
+     * }
+     *
+     * @param {string} input
+     * @returns {{Title: string, Description: string, Keywords: string} | null}
+     */
+    validateAndSanitizeMetadataJSON(input) {
+        if (typeof input !== "string") {
+            return null;
+        }
+        input = extractJsonFromResponse(input);
+
+        // 1. Strict JSON Parse
+        let parsed;
+        try {
+            parsed = JSON.parse(input);
+        } catch {
+            return null;
+        }
+
+        // 2. Basic structural validation
+        if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+        ) {
+            return null;
+        }
+
+        // 3. Prototype Pollution Protection
+        // Ensure plain object
+        if (Object.getPrototypeOf(parsed) !== Object.prototype) {
+            return null;
+        }
+
+        const allowedKeys = ["Title", "Description", "Keywords"];
+
+        const keys = Object.keys(parsed);
+
+        // 4. No additional or missing properties
+        if (keys.length !== allowedKeys.length) {
+            return null;
+        }
+
+        for (const key of keys) {
+            if (!allowedKeys.includes(key)) {
+            return null;
+            }
+        }
+
+        // 5. Type checking + sanitization
+        const sanitized = Object.create(null);
+
+        for (const key of allowedKeys) {
+            const value = parsed[key];
+
+            if (typeof value !== "string") {
+            return null;
+            }
+
+            sanitized[key] = sanitizeString(value, key);
+        }
+
+        return sanitized;
+    }
+
+    /**
+     * Extrahiert JSON aus einer LLM-Antwort, entfernt Markdown-Code-Fences
+     * und parsed das Ergebnis sicher.
+     */
+    extractJsonFromResponse(responseText) {
+        // 1. Entferne ```json ... ``` oder ``` ... ```
+        let cleaned = responseText.replace(/```json\s*/g, "");
+        cleaned = cleaned.replace(/```/g, "");
+        cleaned = cleaned.trim();
+        
+        // 2. Falls noch Text vor/nach dem JSON steht → nur {...} extrahieren
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (!match) {
+            throw new Error("Kein gültiges JSON-Objekt gefunden.");
+        }
+        
+        const jsonStr = match[0];
+        
+        return jsonStr;
     }
 
     /**

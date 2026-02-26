@@ -84,10 +84,13 @@ function updateAllImagesGPS(allImages, indices, convertedValue = '', newStatusAf
     return allImages;
 }
 
-/** sanitizes a text input as string
+/** 
+ * Converts an input string into an HTML-escaped text representation, making it safe 
+ * to display as HTML without interpreting any contained tags/markup.
  * 
  * @param {string} value 
- * @returns string
+ * @returns string returns a string where HTML special characters (especially <, >, &, " and ') are converted to HTML entities but not removed.
+ * 
  */
 function sanitizeInput(value) {
   // Entfernt <script>, HTML-Tags etc.
@@ -96,20 +99,48 @@ function sanitizeInput(value) {
   return div.innerHTML; // Rückgabe ist sicherer Text
 }
 
+/**
+ * Sanitizes a string value by removing any HTML tags and attributes from it.
+ * 
+ * If the value is not a string, it returns undefined.
+ * 
+ * @param {string} value - the string value to sanitize
+ * @returns {string|undefined} - the sanitized string or undefined if the value is not a string
+ */
 function sanitize(value) {  
 
-  function sanitizeInput(input) {  
-    return sanitizeHtml(input, {  
-      allowedTags: [],  // does not allow any tags!  
-      allowedAttributes: {}  
-    });  
-  }
-
   if (typeof value !== "string") return undefined;  
-  let v = value.trim();  
-  v = sanitizeInput(v);  
-  return v;  
-};
+  let v = value.trim();
+
+  v = sanitizeHtml(v, {
+      allowedTags: [],  // does not allow any tags!  
+      allowedAttributes: {}
+    });
+
+  return v;
+}
+
+/**
+ * Sanitizes string for safe XMP metadata usage and removes control characters, HTML tags, collapses whitespace.
+ * @param {string} value - the string value to sanitize
+ * @return {string} the sanitized string
+ */
+function sanitizeString(str) {
+  
+  return str
+    .normalize("NFC")
+
+    // Remove control characters
+    .replace(/[\x00-\x1F\x7F]/g, "")
+
+    // Remove all HTML/XML tags
+    .replace(/<[^>]*>/g, "")
+
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+
+    .trim();
+}
 
 /**
  * Checks if an object is empty.
@@ -129,126 +160,4 @@ const isNumber = function isNumber(value)
    return typeof value === 'number' && isFinite(value);
 }
 
-/**
- * Validates and sanitizes a JSON string response object for XMP metadata storage purposes.
- * Expected format:
- * {
- *   "Title": "...",
- *   "Description": "...",
- *   "Keywords": "..."
- * }
- *
- * @param {string} input
- * @returns {{Title: string, Description: string, Keywords: string} | null}
- */
-function validateAndSanitizeMetadataJSON(input) {
-  if (typeof input !== "string") {
-    return null;
-  }
-  input = extractJsonFromResponse(input);
-
-  // 1. Strict JSON Parse
-  let parsed;
-  try {
-    parsed = JSON.parse(input);
-  } catch {
-    return null;
-  }
-
-  // 2. Basic structural validation
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    Array.isArray(parsed)
-  ) {
-    return null;
-  }
-
-  // 3. Prototype Pollution Protection
-  // Ensure plain object
-  if (Object.getPrototypeOf(parsed) !== Object.prototype) {
-    return null;
-  }
-
-  const allowedKeys = ["Title", "Description", "Keywords"];
-
-  const keys = Object.keys(parsed);
-
-  // 4. No additional or missing properties
-  if (keys.length !== allowedKeys.length) {
-    return null;
-  }
-
-  for (const key of keys) {
-    if (!allowedKeys.includes(key)) {
-      return null;
-    }
-  }
-
-  // 5. Type checking + sanitization
-  const sanitized = Object.create(null);
-
-  for (const key of allowedKeys) {
-    const value = parsed[key];
-
-    if (typeof value !== "string") {
-      return null;
-    }
-
-    sanitized[key] = sanitizeString(value, key);
-  }
-
-  return sanitized;
-}
-
-/**
- * Extrahiert JSON aus einer LLM-Antwort, entfernt Markdown-Code-Fences
- * und parsed das Ergebnis sicher.
- */
-function extractJsonFromResponse(responseText) {
-    // 1. Entferne ```json ... ``` oder ``` ... ```
-    let cleaned = responseText.replace(/```json\s*/g, "");
-    cleaned = cleaned.replace(/```/g, "");
-    cleaned = cleaned.trim();
-    
-    // 2. Falls noch Text vor/nach dem JSON steht → nur {...} extrahieren
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) {
-        throw new Error("Kein gültiges JSON-Objekt gefunden.");
-    }
-    
-    const jsonStr = match[0];
-    
-    return jsonStr;
-}
-
-/**
- * Sanitizes string for safe XMP metadata usage and removes control characters, HTML tags, collapses whitespace, and enforces length limits.
- * Length limits: Title: 200 chars, Description: 2000 chars, Keywords: 500 chars.
- */
-function sanitizeString(str, fieldName) {
-  const limits = {
-    Title: 200,
-    Description: 2000,
-    Keywords: 500
-  };
-
-  const maxLength = limits[fieldName] || 1000;
-
-  return str
-    .normalize("NFC")
-
-    // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, "")
-
-    // Remove all HTML/XML tags
-    .replace(/<[^>]*>/g, "")
-
-    // Collapse whitespace
-    .replace(/\s+/g, " ")
-
-    .trim()
-    .slice(0, maxLength);
-}
-
-export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, validateAndSanitizeMetadataJSON };
+export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, sanitizeString };
