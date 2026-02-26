@@ -3,6 +3,21 @@
 // - Policy-friendly headers (User-Agent required; Referer optional)
 // - Global 1 req/sec rate limiting
 // - LRU memory cache with coordinate quantization ("grid cache")
+//
+// Usage:
+/*
+import { reverseGeocodeToXmp } from "./reverseGeocode.js";
+
+const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124, {
+  userAgent: "MyPhotoApp/1.0 (contact@mydomain.com)",
+  referer: "https://mydomain.com",
+  cachePrecision: 4, // ~11m buckets
+  rateLimit: true
+
+  // optional overrides:
+
+  const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124 ) ;
+*/
 
 const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 

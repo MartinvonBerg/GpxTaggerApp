@@ -1,5 +1,5 @@
 import { reverseGeocodeToXmp, clearReverseGeocodeCache, getReverseGeocodeCacheSize } from '../js/nominatim.js';
-import { jest } from '@jest/globals';
+import { jest, test } from '@jest/globals';
 
 // Simple fetch mock helper
 const makeFetchMock = (address = {}) => {
@@ -11,13 +11,28 @@ const makeFetchMock = (address = {}) => {
   });
 };
 
+describe('reverseGeocodeToXmp2', () => {
+  beforeEach(() => {
+    // reset global fetch and cache
+    clearReverseGeocodeCache();
+  });
+  //
+  // 47.762519, 12.482644 --> Marquartstein, Bavaria, Germany
+  test('real API call returns expected structure', async () => {
+    const out = await reverseGeocodeToXmp(47.762519, 12.482644 );
+    expect(out).toHaveProperty('City', 'Staudach');
+    expect(out).toHaveProperty('Province-State', 'Bayern');
+    expect(out).toHaveProperty('Country', 'Deutschland');
+  });
+});
+
 describe('reverseGeocodeToXmp', () => {
   beforeEach(() => {
     // reset global fetch and cache
     global.fetch = undefined;
     clearReverseGeocodeCache();
   });
-
+  
   test('maps City with correct priority (city -> town -> village -> municipality -> hamlet)', async () => {
     const address = { town: 'MyTown', village: 'MyVillage', hamlet: 'MyHamlet' };
     global.fetch = makeFetchMock(address);
@@ -114,3 +129,5 @@ describe('reverseGeocodeToXmp', () => {
   });
   
 });
+
+
