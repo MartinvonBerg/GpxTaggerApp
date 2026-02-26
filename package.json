@@ -13,7 +13,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node scripts/jest-runner.js",
-    "devbuild":  "webpack --config webpack.main.cjs --mode development && webpack --config webpack.config.js --mode development",
+    "devbuild": "webpack --config webpack.main.cjs --mode development && webpack --config webpack.config.js --mode development",
     "prodbuild": "webpack --config webpack.main.cjs --mode production  && webpack --config webpack.config.js --mode production",
     "devrun": "npm run devbuild && npm start",
     "prodrun": "npm run prodbuild && npm start",
