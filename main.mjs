@@ -12,6 +12,8 @@ import { loadSettings, saveSettings } from './js/settingsHelper.js';
 import { isValidLocation } from './js/ExifHandler.js';
 import { OllamaClient } from './aitagging/OllamaClient.js';
 import { reverseGeocodeToXmp } from './js/nominatim.js'
+import { isNumber } from './js/generalHelpers.js';
+import { isValidLatLng, dmsToDecimal } from './js/TrackAndGpsHandler.js';
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -509,26 +511,36 @@ function createWindow() {
       dialog.showErrorBox(i18next.t('ImageFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
       return { success: false, error: i18next.t('ImageFileNotFound') };
     }
+    // delete the location info
+    if (!isNumber(imageMeta.lat) || !isNumber(imageMeta.lng)) {
+      return { 
+        'success': true,
+        'imagePath': imagePath, 
+        'location': 'unknown',
+        'City': '',
+        'State': '',
+        'Country':''
+      };
+    } else {
+      let result = await reverseGeocodeToXmp(imageMeta.lat, imageMeta.lng);
 
-    let result = await reverseGeocodeToXmp(imageMeta.lat, imageMeta.lng);
+      if (!result) {
+        dialog.showErrorBox(i18next.t('GeocodingFailed'), i18next.t('GeocodingFailedMessage') );
+        return { success: false, error: i18next.t('GeocodingFailed') };
+      }
+      
+      result.State = result['Province-State'];
+      let geolocation = `${result.City}, ${result.State}, ${result.Country}`;
 
-    if (!result) {
-      dialog.showErrorBox(i18next.t('GeocodingFailed'), i18next.t('GeocodingFailedMessage') );
-      return { success: false, error: i18next.t('GeocodingFailed') };
+      return { 
+        'success': true,
+        'imagePath': imagePath, 
+        'location': geolocation,
+        'City': result.City,
+        'State': result.State,
+        'Country': result.Country
+      };
     }
-    
-    result.State = result['Province-State'];
-    let geolocation = `${result.City}, ${result.State}, ${result.Country}`;
-
-    return { 
-      'success': true,
-      'imagePath': imagePath, 
-      'location': geolocation,
-      'City': result.City,
-      'State': result.State,
-      'Country': result.Country
-    };
-    
   });
 }
 
@@ -896,29 +908,64 @@ async function writeMetadataOneImage(filePath, metadata) {
   } 
 
   // --- GeoLocationInfo ---
-  const city = sanitize(metadata.City);
-  const country = sanitize(metadata.Country);
-  const provinceState = sanitize(metadata.State);
-  const countryCode = sanitize(metadata.CountryCode);
-
-  if (city !== undefined && city !== null) {
+  let city = null, country = null, provinceState = null, countryCode = null;
+  if ( writeData["EXIF:GPSPosition"] && isValidLatLng(metadata.GPSLatitude, metadata.GPSLongitude) ) {
+    // get the geo location info from xmp. We are passing to different formats here!
+    let lat, lng = 0;
+    if ( Array.isArray(metadata.GPSLatitude) && Array.isArray(metadata.GPSLongitude) ) {
+      const roundTo = (value, decimals) => Math.round(value * 10 ** decimals) / 10 ** decimals;
+      let lat1 = metadata.GPSLatitude.join(' ');
+      let lng1 = metadata.GPSLongitude.join(' ');
+      lat = roundTo(dmsToDecimal(lat1, metadata.GPSLatitudeRef), 6); // float
+      lng = roundTo(dmsToDecimal(lng1, metadata.GPSLongitudeRef), 6); // float
+    } else {
+      lat = metadata.GPSLatitude;
+      lng = metadata.GPSLongitude;
+    }
+    
+    let result = await reverseGeocodeToXmp(lat, lng);
+    if (result) {
+      metadata.City = result.City;
+      metadata.Country = result.Country;
+      metadata.State = result['Province-State'];
+      city = sanitize(metadata.City);
+      country = sanitize(metadata.Country);
+      provinceState = sanitize(metadata.State);
+      countryCode = sanitize(result.CountryCode);
+    }
+  } else {
+    city = null;
+    country = null;
+    provinceState = null;
+    countryCode = null;
+  }
+  // do not check for 'null' here because this is used for deleting Tags completely.
+  if (city !== undefined) {
+    writeData["XMP:City"] = city;
     writeData["XMP-photoshop:City"] = city;
     writeData["XMP-iptcExt:LocationShownCity"] = city; // IPTC Extension for Location shown - City
+    writeData["IPTC:City"] = city; // IIM/legacy IPTC standard
   }
 
-  if (country !== undefined && country !== null) {
+  if (country !== undefined ) {
+    writeData["XMP:Country"] = country;
     writeData["XMP-photoshop:Country"] = country;
     writeData["XMP-iptcExt:LocationShownCountryName"] = country; // IPTC Extension for Location shown - Country Name
+    writeData["IPTC:Country-PrimaryLocationName"] = country; // IIM/legacy IPTC standard
   }
 
-  if (provinceState !== undefined && provinceState !== null) {
+  if (provinceState !== undefined ) {
+    writeData["XMP:State"] = provinceState;
     writeData["XMP-photoshop:State"] = provinceState;
     writeData["XMP-iptcExt:LocationShownProvinceState"] = provinceState; // IPTC Extension for Location shown - Province/State
+    writeData["IPTC:Province-State"] = provinceState; // IIM/legacy IPTC standard
   } 
 
-  if (countryCode !== undefined && countryCode !== null) {
+  if (countryCode !== undefined ) {
+    writeData["XMP:CountryCode"] = countryCode;
     writeData["XMP-photoshop:CountryCode"] = countryCode;
     writeData["XMP-iptcExt:LocationShownCountryCode"] = countryCode; // IPTC Extension for Location shown - Country Code
+    writeData["IPTC:Country-PrimaryLocationCode"] = countryCode; // IIM/legacy IPTC standard
   }
 
   if (Object.keys(writeData).length > 0) {
@@ -962,7 +1009,6 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     geolocate = true,
     timeOffset = 0,
   } = options ?? {};
-
   
   return new Promise((resolve) => {
     

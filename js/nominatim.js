@@ -16,15 +16,14 @@ const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124, {
   cachePrecision: 4, // ~11m buckets
   rateLimit: true
 
-  // optional overrides:
+optional:
 
-  const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124 ) ;
+const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124 ) ;
 */
 
 const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 
 /* ---------------- LRU Cache ---------------- */
-
 class LRUCache {
   constructor(maxSize = 500) {
     this.maxSize = maxSize;
@@ -66,14 +65,11 @@ class LRUCache {
 const _cache = new LRUCache(1000);
 
 /* ---------------- Rate limiting ---------------- */
-
 let lastCallTimestamp = 0;
 let requestQueue = Promise.resolve();
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ---------------- Mapping helpers ---------------- */
-
 const pickFirst = (obj, keys) => {
   for (const key of keys) {
     const val = obj?.[key];

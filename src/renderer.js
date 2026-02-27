@@ -714,7 +714,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
   const {
     verbose = 'v2',
     charsetFilename = 'latin',
-    geolocate = true,
+    geolocate = true, // TODO: add geolocate setting
     tzoffset = getTimeDiffInput('timeDiffInput')
   } = params;
 
@@ -736,7 +736,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
         options: {
           verbose,
           charsetFilename,
-          geolocate,
+          geolocate:false, // TODO: use the nominatim after exiftool tagging
           tzoffset
         }
       };

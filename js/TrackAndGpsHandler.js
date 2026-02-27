@@ -282,7 +282,6 @@ function formatUTCOffset(utcOffsetStr) {
 }
 
 function parseExiftoolGPS(exifOutput) {
-
   
   const roundTo = (value, decimals) => Math.round(value * 10 ** decimals) / 10 ** decimals;
   
