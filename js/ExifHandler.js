@@ -222,10 +222,10 @@ function parseExifDateTime(rawValue) {
 function isValidLocation(metadata) {
   return (
     typeof metadata.City === 'string' &&
-    typeof metadata['Province-State'] === 'string' &&
+    typeof metadata.State === 'string' &&
     typeof metadata.Country === 'string' &&
     metadata.City.length > 0 &&
-    metadata['Province-State'].length > 0 &&
+    metadata.State.length > 0 &&
     metadata.Country.length > 0
   );
 }

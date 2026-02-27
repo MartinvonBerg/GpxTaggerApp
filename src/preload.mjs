@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('myAPI', {
   },
   invoke: (channel, data) => {  
     // List of channels allowed  
-    const validChannels_invoke = ['save-meta-to-image', 'geotag-exiftool', 'ai-tagging-status', 'ai-tagging-start'];
+    const validChannels_invoke = ['save-meta-to-image', 'geotag-exiftool', 'ai-tagging-status', 'ai-tagging-start', 'geocoding-start'];
     if (validChannels_invoke.includes(channel)) {  
       return ipcRenderer.invoke(channel, data);  // hier wird eine Nachricht 'data' von renderer.js an main.js geschickt und ein return-wert an renderer.js zurückgegeben.
     }  

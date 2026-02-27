@@ -11,6 +11,7 @@ import { sanitize } from './js/generalHelpers.js';
 import { loadSettings, saveSettings } from './js/settingsHelper.js';
 import { isValidLocation } from './js/ExifHandler.js';
 import { OllamaClient } from './aitagging/OllamaClient.js';
+import { reverseGeocodeToXmp } from './js/nominatim.js'
 
 const isDev = !app.isPackaged;
 // write to a log file if the exe is used (production only)
@@ -473,9 +474,7 @@ function createWindow() {
 
     let geoLocationInfo = '';
     if ( location === 'unknown') {
-      // do reverse geocoding with Nominatim API to get the location name from the coordinates and pass it to the AI model as well. This can improve the AI tagging results, especially for location-based tags.
-      // and write the result to the metadata as well, so that it can be used in the frontend and also for future reference. Security: Validate and sanitize the coordinates before using them in the API request to prevent injection attacks. Also, consider rate limits and error handling for the API requests.
-      geoLocationInfo = 'No Location: '; // TODO : replace this with the actual location name from the reverse geocoding result.
+      geoLocationInfo = 'No Location: '; 
     } else {
       geoLocationInfo = location;
     }
@@ -501,6 +500,35 @@ function createWindow() {
         console.log('AI-Tool (Ollama) is not available.');
         return { success: false, error: i18next.t('AIToolNotAvailable') };
     }
+  });
+
+  ipcMain.handle('geocoding-start', async (event, data) => {
+    const { imagePath, imageMeta, location } = data;
+    
+    if (!fs.existsSync(imagePath)) {
+      dialog.showErrorBox(i18next.t('ImageFileNotFound'), i18next.t('FileNotFoundMessage', { gpxPath }) );
+      return { success: false, error: i18next.t('ImageFileNotFound') };
+    }
+
+    let result = await reverseGeocodeToXmp(imageMeta.lat, imageMeta.lng);
+
+    if (!result) {
+      dialog.showErrorBox(i18next.t('GeocodingFailed'), i18next.t('GeocodingFailedMessage') );
+      return { success: false, error: i18next.t('GeocodingFailed') };
+    }
+    
+    result.State = result['Province-State'];
+    let geolocation = `${result.City}, ${result.State}, ${result.Country}`;
+
+    return { 
+      'success': true,
+      'imagePath': imagePath, 
+      'location': geolocation,
+      'City': result.City,
+      'State': result.State,
+      'Country': result.Country
+    };
+    
   });
 }
 
@@ -596,7 +624,7 @@ async function readImagesFromFolder(folderPath, extensions) {
         // Define a function to extract required EXIF metadata. 
         const getExifData = async (filePath) => {
           const metadata = await exiftool.read(filePath, { ignoreMinorErrors: true });
-          // metadata["Province-State"], metadata.City, metadata.Country
+          // metadata["State"], metadata.City, metadata.Country
             let thumbnailPath = '';
             const maxAgeDays = 14;
             
@@ -639,7 +667,7 @@ async function readImagesFromFolder(folderPath, extensions) {
 
             // merge the geo location info to a single field for easier handling in the frontend and also for the AI tagging. Security: Be cautious when merging and displaying location information to prevent potential privacy issues. Consider allowing users to opt-out of sharing or displaying detailed location data.
             if ( isValidLocation(metadata) ) {
-              metadata.Geolocation = `${metadata.City}, ${metadata['Province-State']}, ${metadata.Country}`;
+              metadata.Geolocation = `${metadata.City}, ${metadata.State}, ${metadata.Country}`;
             } else {
               metadata.Geolocation = 'unknown';
             }
@@ -690,7 +718,7 @@ async function readImagesFromFolder(folderPath, extensions) {
                 // get the geo location info from xmp
                 City: metadata.City || '',
                 Country: metadata.Country || '',
-                ProvinceState: metadata['Province-State'] || '',
+                ProvinceState: metadata.State || '',
                 // merge the above fields to a location info string like "City, ProvinceState, Country" and use it in the frontend for display and also for the AI tagging. Security: Be cautious when merging and displaying location information to prevent potential privacy issues. Consider allowing users to opt-out of sharing or displaying detailed location data.
                 Geolocation: metadata.Geolocation
             }
@@ -854,6 +882,9 @@ async function writeMetadataOneImage(filePath, metadata) {
   }
 
   // --- KEYWORDS = TAGS ---
+  if (Array.isArray(metadata.Keywords)) {
+    metadata.Keywords = metadata.Keywords.join(',');
+  }
   let tags = sanitize(metadata.Keywords);
   tags = tags.split(',');
   tags = [...new Set(
@@ -863,6 +894,32 @@ async function writeMetadataOneImage(filePath, metadata) {
     writeData["MWG:Keywords"] = tags; // writes to "XMP-dc:Subject" and IPTC:Keywords but not IPTC:hierarchical Subject (written by LR). "XMP-dc:Subject" and IPTC:Keywords contain a flat List only.
     writeData["XMP-lr:HierarchicalSubject"] = []; // remove the old "XMP-lr:HierarchicalSubject" which was written by LR unless the App implements an hierarchical list as well.
   } 
+
+  // --- GeoLocationInfo ---
+  const city = sanitize(metadata.City);
+  const country = sanitize(metadata.Country);
+  const provinceState = sanitize(metadata.State);
+  const countryCode = sanitize(metadata.CountryCode);
+
+  if (city !== undefined && city !== null) {
+    writeData["XMP-photoshop:City"] = city;
+    writeData["XMP-iptcExt:LocationShownCity"] = city; // IPTC Extension for Location shown - City
+  }
+
+  if (country !== undefined && country !== null) {
+    writeData["XMP-photoshop:Country"] = country;
+    writeData["XMP-iptcExt:LocationShownCountryName"] = country; // IPTC Extension for Location shown - Country Name
+  }
+
+  if (provinceState !== undefined && provinceState !== null) {
+    writeData["XMP-photoshop:State"] = provinceState;
+    writeData["XMP-iptcExt:LocationShownProvinceState"] = provinceState; // IPTC Extension for Location shown - Province/State
+  } 
+
+  if (countryCode !== undefined && countryCode !== null) {
+    writeData["XMP-photoshop:CountryCode"] = countryCode;
+    writeData["XMP-iptcExt:LocationShownCountryCode"] = countryCode; // IPTC Extension for Location shown - Country Code
+  }
 
   if (Object.keys(writeData).length > 0) {
     await exiftool.write(filePath, writeData);

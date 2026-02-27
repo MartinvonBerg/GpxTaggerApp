@@ -21,7 +21,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: sanitize all file input from promp.txt and config.json, locales.json, translations.json....
 
 // TODO: add Buttons: 'Clear All', 'Copy' 'Paste' for the metadata in the right sidebar. This allows the user to copy the metadata from one image and paste it to another image, which can be a big time saver when many images have similar metadata. Security: Be cautious when implementing copy-paste functionality for metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the copied data before allowing it to be pasted to prevent potential security issues or injection attacks.
-// TODO: add a geolocate setting and add a geolocate button and geolocate in left sidebar, 
+// TODO: add a geolocate setting and geolocate in left sidebar, geolocate for all events.
 // TODO: write jest test for ollama.
 
 let settings = {};
@@ -909,7 +909,10 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         genAIButtonListener(metaGetAIButton);
       } 
     });
-  };  
+  };
+
+  let metaSetGeoButton = document.getElementById('meta-set-geo-button');
+  if (metaSetGeoButton) { setGeoButtonListener(metaSetGeoButton); };
 };
 
 /** UPDATES UI IMAGE: Listens for Enter key press in text input and textarea fields for metadata edit in right sidebar.
@@ -1433,6 +1436,63 @@ function genAIButtonListener(element) {
     const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
     console.log('saving AI generated metadata with result:', result);
     setTrackLogState('write-meta-status', result === 'done' ? 'AI metadata saved to images!' : 'Failed to save AI metadata to images!');
+
+    // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
+    window.myAPI.send('main-reload-data', settings);
+
+  });
+};
+
+function setGeoButtonListener(element) {
+  if (!element) return;
+
+  element.addEventListener('click', async function(event) {
+    const index = event.target.dataset.index;  
+    let isValidIndex = index.split(",").map(v => +v.trim()).every(i => i >= 0 && i < allImages.length);
+    if (!isValidIndex) { return; } 
+
+    let indices = index; // just to avoid confusion in the next line
+    const indexArray = indices.split(',').map(index => parseInt(index.trim(), 10));
+    //let imagesToSave = indexArray.map(index => allImages[index]);
+    let imagesToSave = structuredClone(allImages); // deep clone of allImages. Filter the indexArray at the end of this function
+
+    for (const index of indexArray) {
+      const image = imagesToSave[index];
+      if (!image) continue;
+
+      const params = {
+        imagePath: image.imagePath,
+        imageMeta: image,
+        location: image.Geolocation // placeholder for reverse geocoding result
+      };
+
+      try {
+        setTrackLogState('write-meta-status', `Reverse Geocoding for ${image.imagePath}...`);
+        const result = await window.myAPI.invoke('geocoding-start', params);
+        
+        // If the IPC call returned a non-success result, throw to reach the catch block
+        if (!result || !result.success) {
+          const errMsg = (result && (result.error || result.message)) || 'geocoding failed';
+          throw new Error(errMsg);
+        }
+
+        image.status = 'geocoded';
+        image.City = result.City || '';
+        image.State = result.State || '';
+        image.Country = result.Country || '';
+        image.Geolocation = result.location || null;
+        triggerUpdateThumbnailStatus(image.index, image.status); 
+      } catch (err) {
+        console.log(`Error Reverse Geocoding for ${image.imagePath}:`, err);
+        image.status = 'geocoding-failed';
+        setTrackLogState('write-meta-status', `Error Reverse Geocoding for ${image.imagePath}: ${err && err.message ? err.message : err}`);
+      }
+    }
+    // save the AI generated metadata to the images and update the UI
+    const selectedImages = indexArray.map(index => imagesToSave[index]);
+    const result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
+    console.log('saving geocoded metadata with result:', result);
+    setTrackLogState('write-meta-status', result === 'done' ? 'Geocoded metadata saved to images!' : 'Failed to save geocoded metadata to images!');
 
     // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
     window.myAPI.send('main-reload-data', settings);
