@@ -1,3 +1,5 @@
+// nominatim.js — Nominatim reverse geocoding with caching and rate limiting
+// Coded by ChatGPT (2026-02)
 // reverseGeocode.js (ESM) — Electron main process (Node 18+)
 // - Nominatim reverse (HTTPS)
 // - Policy-friendly headers (User-Agent required; Referer optional)

@@ -849,9 +849,12 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
           <label>${i18next.t('Direction')}:</label>
           <input id="directionInput" type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
-
-          <label>${i18next.t('Geolocation')}:</label>
-          <span class="meta-value">${img.Geolocation}</span>
+          
+          <div class="meta-geo-section">
+            <label>${i18next.t('Geolocation')}:</label>
+            <button id="meta-set-geo-button" type="button" class="meta-button meta-set-geo" data-index="${img.index}">${i18next.t('Set')}</button>
+            <span class="meta-value">${img.Geolocation}</span>
+          </div>
         </div>
       </form>  
       <hr>
@@ -861,7 +864,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <div id ="meta-ai-status">Ollama not checked!</div>
 
         <label>${i18next.t('Title')}:</label>
-        <input id="titleInput" type="text" class="meta-input meta-title" data-index="${img.index}" maxlength="256" title="Allowed: Letters, Digits and some special characters" value="${img.Title || ''}">
+        <textarea id="titleInput" class="meta-input meta-title" data-index="${img.index}" maxlength="256" title="Allowed: Letters, Digits and some special characters">${img.Title || ''}</textarea>
         
         <label>${i18next.t('Description')}:</label>
         <textarea id="descInput" class="meta-input meta-description" maxlength="256" data-index="${img.index}" title="Allowed: Letters, Digits and some special characters" rows="3">${img.Description || ''}</textarea>
@@ -876,6 +879,22 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <div id="write-meta-status">Nothing written yet!</div>
       </div>
     </div>`;
+
+  /* Autosize textareas to fit their content: set height to scrollHeight on input */
+  function autosizeTextareas(root = el) {
+    const areas = root.querySelectorAll('textarea.meta-input');
+    areas.forEach(t => {
+      const resize = () => {
+        t.style.height = 'auto';
+        t.style.height = (t.scrollHeight) + 'px';
+      };
+      t.addEventListener('input', resize);
+      // initial resize
+      resize();
+    });
+  }
+
+  autosizeTextareas(el);
 
   let metaGetAIButton = document.getElementById('meta-get-ai-button');
   if (metaGetAIButton) {
@@ -1136,9 +1155,6 @@ function rightFocusNext(input) {
     if (nextInput) {
       nextInput.focus(); // note: for number input it is not possible to set the cursor position
     }
-    //if ( input.type === 'text' ) {
-    //  nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-    //}
   }
 }
 

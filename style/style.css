@@ -119,6 +119,18 @@ body, html {
   padding-right: 10px;
 }
 
+.meta-geo-section {
+  display: flex;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.meta-geo-section > label {
+  width: 150px; /* match .meta-section's left column */
+  text-align: right;
+  margin-right: 12px; /* match grid gap */
+}
+
 .meta-section label {
   font-weight: bold;
   text-align: right;  /* optional: Label rechtsbündig */
@@ -161,4 +173,38 @@ body, html {
   color: #666666; /* Dunkelgraue Textfarbe, wenn deaktiviert */
   cursor: not-allowed; /* Zeigt an, dass der Button nicht klickbar ist */
 }
+
+.meta-set-geo {
+  background-color: #52753d; /* Standardfarbe für KI-Button */
+  color: white; /* Textfarbe */
+  width: fit-content;
+  padding: 2px;
+  margin-left: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin-right: 5px;
+}
+
+/* Auto-size helpers ----------------------------------------------------- */
+/* Grow textareas to fit their content and disable native resize handle */
+textarea.meta-input, .meta-input.meta-description, .meta-input.meta-tags {
+  overflow: hidden;
+  resize: none; /* disable manual drag resize */
+  min-height: 2.2em;
+  line-height: 1.2;
+}
+
+/* Keep single-line inputs height:auto so they don't clip vertically */
+input.meta-input[type="text"], input.meta-input[type="number"] {
+  height: auto;
+  line-height: 1.2;
+}
+
+/* Small helper to avoid text clipping in .meta-value when long */
+.meta-value {
+  white-space: normal; /* allow wrapping so long values are visible */
+  word-break: break-word;
+}
+
+
 
