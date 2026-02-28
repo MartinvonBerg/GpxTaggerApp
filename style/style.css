@@ -206,5 +206,20 @@ input.meta-input[type="text"], input.meta-input[type="number"] {
   word-break: break-word;
 }
 
+#meta-ai-status {
+  margin-left: 10px;
+  font-size: smaller;
+  font-style: italic;
+}
+
+.meta-button-section {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-right: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
 
 

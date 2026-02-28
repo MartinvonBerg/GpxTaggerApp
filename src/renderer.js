@@ -103,7 +103,10 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       "allImageValue": "keywords",
       "nextInput": "meta-accept-button"
     }
-  }  
+  }
+
+  // in-memory global clipboard for metadata copy/paste
+  window.metaClipboard = { Title: null, Description: null, Keywords: null };
 
   document.addEventListener('DOMContentLoaded', () => {  
     setupResizablePane(document.getElementById('left-resizer'), 'left');  
@@ -852,17 +855,24 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
           
           <div class="meta-geo-section">
             <label>${i18next.t('Geolocation')}:</label>
-            <button id="meta-set-geo-button" type="button" class="meta-button meta-set-geo" data-index="${img.index}">${i18next.t('Set')}</button>
+            <button id="meta-set-geo-button" type="button" class="meta-button2 meta-set-geo" data-index="${img.index}">${i18next.t('Set')}</button>
             <span class="meta-value">${img.Geolocation}</span>
           </div>
         </div>
       </form>  
-      <hr>
-      <div class="meta-section meta-text" data-index="${img.index}">
-        
-        <button id="meta-get-ai-button" type="button" class="meta-button meta-get-ai" data-index="${img.index}">${i18next.t('Gen AI')}</button>
-        <div id ="meta-ai-status">Ollama not checked!</div>
 
+      <hr>
+
+      <div id ="meta-ai-status">Ollama not checked!</div>
+ 
+      <div class="meta-button-section">
+        <button id="meta-get-ai-button" type="button" class="meta-button meta-get-ai" data-index="${img.index}">${i18next.t('Gen AI')}</button>
+        <button id="meta-copy-button"   type="button" class="meta-button meta-cpc" data-index="${img.index}">${i18next.t('Copy')}</button>
+        <button id="meta-paste-button"  type="button" class="meta-button meta-cpc" data-index="${img.index}">${i18next.t('Paste')}</button>
+        <button id="meta-clear-button"  type="button" class="meta-button meta-cpc" data-index="${img.index}">${i18next.t('Clear')}</button>
+      </div>
+        
+      <div class="meta-section meta-text" data-index="${img.index}"> 
         <label>${i18next.t('Title')}:</label>
         <textarea id="titleInput" class="meta-input meta-title" data-index="${img.index}" maxlength="256" title="Allowed: Letters, Digits and some special characters">${img.Title || ''}</textarea>
         
@@ -872,6 +882,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
         <label>${i18next.t('Tags')}:</label>
         <textarea id="tagsInput" class="meta-input meta-tags" maxlength="256" data-index="${img.index}" title="Define Tags separated by comma" rows="3">${keywords || ''}</textarea>
       </div>
+
       <hr>
       <div class="meta-section">
         <!-- show a button to accept, validate and save the metadata in the right sidebar -->
@@ -895,6 +906,103 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
   }
 
   autosizeTextareas(el);
+
+  // Clear button: empty text fields (Title, Description, Tags) and update status
+  let metaClearButtonEl = document.getElementById('meta-clear-button');
+  if (metaClearButtonEl) {
+    metaClearButtonEl.addEventListener('click', (event) => {
+      const idx = event.target.dataset.index || '';
+      const indexArray = idx.split(',').map(v => v.trim()).filter(Boolean).map(Number);
+      const isValidIndex = indexArray.length > 0 && indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+      if (!isValidIndex) return;
+
+      const titleEl = document.getElementById('titleInput');
+      const descEl = document.getElementById('descInput');
+      const tagsEl = document.getElementById('tagsInput');
+
+      if (titleEl) titleEl.value = '';
+      if (descEl) descEl.value = '';
+      if (tagsEl) tagsEl.value = '';
+
+      // update model and status for selected images
+      indexArray.forEach(i => {
+        if (!allImages[i]) return;
+        allImages[i].Title = '';
+        allImages[i].Description = '';
+        allImages[i].Keywords = []; // cleared
+        allImages[i].status = 'meta-manually-changed';
+      });
+
+      updateImageStatus('meta-status', 'meta-manually-changed');
+      indexArray.forEach(i => { if (typeof triggerUpdateThumbnailStatus === 'function') triggerUpdateThumbnailStatus(i, allImages[i].status); });
+
+      // refresh textarea heights
+      autosizeTextareas(el);
+    });
+  }
+
+  // Copy button: store Title/Description/Tags from current right-sidebar view
+  let metaCopyButtonEl = document.getElementById('meta-copy-button');
+  if (metaCopyButtonEl) {
+    metaCopyButtonEl.addEventListener('click', (event) => {
+      const titleEl = document.getElementById('titleInput');
+      const descEl = document.getElementById('descInput');
+      const tagsEl = document.getElementById('tagsInput');
+
+      const rawTitle = titleEl ? titleEl.value : null;
+      const rawDesc = descEl ? descEl.value : null;
+      const rawTags = tagsEl ? tagsEl.value : null;
+
+      // Treat explicit 'multiple' as skip (don't copy that field)
+      metaClipboard.Title = (rawTitle === 'multiple' || rawTitle === null) ? null : sanitizeInput(rawTitle);
+      metaClipboard.Description = (rawDesc === 'multiple' || rawDesc === null) ? null : sanitizeInput(rawDesc);
+
+      if (rawTags === 'multiple' || rawTags === null) {
+        metaClipboard.Keywords = null;
+      } else if (rawTags === '') {
+        metaClipboard.Keywords = [];
+      } else {
+        const sanitized = sanitizeInput(rawTags);
+        metaClipboard.Keywords = sanitized.split(',').map(t => t.trim()).filter(Boolean);
+      }
+
+      updateImageStatus('meta-status', 'meta-copied');
+    });
+  }
+
+  // Paste button: apply clipboard to selected images shown in right sidebar
+  let metaPasteButtonEl = document.getElementById('meta-paste-button');
+  if (metaPasteButtonEl) {
+    metaPasteButtonEl.addEventListener('click', (event) => {
+      const idx = event.target.dataset.index || '';
+      const indexArray = idx.split(',').map(v => v.trim()).filter(Boolean).map(Number);
+      const isValidIndex = indexArray.length > 0 && indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+      if (!isValidIndex) return;
+
+      // apply clipboard fields only when not null (null means 'skip')
+      indexArray.forEach(i => {
+        if (!allImages[i]) return;
+        if (metaClipboard.Title !== null) allImages[i].Title = metaClipboard.Title;
+        if (metaClipboard.Description !== null) allImages[i].Description = metaClipboard.Description;
+        if (metaClipboard.Keywords !== null) allImages[i].Keywords = Array.isArray(metaClipboard.Keywords) ? structuredClone(metaClipboard.Keywords) : [];
+        allImages[i].status = 'meta-manually-changed';
+      });
+
+      // update inputs in the UI to reflect pasted values (show what was pasted)
+      const titleEl = document.getElementById('titleInput');
+      const descEl = document.getElementById('descInput');
+      const tagsEl = document.getElementById('tagsInput');
+      if (titleEl && metaClipboard.Title !== null) titleEl.value = metaClipboard.Title;
+      if (descEl && metaClipboard.Description !== null) descEl.value = metaClipboard.Description;
+      if (tagsEl && metaClipboard.Keywords !== null) tagsEl.value = (Array.isArray(metaClipboard.Keywords) ? metaClipboard.Keywords.join(', ') : '');
+
+      updateImageStatus('meta-status', 'meta-manually-changed');
+      indexArray.forEach(i => { if (typeof triggerUpdateThumbnailStatus === 'function') triggerUpdateThumbnailStatus(i, allImages[i].status); });
+
+      // refresh textarea heights
+      autosizeTextareas(el);
+    });
+  }
 
   let metaGetAIButton = document.getElementById('meta-get-ai-button');
   if (metaGetAIButton) {
