@@ -476,6 +476,14 @@ For example for:
 
 ## Changelog
 
+V2.0.0 : 
+- Added AI Metadata-Generation with API to Ollama using Model Gemma3:12b with best results. Adding ollama_config.json and prompt Template which may be changed by the user to his/her wisches. Some Translations still missing for that part. Just install Ollama and download the model gemma3:12b or any other you like.
+- Added Reverse Geocoding with Nominatim.
+- Updated storage and Copy of settings / config / prompt on first Run.
+- Some code rework, bug fixes and refactoring in Helpers.
+- Update of all npm packages
+- Added some JEST-Tests, but still not complete.
+
 V1.4.0 : Bug-Fix in Left Sidebar and its Handling, Clean-up Build Config and process, Add Config to debug main.mjs.
 
 V1.3.0 : Update and standardize Right Sidebar Input, Bug Fixes in main.js. Fix logging in Distri, checking sharp non-availability (still not solved)

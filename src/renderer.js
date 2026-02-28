@@ -16,13 +16,11 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
     // TODO open config files from menu,
     // TODO: write jest tests for ollama.
     // TODO: add a geolocate setting and geolocate button in left sidebar.
+    // TODO: update translation files.
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
-// TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
-//          Especially where translated data is loaded from json Files and is not checked.
+// TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
 // TODO: sanitize all file input from promp.txt and config.json, locales.json, translations.json....
-
-// TODO: add Buttons: 'Clear All', 'Copy' 'Paste' for the metadata in the right sidebar. This allows the user to copy the metadata from one image and paste it to another image, which can be a big time saver when many images have similar metadata. Security: Be cautious when implementing copy-paste functionality for metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the copied data before allowing it to be pasted to prevent potential security issues or injection attacks.
 
 let settings = {};
 let filteredImages = [];
@@ -791,8 +789,6 @@ function handleTimePicker(HTMLElementID, timeDiffDefaultValue) {
 
 // ----------- RIGHT SIDEBAR -----------
 /** Shows some metadata of the image in the right sidebar like it is done in LR 6.14
- * 
- * TODO: use this manual https://blog.openreplay.com/handling-form-input-vanilla-javascript/ or https://surveyjs.io/
  * 
  * @param {number} index - the index of the image in the allImages array
  * @param {array} selectedIndexes - the indexes of the images that are selected
