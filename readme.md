@@ -476,7 +476,7 @@ For example for:
 
 ## Changelog
 
-V2.0.0 : 
+V2.0.0 : This release introduces AI-assisted metadata generation, reverse geocoding, copy/paste metadata helpers, and several quality-of-life improvements.
 - Added AI Metadata-Generation with API to Ollama using Model Gemma3:12b with best results. Adding ollama_config.json and prompt Template which may be changed by the user to his/her wisches. Some Translations still missing for that part. Just install Ollama and download the model gemma3:12b or any other you like.
 - Added Reverse Geocoding with Nominatim.
 - Updated storage and Copy of settings / config / prompt on first Run.
