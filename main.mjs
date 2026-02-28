@@ -898,11 +898,11 @@ async function writeMetadataOneImage(filePath, metadata) {
     metadata.Keywords = metadata.Keywords.join(',');
   }
   let tags = sanitize(metadata.Keywords);
-  tags = tags.split(',');
-  tags = [...new Set(
-    tags.map(v => v.trim()).filter(v => v.length > 0)
-  )]
   if (tags !== undefined && tags !== null) {
+    tags = tags.split(',');
+    tags = [...new Set(
+      tags.map(v => v.trim()).filter(v => v.length > 0)
+    )]
     writeData["MWG:Keywords"] = tags; // writes to "XMP-dc:Subject" and IPTC:Keywords but not IPTC:hierarchical Subject (written by LR). "XMP-dc:Subject" and IPTC:Keywords contain a flat List only.
     writeData["XMP-lr:HierarchicalSubject"] = []; // remove the old "XMP-lr:HierarchicalSubject" which was written by LR unless the App implements an hierarchical list as well.
   } 
@@ -1006,11 +1006,11 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
   const {
     verbose = 'v2',
     charsetFilename = 'latin',
-    geolocate = true,
+    geolocate = false,
     timeOffset = 0,
   } = options ?? {};
   
-  return new Promise((resolve) => {
+  return new Promise( (resolve) => {
     
     // Pfade prüfen
     if (!fs.existsSync(gpxPath)) {
@@ -1029,13 +1029,31 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
     command += ` "${imagePath}"`;
     console.log("ExifTool Command:", command);
     // TODO : doubled to 'execDouble'
-    exec(command, (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
+    exec(command, async (error, stdout, stderr) => { // Security: Command injection from function argument passed to child_process invocation
       if (error) {
         console.log(`ExifTool-Error: ${stderr || error.message}`);
         return resolve({ success: false, error: `ExifTool-Error: ${stderr || error.message}` });
       }
+
+      // add the geolocation here if it shall not be done by exiftool
+      let geolocateSetting = true; // TODO define settings.geolocate;
+      if ( !geolocate && geolocateSetting  ) {
+        // get the new coords from the image file
+        const metadata = await exiftool.read(imagePath, { ignoreMinorErrors: true });
+        // get the geolocation
+        let newmeta = {};
+        newmeta.pos = metadata.GPSPosition;
+        newmeta.GPSLatitude = metadata.GPSLatitude;
+        newmeta.GPSLongitude = metadata.GPSLongitude;
+        newmeta.GPSLatitudeRef = metadata.GPSLatitudeRef;
+        newmeta.GPSLongitudeRef = metadata.GPSLongitudeRef;
+        // write the geolocation to the image file
+        writeMetadataOneImage(imagePath, newmeta);
+      }
+
       resolve({ success: true, output: stdout });
     });
+
   });
 }
 

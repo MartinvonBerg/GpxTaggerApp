@@ -18,7 +18,7 @@ const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124, {
 
 optional:
 
-const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124 ) ;
+const xmpLoc = await reverseGeocodeToXmp(48.137154, 11.576124 );
 */
 
 const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";

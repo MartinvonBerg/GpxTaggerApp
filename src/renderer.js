@@ -14,6 +14,8 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
     // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
     // TODO: show a minimap on the map???
     // TODO open config files from menu,
+    // TODO: write jest tests for ollama.
+    // TODO: add a geolocate setting and geolocate button in left sidebar.
 // TODO: remove the marker icon that is added by click and change the colour of it.
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser
@@ -21,8 +23,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: sanitize all file input from promp.txt and config.json, locales.json, translations.json....
 
 // TODO: add Buttons: 'Clear All', 'Copy' 'Paste' for the metadata in the right sidebar. This allows the user to copy the metadata from one image and paste it to another image, which can be a big time saver when many images have similar metadata. Security: Be cautious when implementing copy-paste functionality for metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the copied data before allowing it to be pasted to prevent potential security issues or injection attacks.
-// TODO: add a geolocate setting and geolocate in left sidebar, geolocate for all events.
-// TODO: write jest test for ollama.
 
 let settings = {};
 let filteredImages = [];
@@ -714,7 +714,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
   const {
     verbose = 'v2',
     charsetFilename = 'latin',
-    geolocate = true, // TODO: add geolocate setting
+    geolocate = false,
     tzoffset = getTimeDiffInput('timeDiffInput')
   } = params;
 
@@ -736,7 +736,7 @@ function handleTracklogButton(gpxPath, params = {} ) {
         options: {
           verbose,
           charsetFilename,
-          geolocate:false, // TODO: use the nominatim after exiftool tagging
+          geolocate,
           tzoffset
         }
       };
