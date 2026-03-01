@@ -399,7 +399,7 @@ class OllamaClient {
         const payload = {
             model: this.model,
             prompt: prompt,
-            keepalive: -1, // this does not work here. Reason is unknown.
+            keep_alive: -1,
             images: [encodedImage],
             format: 'json',
             stream: this.config.generation.stream ?? false,

@@ -2,7 +2,8 @@
   "ollama": {
     "base_url": "http://localhost:11434",
     "model": "gemma3:12b",
-    "timeout": 120
+    "timeout": 120,
+    "imageMaxPixels": 896
   },
   "generation": {
     "temperature": 0.1,
