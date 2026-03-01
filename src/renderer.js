@@ -19,7 +19,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
   // TODO: remove the marker icon that is added by click and change the colour of it.
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
-// TODO: sanitize all file input translation.json....
+
 // TODO: resize images before uploading to ollama.
   // TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 

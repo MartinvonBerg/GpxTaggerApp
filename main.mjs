@@ -121,7 +121,8 @@ app.whenReady().then(async () => {
     console.log('Failed to check Ollama availability:', err);
   }
   
-  // i18next initialisieren
+  // i18next initialisieren. i18next prevents XSS: https://www.i18next.com/translation-function/interpolation?utm_source=chatgpt.com 
+  // So, no further sanitizing is done here and not in render.js.
   systemLanguage = (app.getLocale() || 'en').split('-')[0];
   try {
     await i18next.use(Backend).init({
