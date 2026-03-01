@@ -10,7 +10,6 @@ import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPan
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
-    // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
     // TODO: show a minimap on the map???
     // TODO open config files from menu,
     // TODO: write jest tests for ollama.
@@ -19,8 +18,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
   // TODO: remove the marker icon that is added by click and change the colour of it.
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
-  // TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
-// TODO: rotate images again!
+// TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 
 let settings = {};
 let filteredImages = [];
