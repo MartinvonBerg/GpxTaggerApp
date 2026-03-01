@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
-import { sanitizeString } from '../js/generalHelpers.js';
+import { sanitizeString, sanitizeTxtFile, safeParseJson } from '../js/generalHelpers.js';
 
 class OllamaClient {
 
@@ -84,7 +84,7 @@ class OllamaClient {
     loadJsonConfig(filePath) {
         try {
             const data = fs.readFileSync(filePath, 'utf-8');
-            return JSON.parse(data);
+            return safeParseJson(data);
         } catch (e) {
             console.log(`Error loading config file ${filePath}: ${e}`);
             return null;
@@ -99,7 +99,7 @@ class OllamaClient {
      */
     loadPrompt(filePath) {
         try {
-            return fs.readFileSync(filePath, 'utf-8');
+            return sanitizeTxtFile( fs.readFileSync(filePath, 'utf-8') );
         } catch (e) {
             console.log(`Error loading prompt file: ${e}`);
             return null;

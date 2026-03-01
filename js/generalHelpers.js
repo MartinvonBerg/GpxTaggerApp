@@ -143,6 +143,106 @@ function sanitizeString(str) {
 }
 
 /**
+ * Struktur-erhaltender TXT-Sanitizer:
+ * - behält \n und normale Leerzeichen bei
+ * - entfernt BOM, NUL und problematische Control-Chars
+ * - optional: CRLF/CR -> LF normalisieren
+ * - optional: Tabs behalten oder entfernen
+ */
+function sanitizeTxtFile(raw, opts = {}) {
+  const {
+    normalizeNewlines = true, // \r\n und \r -> \n
+    keepTabs = true,          // \t behalten
+    trimEnd = false,          // nur Dateiende trimmen (innen bleibt alles)
+    maxLength = 2_000_000     // Schutz gegen riesige Inputs (2MB default)
+  } = opts;
+
+  if (raw == null) return "";
+  let s = String(raw);
+
+  // Optional: Größenlimit (DoS-Schutz bei untrusted input)
+  if (s.length > maxLength) {
+    s = s.slice(0, maxLength);
+  }
+
+  // UTF-8 BOM entfernen
+  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1);
+
+  // Newlines normalisieren (Struktur bleibt, nur Format vereinheitlicht)
+  if (normalizeNewlines) {
+    s = s.replace(/\r\n?/g, "\n");
+  }
+
+  // NUL bytes entfernen
+  s = s.replace(/\u0000/g, "");
+
+  // C0-Controls entfernen, aber \n (und optional \t) behalten
+  // Entfernt: 0x01-0x08, 0x0B, 0x0C, 0x0E-0x1F, 0x7F
+  // Lässt: \n (0x0A), \r (falls normalizeNewlines=false), und optional \t (0x09)
+  const controlPattern = keepTabs
+    ? /[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
+    : /[\u0001-\u0009\u000B\u000C\u000E-\u001F\u007F]/g;
+  s = s.replace(controlPattern, "");
+
+  // Optional: Unicode "Line/Paragraph Separator" in \n überführen
+  // (kommt selten vor, kann aber Layout brechen)
+  s = s.replace(/\u2028|\u2029/g, "\n");
+
+  // Optional: nur am Ende trimmen (innen bleibt alles inkl. Leerzeilen)
+  if (trimEnd) {
+    s = s.replace(/[ \t]+\n/g, "\n"); // trailing spaces vor newline entfernen
+    s = s.replace(/[ \t]+$/g, "");    // trailing spaces am Dateiende entfernen
+    s = s.replace(/\n+$/g, "\n");     // viele End-Newlines auf genau eine reduzieren
+  }
+
+  return s;
+}
+
+function normalizeFileString(input) {
+  if (input == null) return "";
+  let s = String(input);
+
+  // UTF-8 BOM entfernen
+  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1);
+
+  // NUL bytes raus (klassischer Exploit/Parser-Killer)
+  s = s.replace(/\u0000/g, "");
+
+  // Die meisten C0-Control-Chars entfernen, aber \t \n \r lassen (Struktur!)
+  s = s.replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+
+  // Optional: Newlines normalisieren
+  s = s.replace(/\r\n?/g, "\n");
+
+  return s;
+}
+
+function safeParseJson(raw) {
+
+  const DANGEROUS_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+  const s = normalizeFileString(raw);
+
+  const data = JSON.parse(s);
+
+  // Rekursiv gefährliche Keys entfernen
+  const scrub = (value) => {
+    if (Array.isArray(value)) return value.map(scrub);
+    if (value && typeof value === "object") {
+      for (const k of Object.keys(value)) {
+        if (DANGEROUS_KEYS.has(k)) {
+          delete value[k];
+        } else {
+          value[k] = scrub(value[k]);
+        }
+      }
+    }
+    return value;
+  };
+
+  return scrub(data);
+}
+
+/**
  * Checks if an object is empty.
  *
  * @param {Object} obj - The object to check.
@@ -160,4 +260,4 @@ const isNumber = function isNumber(value)
    return typeof value === 'number' && isFinite(value);
 }
 
-export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, sanitizeString };
+export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, sanitizeString, sanitizeTxtFile, safeParseJson };
