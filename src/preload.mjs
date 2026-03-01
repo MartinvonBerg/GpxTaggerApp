@@ -19,11 +19,11 @@ import { contextBridge, ipcRenderer } from 'electron';
   
 // Expose a limited API to the renderer  
 contextBridge.exposeInMainWorld('myAPI', {  
-  send: (channel, data) => {  
+  send: (channel, ...args) => {  
     // List of channels allowed  
     const validChannels_send = ['update-bars-size', 'update-sidebar-width', 'update-image-filter', 'exit-with-unsaved-changes', 'update-map-settings', 'main-reload-data'];
     if (validChannels_send.includes(channel)) {  
-      ipcRenderer.send(channel, data);  // hier wird eine Nachricht an main.js geschickt
+      ipcRenderer.send(channel, ...args);  // hier wird eine Nachricht an main.js geschickt
     }  
   },  
   receive: (channel, func) => {  

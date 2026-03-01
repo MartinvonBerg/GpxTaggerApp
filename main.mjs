@@ -458,8 +458,8 @@ function createWindow() {
     }
   });
 
-  ipcMain.on('main-reload-data', (event, settings) => {
-    reloadImageData(settings);
+  ipcMain.on('main-reload-data', (event, settings, lastImage ) => {
+    reloadImageData(settings, lastImage);
   });
 
   ipcMain.handle('ai-tagging-status', async (event) => {
@@ -1069,13 +1069,13 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
  * @global {array} extensions
  * 
  */
-async function reloadImageData(settings) {
+async function reloadImageData(settings, lastImage) {
   // IPC an Renderer senden, um Daten neu zu laden. Loading starten.
   sendToRenderer('image-loading-started', settings.imagePath);
 
   try {
       const allImages = await readImagesFromFolder(settings.imagePath, extensions);
-      sendToRenderer('reload-data', settings.imagePath, allImages);
+      sendToRenderer('reload-data', settings.imagePath, allImages, lastImage);
       return true;
     } catch (e) {
       console.log('Error reloading data:', e);

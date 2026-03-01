@@ -1,15 +1,14 @@
 import i18next from 'i18next';
 
-import { setDataForLanguage } from '../js/locales.js'; // reviewed allready.
-import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js'; // reviewed allready.
-import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js'; // reviewed allready.
-import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js'; // reviewed allready.
-import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js'; // reviewed allready.
-//import { initAutocomplete } from '../js/autocomplete.js'; // review skipped, will be removed, probably.
-import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js'; // review TBD
-import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js'; // reviewed allready.
-import { showgpx } from '../js/mapAndTrackHandler.js'; // reviewed allready.
-import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewed allready.
+import { setDataForLanguage } from '../js/locales.js';
+import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
+import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js';
+import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
+import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
+import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js';
+import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
+import { showgpx } from '../js/mapAndTrackHandler.js';
+import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
     // TODO: shrink the marker icon size to 1x1 to 'hide' it from the map (but this shows a light blue rectangle on the map)
     // TODO: show a minimap on the map???
@@ -21,6 +20,8 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js'; // reviewe
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
 // TODO: sanitize all file input from promp.txt and config.json, locales.json, translations.json....
+// TODO: reload ollama-config and prompt before every generate.
+// TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 
 let settings = {};
 let filteredImages = [];
@@ -285,7 +286,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
     resetRightSidebar();
   });
 
-  window.myAPI.receive('reload-data', async (imagePath, loadedImages) => {  
+  window.myAPI.receive('reload-data', async (imagePath, loadedImages, lastImage) => {  
     console.log('Reload Data command received: ',imagePath);
     // reloaded data is in loadedImages
     // show the filters in the left sidebar
@@ -300,12 +301,12 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
         metaTextEventListener,
         metaGPSEventListener,
         handleSaveButton,
-        mapPosMarkerEventListener
+        mapPosMarkerEventListener,
+        lastImage
       };
     handleThumbnailBar(thumbnailBarHTMLID, allImages, pageVarsForJs[0].sw_options, deps);
     
     // show the track again
-    
     if (settings.map && settings.gpxPath === '') {
       pageVarsForJs[0] = settings.map; // Store map-related settings globally
       pageVarsForJs[0].imagepath = settings.iconPath + '/images/'; // set the path to the icons for the map
@@ -336,7 +337,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       allMaps[0].removeAllMarkers();
       allMaps[0].createFotoramaMarkers(imgData, true); // initially, no images are selected on the map, so set fit=false to avoid errors.
       pageVarsForJs[0].imgdata = imgData; // set the imgdata for the map globally
-      allMaps[0].setActiveMarker(0);
+      allMaps[0].setActiveMarker(lastImage);
     }
     
     hideLoadingPopup(); // hide the loading popup when done
@@ -847,7 +848,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
           <input id="altitudeInput" type="number" class="meta-input meta-gps meta-altitd" data-index="${img.index}" min=-1000 max=8888 step="0.01" value="${img.GPSAltitude === i18next.t('multiple') ? '' : img.GPSAltitude || ''}" title="Altitude from -1000m to +10000m">
 
           <label>${i18next.t('Direction')}:</label>
-          <input id="directionInput" type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=-360 max=360 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from -360 to 360 degrees">
+          <input id="directionInput" type="number" class="meta-input meta-gps meta-imgdir" data-index="${img.index}" min=0 max=359.99 value="${img.GPSImgDirection === i18next.t('multiple') ? '' : img.GPSImgDirection || ''}" title="Direction from 0 to 359.99 degrees">
           
           <div class="meta-geo-section">
             <label>${i18next.t('Geolocation')}:</label>
@@ -1474,7 +1475,7 @@ function handleSaveButton() {
       });
 
       updateImageStatus('meta-status', newStatusAfterSave);
-      window.myAPI.send('main-reload-data', settings);
+      window.myAPI.send('main-reload-data', settings, indexArray[0]);
     }
   }); 
 }
@@ -1542,7 +1543,7 @@ function genAIButtonListener(element) {
     setTrackLogState('write-meta-status', result === 'done' ? 'AI metadata saved to images!' : 'Failed to save AI metadata to images!');
 
     // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
-    window.myAPI.send('main-reload-data', settings);
+    window.myAPI.send('main-reload-data', settings, indexArray[0]);
 
   });
 };
@@ -1599,7 +1600,7 @@ function setGeoButtonListener(element) {
     setTrackLogState('write-meta-status', result === 'done' ? 'Geocoded metadata saved to images!' : 'Failed to save geocoded metadata to images!');
 
     // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
-    window.myAPI.send('main-reload-data', settings);
+    window.myAPI.send('main-reload-data', settings, indexArray[0]);
 
   });
 };

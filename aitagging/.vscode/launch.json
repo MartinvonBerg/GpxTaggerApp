@@ -10,7 +10,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "args": ["C:\\Users\\safet\\OneDrive\\Pictures\\Sizilien_2025\\Wanderung-Ätna-7750.JPG"]
+            "args": ["D:\\Fotoarchiv ab 2020\\2026_Bilder\\Skitour_Auracher_Graben\\Export\\Skitour-Auracher-Graben-2026-02-20-DxO.jpg"]
         }
     ]
 }

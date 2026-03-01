@@ -123,7 +123,7 @@ def main():
 
     print(f"Sende Bild '{image_path.name}' an Ollama...\n")
     result = client.generate(prompt, image_path)
-    print(result)
+    print('Raw result: ', result)
     
     # parse the result as JSON
     try:

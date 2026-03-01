@@ -173,7 +173,7 @@ function validateDirection(inputValue) {
   if (isNaN(inputAsNumber)) {
     return false;
   } else {
-    return inputAsNumber >= -360 && inputAsNumber <= 360;
+    return inputAsNumber >= 0 && inputAsNumber <= 359.99;
   }  
 }
 

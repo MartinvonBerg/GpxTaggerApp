@@ -39,13 +39,14 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
     }
 
     // destructure dependencies for the previously global functions
-    const {
+    let {
         generateThumbnailHTML,
         showMetadataForImageIndex,
         metaTextEventListener,
         metaGPSEventListener,
         handleSaveButton,
-        mapPosMarkerEventListener
+        mapPosMarkerEventListener,
+        lastImage
       } = deps;
 
     thumbnailElement.innerHTML = generateThumbnailHTML(allImages);
@@ -53,8 +54,9 @@ export async function handleThumbnailBar(target, allImages, options = {}, deps =
     let th = new ThumbnailSlider(0, options);
 
     // show and activate the first thumbnail metadata and activate listeners for it
-    th.setActiveThumb(0);
-    showMetadataForImageIndex(0);
+    if ( lastImage == 'undefined' || lastImage === null || isNaN(lastImage) ) { lastImage = 0; }  
+    th.setActiveThumb(lastImage);
+    showMetadataForImageIndex(lastImage);
     metaTextEventListener();
     metaGPSEventListener();
     handleSaveButton();
