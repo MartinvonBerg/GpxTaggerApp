@@ -19,8 +19,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
   // TODO: remove the marker icon that is added by click and change the colour of it.
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
-
-// TODO: resize images before uploading to ollama.
   // TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 
 let settings = {};
@@ -1508,7 +1506,7 @@ function genAIButtonListener(element) {
       if (!image) continue;
 
       const params = {
-        imagePath: image.imagePath,
+        imagePath: image.thumbnail,
         captureDate: exifDateToJSLocaleDate(image.DateTimeOriginal) + ' ' + exifDateTimeToJSTime(image.DateTimeOriginal), // includes the Timezone offset, e.g. "2024-01-01 12:00:00"  which should not be a problem for the AI model because it can learn to interpret this format. The capture date is needed for the AI model to understand the context of the image and to generate more accurate metadata. For example, if the image was taken at night, the AI model might generate different keywords than if the image was taken during the day.
         imageMeta: image,
         location: image.Geolocation // placeholder for reverse geocoding result

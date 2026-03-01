@@ -641,7 +641,8 @@ async function readImagesFromFolder(folderPath, extensions) {
             let thumbnailPath = '';
             const maxAgeDays = 14;
             
-            if (metadata.ThumbnailImage && metadata.ThumbnailImage.rawValue) {
+            //if (metadata.ThumbnailImage && metadata.ThumbnailImage.rawValue) {
+            if ( sharpAvailable ) {
               const thumbnailPathTmp = path.join(app.getPath('temp'), `${path.basename(filePath)}_thumb.jpg`); // Security: Validate and normalize paths, then enforce a fixed base directory. Use path.resolve(base, input) and verify the result starts with base. Reject absolute paths, .. segments, and unsafe characters. Prefer allowlists for filenames.
               let useExistingThumbnail = false;
 
@@ -660,18 +661,14 @@ async function readImagesFromFolder(folderPath, extensions) {
               }
 
               if (!useExistingThumbnail) {
-                // extract new thumbnail
-                try {
-                  await exiftool.extractThumbnail(filePath, thumbnailPathTmp);
-                } catch (err) {
-                  console.log('Error extracting thumbnail with exiftool for', filePath, err);
+                // add a config for long edge here: get it from the config of the ollamaClient if not use a default value of 1200 px.
+                // TODO : problem is that other LLM may need other sizes and we need to handle this.
+                let longEdge = 1200;
+                if ( ollamaClient  ) {
+                  longEdge = ollamaClient.getPreferredLongEdge();
                 }
-                // rotate thumbnail
-                try {
-                  thumbnailPath = await rotateThumbnail(metadata, filePath, thumbnailPathTmp);
-                } catch (err) {
-                  console.log('Error rotating thumbnail with sharp for', filePath, err);
-                }
+                thumbnailPath = await resizeImage(filePath, thumbnailPathTmp, { longEdge: longEdge });
+                if ( !thumbnailPath) thumbnailPath = filePath;
               }
               
             } else {
@@ -1140,6 +1137,89 @@ async function rotateThumbnail(metadata, filePath, thumbPathTmp) {
   fs.renameSync(rotatedThumbPath, thumbPathTmp); // überschreibt Thumbnail mit korrigierter Version
 
   return thumbPathTmp;
+}
+
+/**
+ * @typedef {Object} ResizeConfig
+ * @property {number} [longEdge=896]      - Max size of the longer edge in pixels.
+ * @property {number} [jpegQuality=85]    - JPEG quality (1..100).
+ * @property {string} [suffix="_resized"] - Suffix for basename generation.
+ * @property {string} [flattenBg="#ffffff"] - Background for alpha flattening.
+ * @property {number} [limitInputPixels]  - Optional guard against huge images (e.g., 40_000_000).
+ */
+
+/**
+ * Resize an image buffer (jpg/webp/avif/png) to LLM-friendly dimensions and return JPEG bytes.
+ * Output is always JPEG, long edge limited, alpha flattened, metadata stripped.
+ *
+ * - Long edge limited to config.longEdge
+ * - fit: 'inside', withoutEnlargement: true
+ * - Always outputs JPEG
+ * - Flattens alpha (important for PNG/WEBP/AVIF with transparency)
+ * - Removes metadata (keeps content deterministic)
+ *
+ * @param {string:path} inputFile
+ * @param {string:path} outputFile
+ * @param {ResizeConfig} [config]
+ * @returns {Promise:Boolean}
+ */
+async function resizeImage(inputFile, outputFile, config = {}) {
+  const {
+    longEdge = 896,
+    jpegQuality = 85,
+    flattenBg = "#ffffff",
+    limitInputPixels,
+  } = config;
+
+  if ( !sharpAvailable) return false;
+
+  // convert inputFile to inputBuffer
+  const inputBuffer = await sharp(inputFile).toBuffer();
+
+  if (!Buffer.isBuffer(inputBuffer)) {
+    //throw new TypeError("inputBuffer must be a Buffer");
+    return false;
+  }
+  if (!Number.isFinite(longEdge) || longEdge <= 0) {
+    //throw new TypeError("config.longEdge must be a positive number");
+    return false;
+  }
+  if (!Number.isFinite(jpegQuality) || jpegQuality < 1 || jpegQuality > 100) {
+    //throw new TypeError("config.jpegQuality must be in range 1..100");
+    return false;
+  }
+
+  // NOTE: We don't rely on file extensions; sharp will sniff the buffer.
+  // limitInputPixels protects from extreme images (optional).
+  const sharpInstance = sharp(inputBuffer, limitInputPixels ? { limitInputPixels } : undefined);
+
+  // We do a metadata probe to know whether alpha exists (for flatten decision).
+  // This avoids unneeded flatten operations but still safe if flatten is always applied.
+  const meta = await sharpInstance.metadata();
+
+  let pipeline = sharp(inputBuffer, limitInputPixels ? { limitInputPixels } : undefined)
+    .rotate() // respect EXIF orientation when present
+    .resize({
+      width: longEdge,
+      height: longEdge,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+
+  // Flatten if the source has alpha (PNG/WEBP/AVIF often do). Output is JPEG anyway.
+  if (meta.hasAlpha) {
+    pipeline = pipeline.flatten({ background: flattenBg });
+  }
+
+  await pipeline
+    .jpeg({
+      quality: jpegQuality,
+      mozjpeg: true,
+      chromaSubsampling: "4:2:0",
+    })
+    .toFile(outputFile);
+
+  return outputFile;
 }
 
 /** 

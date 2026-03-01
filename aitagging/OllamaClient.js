@@ -106,6 +106,10 @@ class OllamaClient {
         }
     }
 
+    getPreferredLongEdge() {
+        return this.config.ollama.long_edge ?? 1200;
+    }
+
     /**
      * Checks if the Ollama model is available by performing a robust HTTP GET.
      * Does not check whether Ollama was started already.
