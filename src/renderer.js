@@ -20,7 +20,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
 // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
 // TODO: sanitize all file input from promp.txt and config.json, locales.json, translations.json....
-// TODO: reload ollama-config and prompt before every generate.
+// TODO: resize images before uploading to ollama.
 // TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 
 let settings = {};
@@ -1514,8 +1514,8 @@ function genAIButtonListener(element) {
         location: image.Geolocation // placeholder for reverse geocoding result
       };
 
-      try {
-        setTrackLogState('write-meta-status', `Generating AI metadata for ${image.imagePath}...`);
+      setTrackLogState('write-meta-status', `Generating AI metadata for ${image.imagePath}...`);
+      try {  
         let result = await window.myAPI.invoke('ai-tagging-start', params);
         
         // If the IPC call returned a non-success result, throw to reach the catch block
@@ -1530,22 +1530,20 @@ function genAIButtonListener(element) {
         image.Keywords += image.Keywords.length > 0 ? ' AI: ' + (result.Keywords || '') : (result.Keywords || '');
         image.status = 'ai-tagged';
         image.Geolocation = result.location || null;
-        triggerUpdateThumbnailStatus(image.index, image.status); 
+        //triggerUpdateThumbnailStatus(image.index, image.status); 
         
         // save the AI generated metadata to the images and update the UI
         const selectedImages = indexArray.map(index => imagesToSave[index]);
         result = await window.myAPI.invoke('save-meta-to-image', selectedImages);
 
         // If the IPC call returned a non-success result, throw to reach the catch block
-        if (!result || !result.success) {
+        if (result !== 'done') {
           const errMsg = (result && (result.error || result.message)) || 'saving ai metadata failed';
           throw new Error(errMsg);
         }
 
         console.log('saved AI generated metadata with result:', result);
         setTrackLogState('write-meta-status', 'AI metadata saved to images!');
-        
-        // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
         window.myAPI.send('main-reload-data', settings, indexArray[0]);
 
       } catch (err) {

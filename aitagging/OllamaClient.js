@@ -23,11 +23,11 @@ class OllamaClient {
         // build absolute path to config file and prompt template in the users app directory, 
         // which is writable and can be used to store user-specific settings and custom prompts. 
         // This allows users to modify the config and prompt without changing the packaged app files, which may be read-only. 
-        const configPath = path.join(app.getPath('userData'), configfile);
-        const promptPath = path.join(app.getPath('userData'), promptfile);
+        this.configPath = path.join(app.getPath('userData'), configfile);
+        this.promptPath = path.join(app.getPath('userData'), promptfile);
 
-        let load1 = this.checkAndCopySettingsFiles(appRoot, configPath, configfile);
-        let load2 = this.checkAndCopySettingsFiles(appRoot, promptPath, promptfile);
+        let load1 = this.checkAndCopySettingsFiles(appRoot, this.configPath, configfile);
+        let load2 = this.checkAndCopySettingsFiles(appRoot, this.promptPath, promptfile);
         if (!load1 || !load2) {
             console.log("Failed to load config or prompt template. Check if the default files exist in the app's settings folder.");
             this.ollamaAvailable = false;
@@ -35,8 +35,8 @@ class OllamaClient {
             return;
         }
 
-        this.config = this.loadJsonConfig(configPath);
-        this.prompt = this.loadPrompt(promptPath);
+        this.config = this.loadJsonConfig( this.configPath);
+        this.prompt = this.loadPrompt( this.promptPath);
 
         if (!this.config || !this.config.ollama || !this.prompt) {
             console.log("Invalid config.json or prompt file.");
@@ -383,6 +383,9 @@ class OllamaClient {
      * @returns {success, data, error} - An object with a success flag, the sanitized response data, and an error message if the request fails.
      */
     async generate(imagePath, captureDate, imageMeta, geoLocationInfo) {
+        // reload the config and prompt before every generate
+        this.config = this.loadJsonConfig( this.configPath);
+        this.prompt = this.loadPrompt( this.promptPath);
 
         const prompt = this.preparePrompt(this.prompt, captureDate, imageMeta, geoLocationInfo);  
         const url = `${this.baseUrl}/api/generate`;
