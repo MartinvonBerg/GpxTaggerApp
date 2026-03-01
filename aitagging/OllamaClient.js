@@ -322,7 +322,7 @@ class OllamaClient {
             return null;
         }
 
-        const allowedKeys = ["Title", "Description", "Keywords"];
+        const allowedKeys = ["title", "description", "keywords"];
 
         const keys = Object.keys(parsed);
 
@@ -431,12 +431,14 @@ class OllamaClient {
 
             if (data.response) {
                 // sanitize the response data to a valid JSON.
+                console.log("Antwort von Ollama: ", data.response);
+                // TODO: use the ollama model now to transform the response to the expected JSON format.
                 const sanitizedData = this.validateAndSanitizeMetadataJSON(data.response);
                 return { data: sanitizedData, success: true };
             } else {
                 console.log("Unerwartetes Antwortformat von Ollama:");
                 console.log(data);
-                return { success: false, error: "Unexpected response format from Ollama" };
+                return { success: false, error: "Unexpected response format from Ollama: " + response.statusText };
             }
         } catch (e) {
             console.log(`Fehler bei der Anfrage an Ollama: ${e}`);

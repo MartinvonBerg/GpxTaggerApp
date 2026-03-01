@@ -20,6 +20,7 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
   // TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
+// TODO: use the ollama model now to transform the response to the expected JSON format.
 
 let settings = {};
 let filteredImages = [];
@@ -1605,7 +1606,6 @@ function setGeoButtonListener(element) {
     console.log('saving geocoded metadata with result:', result);
     setTrackLogState('write-meta-status', result === 'done' ? 'Geocoded metadata saved to images!' : 'Failed to save geocoded metadata to images!');
 
-    // TODO: adopt line 1297 - 1346 here. for the moment use reloadData to show the new metadata in the UI.
     window.myAPI.send('main-reload-data', settings, indexArray[0]);
 
   });

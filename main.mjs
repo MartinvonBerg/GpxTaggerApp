@@ -485,14 +485,14 @@ function createWindow() {
     if (ollamaAvailable.status) {
       let aiResult = await ollamaClient.generate(imagePath, captureDate, imageMeta, geoLocationInfo);
       
-      if (aiResult && aiResult.success && aiResult.data.Title && aiResult.data.Description && aiResult.data.Keywords) {
+      if (aiResult && aiResult.success && aiResult.data.title && aiResult.data.description && aiResult.data.keywords) {
         return { 
           'success': aiResult.success,
           'imagePath': imagePath, 
           'location': geoLocationInfo,
-          'Title': aiResult.data.Title,
-          'Description': aiResult.data.Description,
-          'Keywords': aiResult.data.Keywords // Tags must be a comma-separated string for exiftool to write them correctly to the metadata. The AI model should generate the tags in this format as well, so that no further processing is required here. Security: Be cautious when writing AI-generated content to image metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the AI output before writing it to the metadata to prevent potential security issues or injection attacks.
+          'Title': aiResult.data.title,
+          'Description': aiResult.data.description,
+          'Keywords': aiResult.data.keywords // Tags must be a comma-separated string for exiftool to write them correctly to the metadata. The AI model should generate the tags in this format as well, so that no further processing is required here. Security: Be cautious when writing AI-generated content to image metadata, especially if it includes user-generated input. Consider implementing validation and sanitization of the AI output before writing it to the metadata to prevent potential security issues or injection attacks.
         };
       } else {  
         console.log("Unexpected AI result format: ", aiResult);  
@@ -662,7 +662,7 @@ async function readImagesFromFolder(folderPath, extensions) {
 
               if (!useExistingThumbnail) {
                 // add a config for long edge here: get it from the config of the ollamaClient if not use a default value of 1200 px.
-                // TODO : problem is that other LLM may need other sizes and we need to handle this.
+                // TODO : problem is that other LLM may need other sizes and we need to handle this. So we chose a bit bigger than required for gemma3:12b.
                 let longEdge = 1200;
                 if ( ollamaClient  ) {
                   longEdge = ollamaClient.getPreferredLongEdge();
