@@ -10,7 +10,7 @@ import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPan
 import { showgpx } from '../js/mapAndTrackHandler.js';
 import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
 
-    // TODO: write jest tests for ollama.
+  // TODO: write jest tests for ollama and all other imported modules and scripts.
   // TODO: remove the marker icon that is added by click and change the colour of it.
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
@@ -742,7 +742,6 @@ function handleTracklogButton(gpxPath, params = {} ) {
         if (result.success) {
           const {lat, lng, pos, alt, latArray, latRef, lngArray, lngRef} = parseExiftoolGPS(result.output);
           // write the result to the image in filteredImages and allImages (?) and set the status to 'geotagged'
-          // TODO : replace by updateAllImagesGPS function?
           console.log(`Geotagging für ${image.imagePath}:`, {lat, lng, alt});
           image.lat = lat;
           image.lng = lng;

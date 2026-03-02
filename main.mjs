@@ -630,8 +630,6 @@ function sendToRenderer(channel, ...args) {
  * The returned objects contain relevant EXIF fields and file information.
  * Images are sorted by their capture time (DateTimeOriginal).
  * Uses exiftool-vendored for fast, concurrent metadata extraction.
- *
- * TODO : read available metadata from xmp files (sidecar files for raw images) - exiftool can do this, too
  * 
  * @async
  * @function readImagesFromFolder
@@ -750,7 +748,7 @@ async function readImagesFromFolder(folderPath, extensions) {
                 camera: metadata.Model || 'none',
                 lens: metadata.LensModel || '',
                 orientation: metadata.Orientation || '',
-                //type: 'image',  // TODO : extend for videos, too. or remove it and control it by the extensions array? But mind that exifTool only works for images!
+                //type: 'image',
                 height: metadata.ImageHeight || '',  
                 width: metadata.ImageWidth || '',  
                 
@@ -1093,7 +1091,7 @@ async function geotagImageExiftool(gpxPath, imagePath, options) {
       }
 
       // add the geolocation here if it shall not be done by exiftool
-      let geolocateSetting = true; // TODO define settings.geolocate;
+      let geolocateSetting = true;
       if ( !geolocate && geolocateSetting  ) {
         // get the new coords from the image file
         const metadata = await exiftool.read(imagePath, { ignoreMinorErrors: true });
