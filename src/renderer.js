@@ -4,7 +4,7 @@ import { setDataForLanguage } from '../js/locales.js';
 import { convertGps, validateAltitude, validateDirection, getElevation, parseExiftoolGPS } from '../js/TrackAndGpsHandler.js';
 import { exifDateToJSLocaleDate, exifDateTimeToJSTime, calcTimeMeanAndStdDev, getTimeDifference, parseTimeDiffToSeconds } from '../js/ExifHandler.js';
 import { showLoadingPopup, hideLoadingPopup } from '../js/popups.js';
-import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty } from '../js/generalHelpers.js';
+import { updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, normalizeTags } from '../js/generalHelpers.js';
 import { generateThumbnailHTML, triggerUpdateThumbnailStatus, handleThumbnailBar } from '../js/thumbnailClassWrapper.js';
 import { setupResizablePane, setupHorizontalResizablePane } from '../js/setupPanes.js';
 import { showgpx } from '../js/mapAndTrackHandler.js';
@@ -18,7 +18,6 @@ import { showTrackLogStateError } from '../js/leftSidebarHandler.js';
   // TODO: remove the marker icon that is added by click and change the colour of it.
   // TODO: change from electron-packager to electron-builder ( siehe Anleitung.txt)
   // TODO: Possible Security Issue : Cross-site scripting (XSS) via untrusted input in innerHTML, outerHTML, document.write in browser. Especially where translated data is loaded from json Files and is not checked.
-// TODO: allow adding Tags even if 'multiple' is selected like it is done in LR 6.14.
 
 let settings = {};
 let filteredImages = [];
@@ -96,7 +95,7 @@ function mainRenderer (window, document, customDocument=null, win=null, vars=nul
       "multiValue": "multiple",
       "id": "tagsInput",
       "converter": sanitizeInput,
-      "allImageValue": "keywords",
+      "allImageValue": "Keywords", // Mind the inconsistent naming here. For ai-tagging 'keywords' is used.
       "nextInput": "meta-accept-button"
     }
   }
@@ -803,7 +802,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
   // get the identical values for the keys in img if multiple images are selected. img.file, img.extension, img.index
   if (selectedIndexes.length > 1) {
     // get the identical values for the keys in img or if not identical set them to 'multiple'. The value is not translated here because it is used programmatically.
-    img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description'], 'multiple');
+    img = getIdenticalValuesForKeysInImages(allImages, selectedIndexes, ['status', 'pos', 'DateTimeOriginal', 'GPSAltitude', 'GPSImgDirection', 'Title', 'Description', 'Keywords'], 'multiple');
     img.index = selectedIndexes.join(', ');
     DateTimeOriginalString = 'multiple';
   } else {
@@ -818,7 +817,7 @@ function showMetadataForImageIndex(index, selectedIndexes=[]) {
 
   // convert img.keywords to comma separated list
   let keywords = '';
-  if (img.Keywords) keywords = img.Keywords.join(', ');
+  if (img.Keywords) keywords = typeof img.Keywords === 'string' ? img.Keywords : img.Keywords.join(', ');
   
   // show some metadata of the image in the right sidebar like it is done in LR 6.14
   el.innerHTML = `
@@ -1033,20 +1032,15 @@ function metaTextEventListener() {
       if ( (input.tagName === "INPUT" || input.tagName === "TEXTAREA") && e.key === "Enter") { // this is for type="text" and textarea
         e.preventDefault();
 
-        const rawValue = input.value;
-        const convertedValue = rightBarFormDef[input.id].converter(rawValue);
+        let rawValue = input.value;
+        let convertedValue = rightBarFormDef[input.id].converter(rawValue);
         const index = input.dataset.index; // e.g. "1" or "1, 2, 3"
-        const indexArray = index
-          .split(',')
-          .map(v => v.trim())
-          .map(Number);
+        const indexArray = index.split(',').map(v => v.trim()).map(Number);
+        const isValidIndex = indexArray.length > 0 && indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
+        const multVal = rightBarFormDef[input.id].multiValue;
+        let oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
 
-        const isValidIndex =
-          indexArray.length > 0 &&
-          indexArray.every(i => Number.isInteger(i) && i >= 0 && i < allImages.length);
-
-          const multVal = rightBarFormDef[input.id].multiValue;
-        // ungültiger Index oder ungültige Koordinaten (aber kein leerer Wert / "multiple")
+        // ungültiger Index oder ungültige Koordinaten (aber kein leerer Wert / "multiple") -> return;
         if ((!isValidIndex || !convertedValue) && rawValue !== '' && !rawValue.includes(multVal)) {
           input.value = '';
           input.focus();
@@ -1055,24 +1049,34 @@ function metaTextEventListener() {
           return;
         }
 
-        // explizit "multiple" eingegeben → nichts übernehmen
-        if (rawValue.includes(multVal)) {
+        // explizit "multiple" eingegeben → nichts übernehmen, außer bei Tags dort neue Werte an multval anhängen
+        if (rawValue.includes(multVal) && e.target.id !== 'tagsInput') {
           input.value = multVal;
           input.focus();
           input.select();
           updateImageStatus('meta-status', 'wrong input: not accepted');
           return;
+        } else if ( rawValue.includes(multVal) && e.target.id === 'tagsInput') {
+          rawValue = rawValue.replace(multVal, '');
+          convertedValue = rightBarFormDef[input.id].converter(rawValue);
+          convertedValue = normalizeTags(convertedValue);
+          input.value = multVal+ ', ' + convertedValue;
+          oldValue = null;
+        } else if ( e.target.id === 'tagsInput') {
+          convertedValue = rightBarFormDef[input.id].converter(rawValue);
+          convertedValue = normalizeTags(convertedValue);
+          input.value = convertedValue;
+          oldValue = oldValue.join(', ');
         }
 
-        const oldValue = allImages[indexArray[0]][rightBarFormDef[input.id].allImageValue];
-        // leeres Feld → Koordinaten löschen (convertedValue bleibt leerer String)
-        if (rawValue === '' && convertedValue === null) {
-          // hier bewusst nichts weiter machen; später wird convertedValue = '' in updateAllImagesGPS genutzt
-        } else if (convertedValue !== oldValue) { // DIFF
+        if (convertedValue !== oldValue && e.target.id !== 'tagsInput') { // DIFF
           // bei geänderter Position: normalisierten Wert anzeigen
           input.value = convertedValue;
-        } else {
-          // don't change value and focus the altitude field
+        } else if ( convertedValue !== oldValue && e.target.id === 'tagsInput') {
+          // wurde bereits oben gesetzt
+        }
+         else {
+          // don't change value and focus the altitude field. This includes the Tags input field
           // focus the next input
           rightFocusNext(rightBarFormDef[input.id]);
           return;
@@ -1405,9 +1409,14 @@ function handleSaveButton() {
     sanitizedValue = sanitizeInput(input.value);
     key = 'Keywords';
 
-    if (sanitizedValue && input.value !== 'multiple') {
+    if (sanitizedValue && !input.value.includes('multiple')) { // mind that this is without comma!
       input.value = sanitizedValue;
       indexArray.forEach(index => { imagesToSave[index][key] = sanitizedValue; });
+    }
+    if (sanitizedValue && input.value.includes('multiple,')) { // mind that this is with comma!
+      sanitizedValue = normalizeTags(sanitizedValue.replace('multiple,', ''));
+      sanitizedValue = sanitizedValue.replaceAll(', ', ',');
+      indexArray.forEach(index => { imagesToSave[index][key] += ',' + sanitizedValue; });
     }
     if ( input.value === '') {
       indexArray.forEach(index => { imagesToSave[index][key] = ''; });

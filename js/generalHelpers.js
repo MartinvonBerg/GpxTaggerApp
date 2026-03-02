@@ -34,7 +34,16 @@ function getIdenticalValuesForKeysInImages(images, indexes, keys, multipleValue)
     if (keys.includes('GPSImgDirection') && result.GPSImgDirection === multipleValue) result.GPSImgDirection = -8888;       
   
     return result;  
-}  
+} 
+
+function normalizeTags(input) {
+  return [...new Set(
+    input
+      .split(",")          // 1. split
+      .map(tag => tag.trim())  // 2. trim whitespace
+      .filter(tag => tag.length > 0) // 3. remove empty entries
+  )].join(", "); // 4 & 5 deduplicate + join
+}
 
 /** update the allImages array to convertedValue for GPS-Data and set the status to 'gps-manually-changed'
  * 
@@ -260,4 +269,4 @@ const isNumber = function isNumber(value)
    return typeof value === 'number' && isFinite(value);
 }
 
-export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, sanitizeString, sanitizeTxtFile, safeParseJson };
+export { sanitize, updateAllImagesGPS, getIdenticalValuesForKeysInImages, sanitizeInput, isObjEmpty, isNumber, sanitizeString, sanitizeTxtFile, safeParseJson, normalizeTags };
