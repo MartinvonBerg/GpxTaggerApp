@@ -7,12 +7,10 @@ import Backend from 'i18next-fs-backend';
 import { exiftool } from 'exiftool-vendored';
 
 import { sortImagesByCaptureTime } from './js/imageHelper.js';
-import { sanitize } from './js/generalHelpers.js';
+import { sanitize, isNumber } from './js/generalHelpers.js';
 import { loadSettings, saveSettings, openSettingsInSystemEditor } from './js/settingsHelper.js';
-import { isValidLocation } from './js/ExifHandler.js';
 import { OllamaClient } from './aitagging/OllamaClient.js';
 import { reverseGeocodeToXmp } from './js/nominatim.js'
-import { isNumber } from './js/generalHelpers.js';
 import { isValidLatLng, dmsToDecimal } from './js/TrackAndGpsHandler.js';
 
 const isDev = !app.isPackaged;
@@ -733,11 +731,13 @@ async function readImagesFromFolder(folderPath, extensions) {
             }
 
             // merge the geo location info to a single field for easier handling in the frontend and also for the AI tagging. Security: Be cautious when merging and displaying location information to prevent potential privacy issues. Consider allowing users to opt-out of sharing or displaying detailed location data.
-            if ( isValidLocation(metadata) ) {
-              metadata.Geolocation = `${metadata.City}, ${metadata.State}, ${metadata.Country}`;
-            } else {
-              metadata.Geolocation = 'unknown';
-            }
+            metadata.Geolocation = [
+                metadata.City,
+                metadata.State,
+                metadata.Country
+              ]
+              .filter(v => typeof v === 'string' && v.trim())
+              .join(', ') || 'unknown';
 
             return {
                 DateTimeOriginal: metadata.DateTimeOriginal || '',
