@@ -152,7 +152,7 @@ class OllamaClient {
                 // here this.model is the expected model from config and it shall be checked wether it is actually available according to the response.
                 let modelFound = false;
                 for (const modelInfo of data.models || []) {
-                    if (modelInfo.name.includes(this.model) ) {
+                    if (modelInfo.name ===this.model ) {
                         console.log(`Ollama model "${this.model}" is available.`);
                         this.model = modelInfo.name; // update to actual model name from response, which may include version or other details
                         modelFound = true;
@@ -400,7 +400,7 @@ class OllamaClient {
             encodedImage = imageBuffer.toString('base64');
         } catch (e) {
             console.log(`Fehler beim Laden des Bildes: ${e}`);
-            process.exit(1);
+            return { success: false, error: `Fehler beim Laden des Bildes: ${e}` };
         }
 
         const payload = {
@@ -441,8 +441,7 @@ class OllamaClient {
                 return { data: sanitizedData, success: true };
 
             } else {
-                console.log("Unerwartetes Antwortformat von Ollama:");
-                console.log(data);
+                console.log("Unerwartetes Antwortformat von Ollama: ", data);
                 return { success: false, error: "Unexpected response format from Ollama: " + response.statusText };
             }
         } catch (e) {
