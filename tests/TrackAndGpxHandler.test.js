@@ -1,7 +1,7 @@
 // c:\Users\safet\Projekte-Software\electron-panes\js\TrackAndGpsHandler.dmsToDecimal.test.js
 // Tests for dmsToDecimal using Jest
 
-import { dmsToDecimal } from '../js/TrackAndGpsHandler.js';
+import { dmsToDecimal, convertGps } from '../js/TrackAndGpsHandler.js';
 
 describe('dmsToDecimal', () => {
   test('converts N hemisphere DMS to positive decimal degrees', () => {
@@ -213,5 +213,64 @@ describe('dmsToDecimal', () => {
     // Assert
     const expected = 359 + 59 / 60 + 59 / 3600;
     expect(result).toBeCloseTo(expected, 10);
+  });
+});
+
+// add the test for convertGps here
+describe('convertGps', () => {
+  test('parses decimal degrees input and returns normalized object', () => {
+    const input = '40.446, -79.982';
+    const result = convertGps(input);
+
+    expect(result).not.toBeNull();
+    expect(result.lat).toBeCloseTo(40.446, 6);
+    expect(result.lon).toBeCloseTo(79.982, 6);
+    expect(result.refLat).toBe('N');
+    expect(result.refLon).toBe('W');
+    expect(result.pos).toBe('40.446000, -79.982000');
+  });
+
+  test('parses DMS input and returns normalized object', () => {
+    const input = '40 26 46 N, 79 58 56 W';
+    const result = convertGps(input);
+
+    // expected decimals
+    const expectedLat = 40 + 26 / 60 + 46 / 3600; // 40.446111...
+    const expectedLon = 79 + 58 / 60 + 56 / 3600; // 79.982222...
+
+    expect(result).not.toBeNull();
+    expect(result.lat).toBeCloseTo(expectedLat, 6);
+    expect(result.lon).toBeCloseTo(expectedLon, 6);
+    expect(result.refLat).toBe('N');
+    expect(result.refLon).toBe('W');
+    expect(result.pos).toBe(`${expectedLat.toFixed(6)}, -${expectedLon.toFixed(6)}`);
+  });
+
+  test('treats empty string to be Null', () => {
+    const input = '';
+    const result = convertGps(input);
+    expect(result).toBeNull();
+  });
+
+  test('returns null for non-coordinate input', () => {
+    const input = 'not a coordinate';
+    const result = convertGps(input);
+    expect(result).toBeNull();
+  });
+
+  test('OLC Pluscode is supported', () => {
+    const input = '8FQ55G77+39'; 
+    // pos = "45.162687, 3.513437"
+    const expected = {
+      lat: 45.162687,
+      lon: 3.513437,
+      refLat: 'N',
+      refLon: 'E',
+      pos: '45.162687, 3.513437'
+    }
+    const result = convertGps(input);
+    expect(result.pos).toEqual(expected.pos);
+    expect(result.lat).toBeCloseTo(expected.lat,5);
+    expect(result.lon).toBeCloseTo(expected.lon,5);
   });
 });

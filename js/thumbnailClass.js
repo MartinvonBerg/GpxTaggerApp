@@ -200,35 +200,45 @@ export class ThumbnailSlider {
     // Check if mouse is over thumbnail bar
     if (!this.isMouseOverThumbnailBar) return;
 
-    // Check if Shift is pressed and key is ArrowLeft or ArrowRight
-    if (!event.shiftKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
-
-    // Determine direction: -1 for left, +1 for right
-    const direction = event.key === 'ArrowLeft' ? -1 : 1;
-
-    // If no active indexes, do nothing
-    if (!this.activeIndexes || this.activeIndexes.length === 0) return;
-
-    // Calculate new indexes
+    const shiftArrow = event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight');
+    const ctrlA = event.ctrlKey && event.key.toLowerCase() === 'a';
+    console.log('shift: ', shiftArrow, 'ctrl: ', ctrlA);
+    if (!(shiftArrow || ctrlA)) return;
+    event.preventDefault();
+    
     let newIndexes = [];
     const maxIndex = this.thumbnails.length - 1;
 
-    if (this.activeIndexes.length === 1) {
-      // Single selection: move one step
-      let newIndex = this.activeIndexes[0] + direction;
-      if (newIndex < 0 || newIndex > maxIndex) return; // Out of bounds
-      newIndexes = [newIndex];
+    if (ctrlA) {
+      // Select all images
+      for (let i = 0; i <= maxIndex; i++) {
+        newIndexes.push(i);
+      }
     } else {
-      // Multi-selection: select ONE image left or right of the currently active range
-      const minIndex = Math.min(...this.activeIndexes);
-      const maxActiveIndex = Math.max(...this.activeIndexes);
+      // Determine direction: -1 for left, +1 for right
+      const direction = event.key === 'ArrowLeft' ? -1 : 1;
 
-      // Check bounds before shifting
-      if ((direction === -1 && minIndex === 0) || (direction === 1 && maxActiveIndex === maxIndex)) return;
-      if (direction === -1) {
-        newIndexes = [minIndex - 1];
+      // If no active indexes, do nothing
+      if (!this.activeIndexes || this.activeIndexes.length === 0) return;
+
+      // Calculate new indexes
+      if (this.activeIndexes.length === 1) {
+        // Single selection: move one step
+        let newIndex = this.activeIndexes[0] + direction;
+        if (newIndex < 0 || newIndex > maxIndex) return; // Out of bounds
+        newIndexes = [newIndex];
       } else {
-        newIndexes = [maxActiveIndex + 1];
+        // Multi-selection: select ONE image left or right of the currently active range
+        const minIndex = Math.min(...this.activeIndexes);
+        const maxActiveIndex = Math.max(...this.activeIndexes);
+
+        // Check bounds before shifting
+        if ((direction === -1 && minIndex === 0) || (direction === 1 && maxActiveIndex === maxIndex)) return;
+        if (direction === -1) {
+          newIndexes = [minIndex - 1];
+        } else {
+          newIndexes = [maxActiveIndex + 1];
+        }
       }
     }
 

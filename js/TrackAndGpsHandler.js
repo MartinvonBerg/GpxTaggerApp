@@ -7,6 +7,7 @@
 
 import Coordinates from "coordinate-parser";
 import tz_lookup from "@photostructure/tz-lookup";
+import { OpenLocationCode } from "open-location-code";
 
 /**
  * get the track info for the left sidebar
@@ -112,9 +113,17 @@ function convertGps(input) {
       return isValid;
     }
   };
+
+  const openLocationCode = new OpenLocationCode();
+  const isValidPluscode = openLocationCode.isValid(input);
   
-  if (!isValidPosition(input)) {
+  if (!isValidPosition(input) && !isValidPluscode) {
     return null; // passt überhaupt nicht ins Muster
+  }
+
+  if (isValidPluscode) {
+    const coords = openLocationCode.decode(input);
+    input = coords.latitudeCenter.toString() + ', ' + coords.longitudeCenter.toString();
   }
 
   try {

@@ -3,14 +3,17 @@ export default {
   transform: {},
   testMatch: ['**/tests/**/*.test.js'],
   moduleNameMapper: { 
-    '^electron$': '<rootDir>/tests/__mocks__/electron.js' },
-
-  collectCoverage: true,
-  collectCoverageFrom: ['aitagging/**/*.js'],
-  //collectCoverageFrom: ['src/**/*.js', 'aitagging/**/*.js'],
+    '^electron$': '<rootDir>/tests/__mocks__/electron.js' 
+  },
+  
+  //collectCoverage: true,
+  collectCoverageFrom: ['./js/TrackAndGpsHandler.js'], 
+  //collectCoverageFrom: ['aitagging/**/*.js'],
+  // collectCoverageFrom: ['src/**/*.js', 'aitagging/**/*.js'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: { branches: 80, functions: 80, lines: 85, statements: 85 }
   }
+
 };
